@@ -71,10 +71,10 @@ namespace UKHO.ADDS.Search.AppHost
                    .WaitFor(storageQueue)
                    .WaitFor(sqlServer);
 
-            builder.AddProject<FileShareImageBuilder>(ServiceNames.FileShareBuilder)
-                   .WithReference(storageQueue)
+            builder.AddExecutable(ServiceNames.FileShareBuilder, "cmd", "..", "/c", "start", "dotnet", "run", "--project", "FileShareImageBuilder/FileShareImageBuilder.csproj")
+                   .WithReference(storageBlob)
                    .WithReference(sqlServer)
-                   .WaitFor(storageQueue)
+                   .WaitFor(storageBlob)
                    .WaitFor(sqlServer)
                    .WithExplicitStart();
 
