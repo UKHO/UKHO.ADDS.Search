@@ -1,0 +1,6 @@
+{
+  "sourceDatabase": "connection to source FSS database",
+  "remoteService": "fss-dev-webapp.azurewebsites.net",
+  "dataImagePath": "d:\\data-image",
+  "dataImageBinSizeGB": 75
+}

@@ -1,14 +1,34 @@
 ﻿<Project Sdk="Microsoft.NET.Sdk">
 
-	<PropertyGroup>
-		<OutputType>Exe</OutputType>
-		<TargetFramework>net10.0</TargetFramework>
-		<ImplicitUsings>enable</ImplicitUsings>
-		<Nullable>enable</Nullable>
-	</PropertyGroup>
+  <PropertyGroup>
+    <OutputType>Exe</OutputType>
+    <TargetFramework>net10.0</TargetFramework>
+    <ImplicitUsings>enable</ImplicitUsings>
+    <Nullable>enable</Nullable>
+  </PropertyGroup>
 
-	<ItemGroup>
-		<PackageReference Include="Spectre.Console" Version="0.54.0" />
-	</ItemGroup>
+  <ItemGroup>
+    <PackageReference Include="Aspire.Microsoft.Data.SqlClient" Version="13.1.1" />
+    <PackageReference Include="Aspire.Azure.Storage.Blobs" Version="13.1.1" />
+    <PackageReference Include="Azure.Identity" Version="1.17.1" />
+    <PackageReference Include="Microsoft.Extensions.Hosting" Version="10.0.0" />
+    <PackageReference Include="Microsoft.Extensions.Configuration.Json" Version="10.0.0" />
+    <PackageReference Include="Microsoft.SqlServer.DacFx" Version="170.0.94" />
+    <PackageReference Include="Spectre.Console" Version="0.49.1" />
+    <PackageReference Include="UKHO.ADDS.Clients.FileShareService.ReadOnly" Version="0.0.50728-alpha.8" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="..\UKHO.ADDS.Search\UKHO.ADDS.Search.csproj" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <None Update="configuration.json">
+      <CopyToOutputDirectory>Always</CopyToOutputDirectory>
+    </None>
+    <None Update="configuration.override.json">
+      <CopyToOutputDirectory>Always</CopyToOutputDirectory>
+    </None>
+  </ItemGroup>
 
 </Project>
