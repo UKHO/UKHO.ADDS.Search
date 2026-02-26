@@ -25,15 +25,12 @@ internal static class ConfigurationReader
     internal static string GetTargetDatabaseConnectionString(string databaseName)
     {
         if (string.IsNullOrWhiteSpace(databaseName))
-        {
             throw new ArgumentException("Database name is required.", nameof(databaseName));
-        }
 
         var targetConnectionString = Environment.GetEnvironmentVariable($"ConnectionStrings__{databaseName}");
         if (string.IsNullOrWhiteSpace(targetConnectionString))
-        {
-            throw new InvalidOperationException($"Missing required environment variable 'ConnectionStrings__{databaseName}'.");
-        }
+            throw new InvalidOperationException(
+                $"Missing required environment variable 'ConnectionStrings__{databaseName}'.");
 
         return targetConnectionString;
     }
@@ -61,14 +58,10 @@ internal static class ConfigurationReader
         using var json = ReadOverrideConfiguration();
 
         if (!json.RootElement.TryGetProperty("dataImageBinSizeGB", out var element))
-        {
             throw new InvalidOperationException("Missing 'dataImageBinSizeGB' in configuration.override.json.");
-        }
 
         if (element.ValueKind != JsonValueKind.Number || !element.TryGetInt32(out var value) || value <= 0)
-        {
             throw new InvalidOperationException("Invalid 'dataImageBinSizeGB'. Must be a positive integer.");
-        }
 
         return value;
     }
@@ -78,24 +71,17 @@ internal static class ConfigurationReader
         using var json = ReadOverrideConfiguration();
 
         if (!json.RootElement.TryGetProperty("dataImageCount", out var element))
-        {
             throw new InvalidOperationException("Missing 'dataImageCount' in configuration.override.json.");
-        }
 
         if (element.ValueKind != JsonValueKind.Number || !element.TryGetInt32(out var value) || value <= 0)
-        {
             throw new InvalidOperationException("Invalid 'dataImageCount'. Must be a positive integer.");
-        }
 
         return value;
     }
 
     private static string? GetOptionalStringProperty(JsonElement root, string propertyName)
     {
-        if (!root.TryGetProperty(propertyName, out var element))
-        {
-            return null;
-        }
+        if (!root.TryGetProperty(propertyName, out var element)) return null;
 
         var value = element.GetString();
         return string.IsNullOrWhiteSpace(value) ? null : value;
@@ -104,15 +90,10 @@ internal static class ConfigurationReader
     private static string GetRequiredStringProperty(JsonElement root, string propertyName)
     {
         if (!root.TryGetProperty(propertyName, out var element))
-        {
             throw new InvalidOperationException($"Missing '{propertyName}' in configuration.override.json.");
-        }
 
         var value = element.GetString();
-        if (string.IsNullOrWhiteSpace(value))
-        {
-            throw new InvalidOperationException($"Missing '{propertyName}'.");
-        }
+        if (string.IsNullOrWhiteSpace(value)) throw new InvalidOperationException($"Missing '{propertyName}'.");
 
         return value;
     }
@@ -121,9 +102,7 @@ internal static class ConfigurationReader
     {
         var overrideFilePath = Path.Combine(AppContext.BaseDirectory, "configuration.override.json");
         if (!File.Exists(overrideFilePath))
-        {
             throw new FileNotFoundException("Missing required configuration override file.", overrideFilePath);
-        }
 
         using var stream = File.OpenRead(overrideFilePath);
         return JsonDocument.Parse(stream);

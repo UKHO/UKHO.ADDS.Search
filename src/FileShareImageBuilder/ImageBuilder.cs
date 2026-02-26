@@ -2,13 +2,13 @@ namespace FileShareImageBuilder;
 
 public sealed class ImageBuilder
 {
-    private readonly MetadataImporter _metadataImporter;
+    private readonly BinCleaner _binCleaner;
     private readonly ContentImporter _contentImporter;
     private readonly DataCleaner _dataCleaner;
-    private readonly MetadataExporter _metadataExporter;
     private readonly ImageExporter _imageExporter;
     private readonly ImageLoader _imageLoader;
-    private readonly BinCleaner _binCleaner;
+    private readonly MetadataExporter _metadataExporter;
+    private readonly MetadataImporter _metadataImporter;
 
     public ImageBuilder(
         MetadataImporter metadataImporter,

@@ -1,6 +1,6 @@
-using Microsoft.Data.SqlClient;
 using System.Data;
 using System.Text.Json;
+using Microsoft.Data.SqlClient;
 using UKHO.ADDS.Search.Configuration;
 
 namespace FileShareImageBuilder;
@@ -21,7 +21,8 @@ public sealed class DataCleaner
         Console.WriteLine($"[DataCleaner] Downloaded batch zip files found: {downloadedBatchIds.Count}");
         Console.WriteLine($"[DataCleaner] Invalid batch ids found: {invalidIds.Count}");
 
-        var targetConnectionString = ConfigurationReader.GetTargetDatabaseConnectionString(StorageNames.FileShareEmulatorDatabase);
+        var targetConnectionString =
+            ConfigurationReader.GetTargetDatabaseConnectionString(StorageNames.FileShareEmulatorDatabase);
 
         await using var sqlConnection = new SqlConnection(targetConnectionString);
         await sqlConnection.OpenAsync(cancellationToken).ConfigureAwait(false);
@@ -31,10 +32,7 @@ public sealed class DataCleaner
         foreach (var batchId in invalidIds)
         {
             var result = await DeleteBatchAsync(sqlConnection, batchId, cancellationToken).ConfigureAwait(false);
-            if (result.BatchDeleted)
-            {
-                deletedInvalidBatchIds++;
-            }
+            if (result.BatchDeleted) deletedInvalidBatchIds++;
 
             deletedInvalidRows += result.RowsAffected;
         }
@@ -43,7 +41,6 @@ public sealed class DataCleaner
         Console.WriteLine($"[DataCleaner] Deleted invalid rows: {deletedInvalidRows}");
 
         if (invalidIds.Count > 0)
-        {
             try
             {
                 File.Delete(invalidFilePath);
@@ -51,26 +48,28 @@ public sealed class DataCleaner
             }
             catch (Exception ex)
             {
-                Console.WriteLine($"[DataCleaner] Failed to delete invalid file '{invalidFilePath}': {ex.GetType().Name}: {ex.Message}");
+                Console.WriteLine(
+                    $"[DataCleaner] Failed to delete invalid file '{invalidFilePath}': {ex.GetType().Name}: {ex.Message}");
             }
-        }
 
-        var deletedNotDownloaded = await DeleteCommittedBatchesNotDownloadedAsync(sqlConnection, downloadedBatchIds, cancellationToken).ConfigureAwait(false);
+        var deletedNotDownloaded =
+            await DeleteCommittedBatchesNotDownloadedAsync(sqlConnection, downloadedBatchIds, cancellationToken)
+                .ConfigureAwait(false);
         Console.WriteLine($"[DataCleaner] Deleted committed batches not downloaded: {deletedNotDownloaded}");
 
-        var deletedNonCommitted = await DeleteNonCommittedBatchesAsync(sqlConnection, cancellationToken).ConfigureAwait(false);
+        var deletedNonCommitted =
+            await DeleteNonCommittedBatchesAsync(sqlConnection, cancellationToken).ConfigureAwait(false);
         Console.WriteLine($"[DataCleaner] Deleted non-committed batches: {deletedNonCommitted}");
     }
 
-    private static async Task<HashSet<Guid>> ReadInvalidIdsAsync(string invalidFilePath, CancellationToken cancellationToken)
+    private static async Task<HashSet<Guid>> ReadInvalidIdsAsync(string invalidFilePath,
+        CancellationToken cancellationToken)
     {
-        if (!File.Exists(invalidFilePath))
-        {
-            return new HashSet<Guid>();
-        }
+        if (!File.Exists(invalidFilePath)) return new HashSet<Guid>();
 
         await using var stream = File.OpenRead(invalidFilePath);
-        var ids = await JsonSerializer.DeserializeAsync<List<Guid>>(stream, cancellationToken: cancellationToken).ConfigureAwait(false);
+        var ids = await JsonSerializer.DeserializeAsync<List<Guid>>(stream, cancellationToken: cancellationToken)
+            .ConfigureAwait(false);
         return ids is { Count: > 0 }
             ? new HashSet<Guid>(ids)
             : new HashSet<Guid>();
@@ -79,27 +78,20 @@ public sealed class DataCleaner
     private static HashSet<Guid> GetDownloadedBatchIds(string dataImagePath)
     {
         var contentDir = Path.Combine(dataImagePath, "bin", "content");
-        if (!Directory.Exists(contentDir))
-        {
-            return new HashSet<Guid>();
-        }
+        if (!Directory.Exists(contentDir)) return new HashSet<Guid>();
 
         var ids = new HashSet<Guid>();
         foreach (var file in Directory.EnumerateFiles(contentDir, "*.zip", SearchOption.AllDirectories))
         {
             var name = Path.GetFileNameWithoutExtension(file);
-            if (Guid.TryParseExact(name, "D", out var id))
-            {
-                ids.Add(id);
-            }
+            if (Guid.TryParseExact(name, "D", out var id)) ids.Add(id);
         }
 
         return ids;
     }
 
-    private sealed record DeleteBatchResult(bool BatchDeleted, int RowsAffected);
-
-    private static async Task<DeleteBatchResult> DeleteBatchAsync(SqlConnection sqlConnection, Guid batchId, CancellationToken cancellationToken)
+    private static async Task<DeleteBatchResult> DeleteBatchAsync(SqlConnection sqlConnection, Guid batchId,
+        CancellationToken cancellationToken)
     {
         await using var cmd = sqlConnection.CreateCommand();
         cmd.CommandType = CommandType.Text;
@@ -225,7 +217,8 @@ WHERE [Status] = 3
         return await cmd.ExecuteNonQueryAsync(cancellationToken).ConfigureAwait(false);
     }
 
-    private static async Task<int> DeleteNonCommittedBatchesAsync(SqlConnection sqlConnection, CancellationToken cancellationToken)
+    private static async Task<int> DeleteNonCommittedBatchesAsync(SqlConnection sqlConnection,
+        CancellationToken cancellationToken)
     {
         await using var cmd = sqlConnection.CreateCommand();
         cmd.CommandType = CommandType.Text;
@@ -262,4 +255,6 @@ WHERE [Status] <> 3;";
 
         return await cmd.ExecuteNonQueryAsync(cancellationToken).ConfigureAwait(false);
     }
+
+    private sealed record DeleteBatchResult(bool BatchDeleted, int RowsAffected);
 }

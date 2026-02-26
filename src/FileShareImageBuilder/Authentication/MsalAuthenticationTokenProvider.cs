@@ -13,10 +13,8 @@ public sealed class MsalAuthenticationTokenProvider : IAuthenticationTokenProvid
     {
         _app = app ?? throw new ArgumentNullException(nameof(app));
         _scopes = (scopes ?? throw new ArgumentNullException(nameof(scopes))).ToArray();
-        if (_scopes.Length == 0)
-        {
-            throw new ArgumentException("At least one scope is required.", nameof(scopes));
-        }
+
+        if (_scopes.Length == 0) throw new ArgumentException("At least one scope is required.", nameof(scopes));
     }
 
     public async Task<string> GetTokenAsync()

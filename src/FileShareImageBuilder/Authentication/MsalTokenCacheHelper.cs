@@ -1,5 +1,5 @@
-using Microsoft.Identity.Client;
 using System.Security.Cryptography;
+using Microsoft.Identity.Client;
 
 namespace FileShareImageBuilder.Authentication;
 
@@ -39,15 +39,11 @@ internal static class MsalTokenCacheHelper
 
     private static void AfterAccessNotification(TokenCacheNotificationArgs args)
     {
-        if (!args.HasStateChanged)
-        {
-            return;
-        }
+        if (!args.HasStateChanged) return;
 
         lock (FileLock)
         {
-            File.WriteAllBytes(CacheFilePath,
-                ProtectedData.Protect(args.TokenCache.SerializeMsalV3(), null, DataProtectionScope.CurrentUser));
+            File.WriteAllBytes(CacheFilePath, ProtectedData.Protect(args.TokenCache.SerializeMsalV3(), null, DataProtectionScope.CurrentUser));
         }
     }
 }

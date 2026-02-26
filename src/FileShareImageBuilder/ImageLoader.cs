@@ -11,30 +11,25 @@ public sealed class ImageLoader
         var imageName = $"fss-data-{env}";
         var tarPath = Path.Combine(dataImagePath, $"{imageName}.tar");
 
-        if (!File.Exists(tarPath))
-        {
-            throw new FileNotFoundException("Docker image tar file not found.", tarPath);
-        }
+        if (!File.Exists(tarPath)) throw new FileNotFoundException("Docker image tar file not found.", tarPath);
 
         // Capture the currently-tagged image id so we can remove it after loading the new one.
         var previousImageId = await TryGetImageIdAsync(imageName, cancellationToken).ConfigureAwait(false);
         if (!string.IsNullOrWhiteSpace(previousImageId))
-        {
             Console.WriteLine($"[ImageLoader] Existing docker image detected. ImageId={previousImageId}");
-        }
 
         Console.WriteLine($"[ImageLoader] Loading docker image from '{tarPath}'...");
         await RunDockerAsync($"load -i \"{tarPath}\"", cancellationToken).ConfigureAwait(false);
 
         Console.WriteLine($"[ImageLoader] Verifying docker image '{imageName}' exists locally...");
-        var output = await RunDockerCaptureAsync($"image ls --format \"{{{{.Repository}}}}\"", cancellationToken).ConfigureAwait(false);
+        var output = await RunDockerCaptureAsync("image ls --format \"{{.Repository}}\"", cancellationToken)
+            .ConfigureAwait(false);
 
-        var repositories = output.Split(["\r\n", "\n"], StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries);
+        var repositories = output.Split(["\r\n", "\n"],
+            StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries);
 
         if (!repositories.Contains(imageName, StringComparer.OrdinalIgnoreCase))
-        {
             throw new InvalidOperationException($"Docker image '{imageName}' was not found after load.");
-        }
 
         Console.WriteLine($"[ImageLoader] Docker image '{imageName}' is present.");
 
@@ -54,20 +49,16 @@ public sealed class ImageLoader
 
     private static async Task<string?> TryGetImageIdAsync(string repository, CancellationToken cancellationToken)
     {
-        var output = await RunDockerCaptureAsync($"image ls --format \"{{{{.Repository}}}}|{{{{.ID}}}}\"", cancellationToken).ConfigureAwait(false);
-        var lines = output.Split(["\r\n", "\n"], StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries);
+        var output = await RunDockerCaptureAsync("image ls --format \"{{.Repository}}|{{.ID}}\"", cancellationToken)
+            .ConfigureAwait(false);
+        var lines = output.Split(["\r\n", "\n"],
+            StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries);
         foreach (var line in lines)
         {
             var parts = line.Split('|', 2);
-            if (parts.Length != 2)
-            {
-                continue;
-            }
+            if (parts.Length != 2) continue;
 
-            if (string.Equals(parts[0], repository, StringComparison.OrdinalIgnoreCase))
-            {
-                return parts[1];
-            }
+            if (string.Equals(parts[0], repository, StringComparison.OrdinalIgnoreCase)) return parts[1];
         }
 
         return null;
@@ -82,7 +73,7 @@ public sealed class ImageLoader
             RedirectStandardOutput = true,
             RedirectStandardError = true,
             UseShellExecute = false,
-            CreateNoWindow = true,
+            CreateNoWindow = true
         };
 
         using var p = new Process { StartInfo = psi, EnableRaisingEvents = true };
@@ -98,10 +89,7 @@ public sealed class ImageLoader
                 return;
             }
 
-            if (!string.IsNullOrWhiteSpace(e.Data))
-            {
-                Console.WriteLine($"[docker] {e.Data}");
-            }
+            if (!string.IsNullOrWhiteSpace(e.Data)) Console.WriteLine($"[docker] {e.Data}");
         };
 
         p.ErrorDataReceived += (_, e) =>
@@ -112,16 +100,10 @@ public sealed class ImageLoader
                 return;
             }
 
-            if (!string.IsNullOrWhiteSpace(e.Data))
-            {
-                Console.Error.WriteLine($"[docker] {e.Data}");
-            }
+            if (!string.IsNullOrWhiteSpace(e.Data)) Console.Error.WriteLine($"[docker] {e.Data}");
         };
 
-        if (!p.Start())
-        {
-            throw new InvalidOperationException("Failed to start docker process.");
-        }
+        if (!p.Start()) throw new InvalidOperationException("Failed to start docker process.");
 
         p.BeginOutputReadLine();
         p.BeginErrorReadLine();
@@ -129,10 +111,7 @@ public sealed class ImageLoader
         await p.WaitForExitAsync(cancellationToken).ConfigureAwait(false);
         await Task.WhenAll(stdoutClosed.Task, stderrClosed.Task).ConfigureAwait(false);
 
-        if (p.ExitCode != 0)
-        {
-            throw new InvalidOperationException($"docker {args} failed with exit code {p.ExitCode}.");
-        }
+        if (p.ExitCode != 0) throw new InvalidOperationException($"docker {args} failed with exit code {p.ExitCode}.");
     }
 
     private static async Task<string> RunDockerCaptureAsync(string args, CancellationToken cancellationToken)
@@ -144,7 +123,7 @@ public sealed class ImageLoader
             RedirectStandardOutput = true,
             RedirectStandardError = true,
             UseShellExecute = false,
-            CreateNoWindow = true,
+            CreateNoWindow = true
         };
 
         using var p = Process.Start(psi) ?? throw new InvalidOperationException("Failed to start docker process.");
@@ -154,9 +133,8 @@ public sealed class ImageLoader
         await p.WaitForExitAsync(cancellationToken).ConfigureAwait(false);
 
         if (p.ExitCode != 0)
-        {
-            throw new InvalidOperationException($"docker {args} failed with exit code {p.ExitCode}.\nSTDERR:\n{stderr}");
-        }
+            throw new InvalidOperationException(
+                $"docker {args} failed with exit code {p.ExitCode}.\nSTDERR:\n{stderr}");
 
         return stdout;
     }

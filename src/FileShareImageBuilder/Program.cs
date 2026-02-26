@@ -1,11 +1,12 @@
 ﻿using FileShareImageBuilder.Authentication;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Hosting;
-using Microsoft.Identity.Client;
 using Microsoft.Extensions.Logging;
+using Microsoft.Identity.Client;
 using UKHO.ADDS.Clients.Common.Authentication;
 using UKHO.ADDS.Clients.FileShareService.ReadOnly;
 using UKHO.ADDS.Search.Configuration;
+using LogLevel = Microsoft.Extensions.Logging.LogLevel;
 
 namespace FileShareImageBuilder;
 
@@ -16,11 +17,8 @@ internal class Program
         var builder = Host.CreateApplicationBuilder(args);
 
         builder.Logging.ClearProviders();
-        builder.Logging.AddSimpleConsole(o =>
-        {
-            o.TimestampFormat = "HH:mm:ss ";
-        });
-        builder.Logging.SetMinimumLevel(Microsoft.Extensions.Logging.LogLevel.Warning);
+        builder.Logging.AddSimpleConsole(o => { o.TimestampFormat = "HH:mm:ss "; });
+        builder.Logging.SetMinimumLevel(LogLevel.Warning);
 
         builder.AddSqlServerClient(StorageNames.FileShareEmulatorDatabase);
         builder.AddAzureBlobServiceClient(ServiceNames.Blobs);
@@ -34,14 +32,10 @@ internal class Program
             var clientId = ConfigurationReader.GetClientId();
 
             if (string.IsNullOrWhiteSpace(tenantId))
-            {
                 throw new InvalidOperationException("Missing 'tenantId' in configuration.override.json.");
-            }
 
             if (string.IsNullOrWhiteSpace(clientId))
-            {
                 throw new InvalidOperationException("Missing 'clientId' in configuration.override.json.");
-            }
 
             var scopes = new[] { $"{clientId}/.default" };
 

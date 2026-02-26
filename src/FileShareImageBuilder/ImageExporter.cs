@@ -11,9 +11,7 @@ public sealed class ImageExporter
         var binDirectory = Path.Combine(dataImagePath, "bin");
 
         if (!Directory.Exists(binDirectory))
-        {
             throw new DirectoryNotFoundException($"Bin directory not found: {binDirectory}");
-        }
 
         var imageName = $"fss-data-{env}";
         var dockerfilePath = Path.Combine(binDirectory, "Dockerfile.dataimage");
@@ -24,7 +22,8 @@ public sealed class ImageExporter
         await File.WriteAllTextAsync(dockerfilePath, "FROM scratch\n" + "COPY . /bin\n", cancellationToken);
 
         Console.WriteLine($"[ImageExporter] Building docker image '{imageName}' from '{binDirectory}'...");
-        await RunDockerAsync($"build -f \"{dockerfilePath}\" -t {imageName} \"{binDirectory}\"", cancellationToken).ConfigureAwait(false);
+        await RunDockerAsync($"build -f \"{dockerfilePath}\" -t {imageName} \"{binDirectory}\"", cancellationToken)
+            .ConfigureAwait(false);
 
         var tarPath = Path.Combine(dataImagePath, $"{imageName}.tar");
         Console.WriteLine($"[ImageExporter] Saving docker image to '{tarPath}'...");
@@ -42,7 +41,7 @@ public sealed class ImageExporter
             RedirectStandardOutput = true,
             RedirectStandardError = true,
             UseShellExecute = false,
-            CreateNoWindow = true,
+            CreateNoWindow = true
         };
 
         using var p = new Process { StartInfo = psi, EnableRaisingEvents = true };
@@ -58,10 +57,7 @@ public sealed class ImageExporter
                 return;
             }
 
-            if (!string.IsNullOrWhiteSpace(e.Data))
-            {
-                Console.WriteLine($"[docker] {e.Data}");
-            }
+            if (!string.IsNullOrWhiteSpace(e.Data)) Console.WriteLine($"[docker] {e.Data}");
         };
 
         p.ErrorDataReceived += (_, e) =>
@@ -72,16 +68,10 @@ public sealed class ImageExporter
                 return;
             }
 
-            if (!string.IsNullOrWhiteSpace(e.Data))
-            {
-                Console.Error.WriteLine($"[docker] {e.Data}");
-            }
+            if (!string.IsNullOrWhiteSpace(e.Data)) Console.Error.WriteLine($"[docker] {e.Data}");
         };
 
-        if (!p.Start())
-        {
-            throw new InvalidOperationException("Failed to start docker process.");
-        }
+        if (!p.Start()) throw new InvalidOperationException("Failed to start docker process.");
 
         p.BeginOutputReadLine();
         p.BeginErrorReadLine();
@@ -92,10 +82,7 @@ public sealed class ImageExporter
             while (!cancellationToken.IsCancellationRequested && !p.HasExited)
             {
                 await Task.Delay(TimeSpan.FromSeconds(30), cancellationToken).ConfigureAwait(false);
-                if (!p.HasExited)
-                {
-                    Console.WriteLine($"[docker] still running: docker {args}");
-                }
+                if (!p.HasExited) Console.WriteLine($"[docker] still running: docker {args}");
             }
         }, cancellationToken);
 
@@ -109,9 +96,6 @@ public sealed class ImageExporter
         {
         }
 
-        if (p.ExitCode != 0)
-        {
-            throw new InvalidOperationException($"docker {args} failed with exit code {p.ExitCode}.");
-        }
+        if (p.ExitCode != 0) throw new InvalidOperationException($"docker {args} failed with exit code {p.ExitCode}.");
     }
 }

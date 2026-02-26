@@ -9,13 +9,10 @@ public sealed class BinCleaner
         var dataImagePath = ConfigurationReader.GetDataImagePath();
         var binDirectory = Path.Combine(dataImagePath, "bin");
 
-        if (!Directory.Exists(binDirectory))
-        {
-            return Task.CompletedTask;
-        }
+        if (!Directory.Exists(binDirectory)) return Task.CompletedTask;
 
         Console.WriteLine($"[BinCleaner] Deleting bin directory: {binDirectory}");
-        Directory.Delete(binDirectory, recursive: true);
+        Directory.Delete(binDirectory, true);
         Console.WriteLine("[BinCleaner] Bin directory deleted.");
 
         return Task.CompletedTask;
