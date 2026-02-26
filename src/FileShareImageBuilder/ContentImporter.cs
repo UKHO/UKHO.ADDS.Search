@@ -20,6 +20,8 @@ namespace FileShareImageBuilder
             var dataImagePath = ConfigurationReader.GetDataImagePath();
             var binDirectory = Path.Combine(dataImagePath, "bin");
             var contentDirectory = Path.Combine(binDirectory, "content");
+
+            // Recreate content directory to ensure the on-disk set matches the current run.
             RecreateEmptyDirectory(contentDirectory);
 
             var invalidFilePath = Path.Combine(dataImagePath, "invalid.json");
@@ -89,6 +91,7 @@ namespace FileShareImageBuilder
                     var batchId = batch.Id;
 
                     // Ensure we never retry batches already marked invalid.
+                    // Skip batches already known to be invalid so they are not retried across pages/runs.
                     if (invalidBatchIds.Contains(batchId))
                     {
                         totalBatchesProcessed++;
@@ -163,7 +166,6 @@ namespace FileShareImageBuilder
                     break;
                 }
 
-                var last = batchIds[^1];
                 // lastCreatedOn/lastId are now updated per-batch to avoid retrying failed ones.
             }
 

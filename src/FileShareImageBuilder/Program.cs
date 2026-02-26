@@ -51,13 +51,14 @@ internal class Program
                 .WithDefaultRedirectUri()
                 .Build();
 
-            // Optional persistent cache (best-effort). If it fails for any reason, interactive auth still works.
+            // Optional persistent cache (best-effort). If it fails, interactive auth still works.
             try
             {
                 MsalTokenCacheHelper.EnableSerialization(app.UserTokenCache);
             }
             catch
             {
+                // Ignore cache persistence failures.
             }
 
             return new MsalAuthenticationTokenProvider(app, scopes);
@@ -75,6 +76,8 @@ internal class Program
         builder.Services.AddSingleton<DataCleaner>();
         builder.Services.AddSingleton<MetadataExporter>();
         builder.Services.AddSingleton<ImageExporter>();
+        builder.Services.AddSingleton<ImageLoader>();
+        builder.Services.AddSingleton<BinCleaner>();
         builder.Services.AddSingleton<ImageBuilder>();
 
         using var host = builder.Build();

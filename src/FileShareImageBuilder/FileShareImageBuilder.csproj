@@ -15,7 +15,6 @@
     <PackageReference Include="Microsoft.Extensions.Hosting" Version="10.0.0" />
     <PackageReference Include="Microsoft.Extensions.Configuration.Json" Version="10.0.0" />
     <PackageReference Include="Microsoft.SqlServer.DacFx" Version="170.0.94" />
-    <PackageReference Include="Spectre.Console" Version="0.49.1" />
     <PackageReference Include="UKHO.ADDS.Clients.FileShareService.ReadOnly" Version="0.0.50728-alpha.8" />
   </ItemGroup>
 

@@ -1,6 +1,5 @@
 ﻿using Microsoft.Data.SqlClient;
 using Microsoft.SqlServer.Dac;
-using Spectre.Console;
 using System.Data;
 using UKHO.ADDS.Search.Configuration;
 
@@ -29,7 +28,7 @@ namespace FileShareImageBuilder
             }
             catch (Exception ex)
             {
-                AnsiConsole.WriteException(ex, ExceptionFormats.ShortenEverything | ExceptionFormats.ShowLinks);
+                Console.WriteLine($"Error: {ex.Message}");
                 throw;
             }
         }
@@ -57,36 +56,59 @@ namespace FileShareImageBuilder
                 throw new InvalidOperationException($"Refusing to import: connected to unexpected target database '{targetDbName}'. Expected '{StorageNames.FileShareEmulatorDatabase}'.");
             }
 
-            AnsiConsole.MarkupLine($"[yellow]Exporting bacpac from[/] [bold]{Markup.Escape(sourceDbName)}[/]...");
             var exportService = new DacServices(sourceConnectionString);
             exportService.ProgressChanged += (_, args) =>
             {
                 if (!string.IsNullOrWhiteSpace(args.Message))
                 {
-                    AnsiConsole.MarkupLine($"[grey]{Markup.Escape(args.Message)}[/]");
+                    Console.WriteLine($"{args.Message}");
                 }
             };
             await Task.Run(() => exportService.ExportBacpac(bacpacPath, sourceDbName), cancellationToken).ConfigureAwait(false);
-            AnsiConsole.MarkupLine($"[green]Export complete:[/] {Markup.Escape(bacpacPath)}");
+            Console.WriteLine($"Export complete: {bacpacPath}");
 
-            AnsiConsole.MarkupLine($"[yellow]Dropping and recreating target database[/] [bold]{Markup.Escape(targetDbName)}[/]...");
+            Console.WriteLine($"Dropping and recreating target database {targetDbName}...");
             await DropAndRecreateDatabaseAsync(targetConnectionString, targetDbName!, cancellationToken).ConfigureAwait(false);
-            AnsiConsole.MarkupLine("[green]Target database reset.[/]");
+            Console.WriteLine("Target database reset.");
 
-            AnsiConsole.MarkupLine($"[yellow]Importing bacpac into[/] [bold]{Markup.Escape(targetDbName)}[/]...");
+            Console.WriteLine($"Importing bacpac into {targetDbName}...");
             var importService = new DacServices(targetConnectionString);
             importService.ProgressChanged += (_, args) =>
             {
                 if (!string.IsNullOrWhiteSpace(args.Message))
                 {
-                    AnsiConsole.MarkupLine($"[grey]{Markup.Escape(args.Message)}[/]");
+                    Console.WriteLine($"{args.Message}");
                 }
             };
 
-            await using var bacpacStream = File.OpenRead(bacpacPath);
-            var bacpac = BacPackage.Load(bacpacStream);
-            await Task.Run(() => importService.ImportBacpac(bacpac, targetDbName!), cancellationToken).ConfigureAwait(false);
-            AnsiConsole.MarkupLine("[green]Import complete.[/]");
+            await using (var bacpacStream = File.OpenRead(bacpacPath))
+            {
+                using var bacpac = BacPackage.Load(bacpacStream);
+                await Task.Run(() => importService.ImportBacpac(bacpac, targetDbName!), cancellationToken).ConfigureAwait(false);
+            }
+            Console.WriteLine("Import complete");
+
+            // Preserve disk space: the source bacpac is no longer needed once the target DB has been populated.
+            try
+            {
+                for (var attempt = 1; attempt <= 5; attempt++)
+                {
+                    try
+                    {
+                        File.Delete(bacpacPath);
+                        Console.WriteLine($"[MetadataImporter] Deleted source bacpac: {bacpacPath}");
+                        break;
+                    }
+                    catch when (attempt < 5)
+                    {
+                        await Task.Delay(TimeSpan.FromSeconds(attempt), cancellationToken).ConfigureAwait(false);
+                    }
+                }
+            }
+            catch (Exception ex)
+            {
+                Console.WriteLine($"[MetadataImporter] Failed to delete source bacpac '{bacpacPath}': {ex.GetType().Name}: {ex.Message}");
+            }
         }
 
         private static async Task<string?> GetDatabaseNameAsync(string sqlConnectionString, CancellationToken cancellationToken)

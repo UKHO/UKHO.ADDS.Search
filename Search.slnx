@@ -16,6 +16,4 @@
   <Folder Name="/@tools/">
     <Project Path="src/FileShareImageBuilder/FileShareImageBuilder.csproj" Id="8b00358d-0918-4577-b1b2-1592c04bea55" />
   </Folder>
-  <Project Path="file-share-service-desktop-client/file-share-service-desktop-client/FileShareService.DesktopClient.csproj" />
-  <Project Path="file-share-service-desktop-client/FileShareService.DesktopClient.Core/FileShareService.DesktopClient.Core.csproj" />
 </Solution>
