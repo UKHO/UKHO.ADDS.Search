@@ -10,6 +10,12 @@ internal static class ConfigurationReader
         return GetRequiredStringProperty(json.RootElement, "remoteService");
     }
 
+    internal static string GetEnvironmentName()
+    {
+        using var json = ReadOverrideConfiguration();
+        return GetRequiredStringProperty(json.RootElement, "environment");
+    }
+
     internal static string GetSourceDatabaseConnectionString()
     {
         using var json = ReadOverrideConfiguration();
@@ -32,10 +38,16 @@ internal static class ConfigurationReader
         return targetConnectionString;
     }
 
-    internal static string GetRemoteServiceScope()
+    internal static string? GetTenantId()
     {
         using var json = ReadOverrideConfiguration();
-        return GetRequiredStringProperty(json.RootElement, "remoteServiceScope");
+        return GetOptionalStringProperty(json.RootElement, "tenantId");
+    }
+
+    internal static string? GetClientId()
+    {
+        using var json = ReadOverrideConfiguration();
+        return GetOptionalStringProperty(json.RootElement, "clientId");
     }
 
     internal static string GetDataImagePath()
@@ -59,6 +71,34 @@ internal static class ConfigurationReader
         }
 
         return value;
+    }
+
+    internal static int GetDataImageCount()
+    {
+        using var json = ReadOverrideConfiguration();
+
+        if (!json.RootElement.TryGetProperty("dataImageCount", out var element))
+        {
+            throw new InvalidOperationException("Missing 'dataImageCount' in configuration.override.json.");
+        }
+
+        if (element.ValueKind != JsonValueKind.Number || !element.TryGetInt32(out var value) || value <= 0)
+        {
+            throw new InvalidOperationException("Invalid 'dataImageCount'. Must be a positive integer.");
+        }
+
+        return value;
+    }
+
+    private static string? GetOptionalStringProperty(JsonElement root, string propertyName)
+    {
+        if (!root.TryGetProperty(propertyName, out var element))
+        {
+            return null;
+        }
+
+        var value = element.GetString();
+        return string.IsNullOrWhiteSpace(value) ? null : value;
     }
 
     private static string GetRequiredStringProperty(JsonElement root, string propertyName)

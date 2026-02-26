@@ -1,7 +1,8 @@
-﻿using Azure.Identity;
-using FileShareImageBuilder.Authentication;
+﻿using FileShareImageBuilder.Authentication;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Hosting;
+using Microsoft.Identity.Client;
+using Microsoft.Extensions.Logging;
 using UKHO.ADDS.Clients.Common.Authentication;
 using UKHO.ADDS.Clients.FileShareService.ReadOnly;
 using UKHO.ADDS.Search.Configuration;
@@ -14,6 +15,13 @@ internal class Program
     {
         var builder = Host.CreateApplicationBuilder(args);
 
+        builder.Logging.ClearProviders();
+        builder.Logging.AddSimpleConsole(o =>
+        {
+            o.TimestampFormat = "HH:mm:ss ";
+        });
+        builder.Logging.SetMinimumLevel(Microsoft.Extensions.Logging.LogLevel.Warning);
+
         builder.AddSqlServerClient(StorageNames.FileShareEmulatorDatabase);
         builder.AddAzureBlobServiceClient(ServiceNames.Blobs);
 
@@ -22,18 +30,37 @@ internal class Program
 
         builder.Services.AddSingleton<IAuthenticationTokenProvider>(_ =>
         {
-            var scope = ConfigurationReader.GetRemoteServiceScope();
+            var tenantId = ConfigurationReader.GetTenantId();
+            var clientId = ConfigurationReader.GetClientId();
 
-            var tenantId = Environment.GetEnvironmentVariable("AZURE_TENANT_ID");
-            var clientId = Environment.GetEnvironmentVariable("AZURE_CLIENT_ID");
-
-            var credential = new InteractiveBrowserCredential(new InteractiveBrowserCredentialOptions
+            if (string.IsNullOrWhiteSpace(tenantId))
             {
-                TenantId = string.IsNullOrWhiteSpace(tenantId) ? null : tenantId,
-                ClientId = string.IsNullOrWhiteSpace(clientId) ? null : clientId,
-            });
+                throw new InvalidOperationException("Missing 'tenantId' in configuration.override.json.");
+            }
 
-            return new TokenCredentialProvider(credential, new[] { $"{scope}/.default" });
+            if (string.IsNullOrWhiteSpace(clientId))
+            {
+                throw new InvalidOperationException("Missing 'clientId' in configuration.override.json.");
+            }
+
+            var scopes = new[] { $"{clientId}/.default" };
+
+            var app = PublicClientApplicationBuilder
+                .Create(clientId)
+                .WithAuthority(AzureCloudInstance.AzurePublic, tenantId)
+                .WithDefaultRedirectUri()
+                .Build();
+
+            // Optional persistent cache (best-effort). If it fails for any reason, interactive auth still works.
+            try
+            {
+                MsalTokenCacheHelper.EnableSerialization(app.UserTokenCache);
+            }
+            catch
+            {
+            }
+
+            return new MsalAuthenticationTokenProvider(app, scopes);
         });
 
         builder.Services.AddSingleton<IFileShareReadOnlyClient>(sp =>
@@ -45,6 +72,9 @@ internal class Program
 
         builder.Services.AddSingleton<MetadataImporter>();
         builder.Services.AddSingleton<ContentImporter>();
+        builder.Services.AddSingleton<DataCleaner>();
+        builder.Services.AddSingleton<MetadataExporter>();
+        builder.Services.AddSingleton<ImageExporter>();
         builder.Services.AddSingleton<ImageBuilder>();
 
         using var host = builder.Build();
