@@ -198,6 +198,9 @@ PublishScripts/
 csx/
 *.build.csdef
 
+# ASP.NET Core / Generic Host local overrides
+configuration.override.json
+
 # Microsoft Azure Emulator
 ecf/
 rcf/

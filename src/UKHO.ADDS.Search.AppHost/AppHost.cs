@@ -33,7 +33,7 @@ namespace UKHO.ADDS.Search.AppHost
 
             var sqlServer = builder.AddSqlServer(ServiceNames.SqlServer)
                                    .WithLifetime(ContainerLifetime.Persistent)
-                                   .AddDatabase("fss");
+                                   .AddDatabase(StorageNames.FileShareEmulatorDatabase);
 
             var elasticSearch = builder.AddElasticsearch(ServiceNames.ElasticSearch)
                                        .WithLifetime(ContainerLifetime.Persistent)
@@ -72,9 +72,9 @@ namespace UKHO.ADDS.Search.AppHost
                    .WaitFor(sqlServer);
 
             builder.AddProject<FileShareImageBuilder>(ServiceNames.FileShareBuilder)
-                   .WithReference(storageQueue)
+                   .WithReference(storageBlob)
                    .WithReference(sqlServer)
-                   .WaitFor(storageQueue)
+                   .WaitFor(storageBlob)
                    .WaitFor(sqlServer)
                    .WithExplicitStart();
 
