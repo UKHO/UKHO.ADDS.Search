@@ -10,7 +10,6 @@
 
   <ItemGroup>
     <ProjectReference Include="..\FileShareImageBuilder\FileShareImageBuilder.csproj" />
-    <ProjectReference Include="..\UKHO.ADDS.Search.FileShareEmulator\UKHO.ADDS.Search.FileShareEmulator.csproj" />
     <ProjectReference Include="..\UKHO.ADDS.Search.Ingestion\UKHO.ADDS.Search.Ingestion.csproj" />
     <ProjectReference Include="..\UKHO.ADDS.Search.Query\UKHO.ADDS.Search.Query.csproj" />
     <ProjectReference Include="..\UKHO.ADDS.Search\UKHO.ADDS.Search.csproj" IsAspireProjectResource="false" />

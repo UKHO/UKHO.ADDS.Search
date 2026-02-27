@@ -16,10 +16,10 @@ public sealed class ImageExporter
         var imageName = $"fss-data-{env}";
         var dockerfilePath = Path.Combine(binDirectory, "Dockerfile.dataimage");
 
-        // Create a minimal Dockerfile that copies the bin directory into a scratch image.
-        // Note: this requires that all files copied into the image are readable and that
-        // the Docker engine supports scratch builds.
-        await File.WriteAllTextAsync(dockerfilePath, "FROM scratch\n" + "COPY . /bin\n", cancellationToken);
+        // Create a small Linux image that contains the exported files plus a shell.
+        // This allows Aspire to run a one-shot init container to copy the image contents into a named volume.
+        // The emulator then mounts that named volume and can read the files.
+        await File.WriteAllTextAsync(dockerfilePath, "FROM alpine:3.21\n" + "WORKDIR /data\n" + "COPY . /data\n", cancellationToken);
 
         Console.WriteLine($"[ImageExporter] Building docker image '{imageName}' from '{binDirectory}'...");
         await RunDockerAsync($"build -f \"{dockerfilePath}\" -t {imageName} \"{binDirectory}\"", cancellationToken)

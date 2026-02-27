@@ -36,25 +36,25 @@ public sealed class ImageBuilder
     private async Task RunInternalAsync(CancellationToken cancellationToken)
     {
         Console.WriteLine("[ImageBuilder] Importing metadata...");
-        //await _metadataImporter.ImportAsync(cancellationToken).ConfigureAwait(false);
+        await _metadataImporter.ImportAsync(cancellationToken).ConfigureAwait(false);
 
         Console.WriteLine("[ImageBuilder] Importing content...");
-        //await _contentImporter.ImportAsync(cancellationToken).ConfigureAwait(false);
+        await _contentImporter.ImportAsync(cancellationToken).ConfigureAwait(false);
 
         Console.WriteLine("[ImageBuilder] Cleaning local database...");
-        //await _dataCleaner.CleanAsync(cancellationToken).ConfigureAwait(false);
+        await _dataCleaner.CleanAsync(cancellationToken).ConfigureAwait(false);
 
         Console.WriteLine("[ImageBuilder] Exporting metadata (bacpac)...");
-        //await _metadataExporter.ExportAsync(cancellationToken).ConfigureAwait(false);
+        await _metadataExporter.ExportAsync(cancellationToken).ConfigureAwait(false);
 
         Console.WriteLine("[ImageBuilder] Exporting data image (docker)...");
-        //await _imageExporter.ExportAsync(cancellationToken).ConfigureAwait(false);
+        await _imageExporter.ExportAsync(cancellationToken).ConfigureAwait(false);
 
         Console.WriteLine("[ImageBuilder] Loading data image into local docker...");
         await _imageLoader.LoadAsync(cancellationToken).ConfigureAwait(false);
 
         Console.WriteLine("[ImageBuilder] Cleaning bin directory...");
-        //await _binCleaner.CleanAsync(cancellationToken).ConfigureAwait(false);
+        await _binCleaner.CleanAsync(cancellationToken).ConfigureAwait(false);
 
         Console.WriteLine("[ImageBuilder] Done.");
     }
