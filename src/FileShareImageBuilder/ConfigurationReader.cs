@@ -12,6 +12,9 @@ internal static class ConfigurationReader
 
     internal static string GetEnvironmentName()
     {
+        var env = Environment.GetEnvironmentVariable("environment");
+        if (!string.IsNullOrWhiteSpace(env)) return env;
+
         using var json = ReadOverrideConfiguration();
         return GetRequiredStringProperty(json.RootElement, "environment");
     }

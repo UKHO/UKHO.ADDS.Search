@@ -9,16 +9,20 @@ namespace UKHO.ADDS.Search.AppHost
         {
             var builder = DistributedApplication.CreateBuilder(args);
 
-            var keyCloakUsername = builder.AddParameter("keycloak-username");
-            var keyCloakPassword = builder.AddParameter("keycloak-password", true);
+            var keyCloakUsernameParameter = builder.AddParameter("keycloak-username");
+            var keyCloakPasswordParameter = builder.AddParameter("keycloak-password", true);
 
-            var azureStoragePath = builder.AddParameter("azure-storage");
+            var azureStoragePathParameter = builder.AddParameter("azure-storage");
 
-            var emulatorDataImage = builder.AddParameter("emulator-data-image");
+            var emulatorDataImageParameter = builder.AddParameter("emulator-data-image");
 
-            var azureStoragePathValue = await azureStoragePath.Resource.GetValueAsync(CancellationToken.None);
+            var environmentParameter = builder.AddParameter("environment");
 
-            var keycloak = builder.AddKeycloak(ServiceNames.KeyCloak, 8080, keyCloakUsername, keyCloakPassword)
+            var emulatorPersistentParameter = builder.AddParameter("emulator-persistent");
+
+            var azureStoragePathValue = await azureStoragePathParameter.Resource.GetValueAsync(CancellationToken.None);
+
+            var keycloak = builder.AddKeycloak(ServiceNames.KeyCloak, 8080, keyCloakUsernameParameter, keyCloakPasswordParameter)
                                   .WithDataVolume()
                                   .WithRealmImport("./Realms")
                                   .WithLifetime(ContainerLifetime.Persistent);
@@ -42,7 +46,7 @@ namespace UKHO.ADDS.Search.AppHost
                                        .WithDataVolume()
                                        .WaitFor(storage);
 
-            var fileShareEmulatorDataImage = await emulatorDataImage.Resource.GetValueAsync(CancellationToken.None) ?? string.Empty;
+            var fileShareEmulatorDataImage = await emulatorDataImageParameter.Resource.GetValueAsync(CancellationToken.None) ?? string.Empty;
 
             var fileShareEmulatorDataVolumeName = $"{ServiceNames.FileShareEmulator}-data";
 
@@ -66,12 +70,22 @@ namespace UKHO.ADDS.Search.AppHost
             // This guarantees the emulator sees the seeded files before it starts handling requests.
             var fileShareEmulator = builder.AddContainer(ServiceNames.FileShareEmulator, fileShareEmulatorDataImage)
                 .WithDockerfile("../UKHO.ADDS.Search.FileShareEmulator", "Dockerfile")
+                .WithBuildArg("BUILD_CONFIGURATION", "Debug")
+                .WithEnvironment("environment", environmentParameter)
                 .WithExternalHttpEndpoints()
                 .WithReference(storageQueue)
                 .WithReference(sqlServer)
                 .WaitFor(storageQueue)
                 .WaitFor(sqlServer)
                 .WithVolume(fileShareEmulatorDataVolumeName, "/data");
+
+            var emulatorPersistentValue = await emulatorPersistentParameter.Resource.GetValueAsync(CancellationToken.None);
+            var emulatorPersistent = bool.TryParse(emulatorPersistentValue, out var parsed) && parsed;
+
+            if (emulatorPersistent)
+            {
+                fileShareEmulator.WithLifetime(ContainerLifetime.Persistent);
+            }
 
             builder.AddProject<UKHO_ADDS_Search_Ingestion>(ServiceNames.Ingestion)
                 .WithExternalHttpEndpoints()
@@ -98,6 +112,7 @@ namespace UKHO.ADDS.Search.AppHost
                    .WaitFor(elasticSearch);
 
             builder.AddProject<FileShareImageBuilder>(ServiceNames.FileShareBuilder)
+                   .WithEnvironment("environment", environmentParameter)
                    .WithReference(storageBlob)
                    .WithReference(sqlServer)
                    .WaitFor(storageBlob)

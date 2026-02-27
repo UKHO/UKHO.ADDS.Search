@@ -17,6 +17,10 @@ public class ContentImporter
 
     public async Task ImportAsync(CancellationToken cancellationToken = default)
     {
+        var environmentName = Environment.GetEnvironmentVariable("environment");
+        if (string.IsNullOrWhiteSpace(environmentName))
+            throw new InvalidOperationException("Missing required environment variable 'environment'.");
+
         var dataImagePath = ConfigurationReader.GetDataImagePath();
         var binDirectory = Path.Combine(dataImagePath, "bin");
         var contentDirectory = Path.Combine(binDirectory, "content");

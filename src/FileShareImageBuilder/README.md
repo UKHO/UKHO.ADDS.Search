@@ -24,6 +24,17 @@ The tool also saves the image to a tar file in the `dataImagePath` directory:
 
 - `<dataImagePath>\fss-data-<environment>.tar`
 
+## Important: keep AppHost parameters in sync
+
+The Aspire AppHost (`src\UKHO.ADDS.Search.AppHost\appsettings.json`) controls which data image will be used to seed the File Share Emulator.
+
+The following values MUST correspond:
+
+- `Parameters:environment` is passed to this tool as an environment variable named `environment`.
+- `Parameters:emulator-data-image` MUST match the image name this tool produces (by default `fss-data-<environment>`).
+
+If these are not kept in sync, the emulator may seed from an unexpected data image (or fail to find the expected content).
+
 ## Required local configuration (not checked in)
 
 You must create `configuration.override.json` locally.
@@ -44,7 +55,7 @@ To get started, copy the checked-in `configuration.json` to `configuration.overr
 
 | Setting | Purpose |
 |---|---|
-| `environment` | A short name used to tag the generated image. The tool produces `fss-data-<environment>` (e.g. `fss-data-vnext-e2e`). |
+| `environment` | Environment name used to tag the generated image. When run from the Aspire dashboard this is provided via the `environment` environment variable (from AppHost). Only set this in `configuration.override.json` if you run the tool outside Aspire. |
 | `sourceDatabase` | SQL connection string to the source metadata database used during the build process (typically an existing environment database). |
 | `remoteService` | Base URL for the remote File Share Service to read content from (e.g. `https://files...`). |
 | `tenantId` | Microsoft Entra tenant ID used for interactive authentication. |
