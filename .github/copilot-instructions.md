@@ -19,6 +19,9 @@ Be concise but complete. Prefer current research (Microsoft Learn) for Microsoft
 - Do not overwrite prior work packages; create the next incremental folder (e.g. `002-...`).
 - Use appropriate prompt family & phase from `.github/prompts/`.
 
+## Emulator Constraints
+- All emulator code must reside within the existing emulator project; do not add new projects due to Docker constraints.
+
 ## Testing Guidelines
 - Prefer Playwright end-to-end tests over bUnit/component tests for Blazor UI verification in this repository.
 
