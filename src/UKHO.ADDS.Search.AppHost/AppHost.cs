@@ -52,16 +52,15 @@ namespace UKHO.ADDS.Search.AppHost
             // 2) run a one-shot init container from the data image which copies the seed files into that volume.
             //
             // Subsequent runs are fast because the named volume is already populated and the init container becomes a no-op.
-            var fileShareEmulatorDataInit = builder.AddContainer($"{ServiceNames.FileShareEmulator}-data-init", fileShareEmulatorDataImage)
-                                                  .WithVolume(fileShareEmulatorDataVolumeName, "/seed")
-                                                  .WithEntrypoint("/bin/sh")
-                                                  .WithArgs(
-                                                      "-c",
-                                                      // If the volume is empty, copy the data image's seeded content into it.
-                                                      // - `ls -A /seed` checks for any existing files in the mounted named volume.
-                                                      // - `cp -a /data/. /seed/` copies everything from the image's `/data` folder into the volume.
-                                                      //   The `-a` flag preserves timestamps/permissions where possible.
-                                                      "if [ -z \"$(ls -A /seed 2>/dev/null)\" ]; then echo '[data-init] Seeding volume...'; cp -a /data/. /seed/; else echo '[data-init] Volume already seeded.'; fi");
+            var fileShareEmulatorDataSeeder = builder.AddContainer($"{ServiceNames.FileShareEmulator}-data-seeder", fileShareEmulatorDataImage)
+                                                    .WithVolume(fileShareEmulatorDataVolumeName, "/seed")
+                                                    .WithEntrypoint("/bin/sh")
+                                                    .WithArgs(
+                                                        "-c",
+                                                        // If the volume is empty, copy the data image's seeded content into it and then write a
+                                                        // sentinel file as the final step. The emulator's readiness endpoint depends on this file,
+                                                        // which prevents reporting Ready if the copy is only partially complete.
+                                                        "if [ -z \"$(ls -A /seed 2>/dev/null)\" ]; then echo '[data-seeder] Seeding volume...'; rm -f /seed/.seed.complete; cp -a /data/. /seed/; echo 'ok' > /seed/.seed.complete; else echo '[data-seeder] Volume already seeded.'; fi");
 
             // The emulator mounts the populated named volume at `/data` and waits for the init container to finish.
             // This guarantees the emulator sees the seeded files before it starts handling requests.
@@ -72,20 +71,18 @@ namespace UKHO.ADDS.Search.AppHost
                 .WithReference(sqlServer)
                 .WaitFor(storageQueue)
                 .WaitFor(sqlServer)
-                .WaitFor(fileShareEmulatorDataInit)
-                                          .WithVolume(fileShareEmulatorDataVolumeName, "/data");
+                .WithVolume(fileShareEmulatorDataVolumeName, "/data");
 
             builder.AddProject<UKHO_ADDS_Search_Ingestion>(ServiceNames.Ingestion)
-                   .WithExternalHttpEndpoints()
-                   .WithReference(storageQueue)
-                   .WithReference(storageTable)
-                   .WithReference(storageBlob)
-                   .WithReference(elasticSearch)
-                   .WaitFor(storageQueue)
-                   .WaitFor(storageTable)
-                   .WaitFor(storageBlob)
-                   .WaitFor(elasticSearch)
-                   .WaitFor(fileShareEmulator);
+                .WithExternalHttpEndpoints()
+                .WithReference(storageQueue)
+                .WithReference(storageTable)
+                .WithReference(storageBlob)
+                .WithReference(elasticSearch)
+                .WaitFor(storageQueue)
+                .WaitFor(storageTable)
+                .WaitFor(storageBlob)
+                .WaitFor(elasticSearch);
 
             builder.AddProject<UKHO_ADDS_Search_Query>(ServiceNames.Query)
                    .WithExternalHttpEndpoints()

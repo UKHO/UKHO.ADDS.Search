@@ -1,4 +1,5 @@
 using UKHO.ADDS.Search.FileShareEmulator.Components;
+using UKHO.ADDS.Search.FileShareEmulator.Health;
 
 namespace UKHO.ADDS.Search.FileShareEmulator;
 
@@ -7,6 +8,8 @@ public class Program
     public static void Main(string[] args)
     {
         var builder = WebApplication.CreateBuilder(args);
+
+        builder.Services.AddHealthChecks().AddCheck<DataSeededHealthCheck>("data-seeded");
 
         // Add services to the container.
         builder.Services.AddRazorComponents()
@@ -26,6 +29,8 @@ public class Program
         app.UseHttpsRedirection();
 
         app.UseAntiforgery();
+
+        app.MapHealthChecks("/health/ready");
 
         app.MapStaticAssets();
         app.MapRazorComponents<App>()
