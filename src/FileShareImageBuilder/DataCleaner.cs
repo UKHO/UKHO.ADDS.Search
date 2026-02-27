@@ -32,7 +32,10 @@ public sealed class DataCleaner
         foreach (var batchId in invalidIds)
         {
             var result = await DeleteBatchAsync(sqlConnection, batchId, cancellationToken).ConfigureAwait(false);
-            if (result.BatchDeleted) deletedInvalidBatchIds++;
+            if (result.BatchDeleted)
+            {
+                deletedInvalidBatchIds++;
+            }
 
             deletedInvalidRows += result.RowsAffected;
         }
@@ -41,6 +44,7 @@ public sealed class DataCleaner
         Console.WriteLine($"[DataCleaner] Deleted invalid rows: {deletedInvalidRows}");
 
         if (invalidIds.Count > 0)
+        {
             try
             {
                 File.Delete(invalidFilePath);
@@ -48,9 +52,9 @@ public sealed class DataCleaner
             }
             catch (Exception ex)
             {
-                Console.WriteLine(
-                    $"[DataCleaner] Failed to delete invalid file '{invalidFilePath}': {ex.GetType().Name}: {ex.Message}");
+                Console.WriteLine($"[DataCleaner] Failed to delete invalid file '{invalidFilePath}': {ex.GetType().Name}: {ex.Message}");
             }
+        }
 
         var deletedNotDownloaded =
             await DeleteCommittedBatchesNotDownloadedAsync(sqlConnection, downloadedBatchIds, cancellationToken)
@@ -65,7 +69,10 @@ public sealed class DataCleaner
     private static async Task<HashSet<Guid>> ReadInvalidIdsAsync(string invalidFilePath,
         CancellationToken cancellationToken)
     {
-        if (!File.Exists(invalidFilePath)) return new HashSet<Guid>();
+        if (!File.Exists(invalidFilePath))
+        {
+            return new HashSet<Guid>();
+        }
 
         await using var stream = File.OpenRead(invalidFilePath);
         var ids = await JsonSerializer.DeserializeAsync<List<Guid>>(stream, cancellationToken: cancellationToken)
@@ -78,13 +85,19 @@ public sealed class DataCleaner
     private static HashSet<Guid> GetDownloadedBatchIds(string dataImagePath)
     {
         var contentDir = Path.Combine(dataImagePath, "bin", "content");
-        if (!Directory.Exists(contentDir)) return new HashSet<Guid>();
+        if (!Directory.Exists(contentDir))
+        {
+            return new HashSet<Guid>();
+        }
 
         var ids = new HashSet<Guid>();
         foreach (var file in Directory.EnumerateFiles(contentDir, "*.zip", SearchOption.AllDirectories))
         {
             var name = Path.GetFileNameWithoutExtension(file);
-            if (Guid.TryParseExact(name, "D", out var id)) ids.Add(id);
+            if (Guid.TryParseExact(name, "D", out var id))
+            {
+                ids.Add(id);
+            }
         }
 
         return ids;
@@ -169,52 +182,77 @@ WHERE [Status] = 3;";
             return await cmd.ExecuteNonQueryAsync(cancellationToken).ConfigureAwait(false);
         }
 
-        var paramNames = new List<string>(downloadedBatchIds.Count);
-        var i = 0;
-        foreach (var id in downloadedBatchIds)
-        {
-            var name = $"@id{i++}";
-            paramNames.Add(name);
-            cmd.Parameters.Add(new SqlParameter(name, SqlDbType.UniqueIdentifier) { Value = id });
-        }
+        // Use a temp table to avoid exceeding SQL Server's 2100 parameter limit.
+        cmd.CommandText = @"CREATE TABLE #DownloadedBatchIds ([Id] uniqueidentifier NOT NULL PRIMARY KEY);
+";
 
-        var idList = string.Join(",", paramNames);
-        cmd.CommandText = $@"DELETE FA
+        await cmd.ExecuteNonQueryAsync(cancellationToken).ConfigureAwait(false);
+
+        await BulkInsertDownloadedIdsAsync(sqlConnection, downloadedBatchIds, cancellationToken).ConfigureAwait(false);
+
+        await using var deleteCmd = sqlConnection.CreateCommand();
+        deleteCmd.CommandType = CommandType.Text;
+        deleteCmd.CommandTimeout = 0;
+
+        deleteCmd.CommandText = @"DELETE FA
 FROM [FileAttribute] FA
 JOIN [File] F ON F.[Id] = FA.[FileId]
 JOIN [Batch] B ON B.[Id] = F.[BatchId]
 WHERE B.[Status] = 3
-  AND B.[Id] NOT IN ({idList});
+  AND NOT EXISTS (SELECT 1 FROM #DownloadedBatchIds D WHERE D.[Id] = B.[Id]);
 
 DELETE BRG
 FROM [BatchReadGroup] BRG
 JOIN [Batch] B ON B.[Id] = BRG.[BatchId]
 WHERE B.[Status] = 3
-  AND B.[Id] NOT IN ({idList});
+  AND NOT EXISTS (SELECT 1 FROM #DownloadedBatchIds D WHERE D.[Id] = B.[Id]);
 
 DELETE BRU
 FROM [BatchReadUser] BRU
 JOIN [Batch] B ON B.[Id] = BRU.[BatchId]
 WHERE B.[Status] = 3
-  AND B.[Id] NOT IN ({idList});
+  AND NOT EXISTS (SELECT 1 FROM #DownloadedBatchIds D WHERE D.[Id] = B.[Id]);
 
 DELETE BA
 FROM [BatchAttribute] BA
 JOIN [Batch] B ON B.[Id] = BA.[BatchId]
 WHERE B.[Status] = 3
-  AND B.[Id] NOT IN ({idList});
+  AND NOT EXISTS (SELECT 1 FROM #DownloadedBatchIds D WHERE D.[Id] = B.[Id]);
 
 DELETE F
 FROM [File] F
 JOIN [Batch] B ON B.[Id] = F.[BatchId]
 WHERE B.[Status] = 3
-  AND B.[Id] NOT IN ({idList});
+  AND NOT EXISTS (SELECT 1 FROM #DownloadedBatchIds D WHERE D.[Id] = B.[Id]);
 
 DELETE FROM [Batch]
 WHERE [Status] = 3
-  AND [Id] NOT IN ({idList});";
+  AND NOT EXISTS (SELECT 1 FROM #DownloadedBatchIds D WHERE D.[Id] = [Batch].[Id]);
 
-        return await cmd.ExecuteNonQueryAsync(cancellationToken).ConfigureAwait(false);
+DROP TABLE #DownloadedBatchIds;";
+
+        return await deleteCmd.ExecuteNonQueryAsync(cancellationToken).ConfigureAwait(false);
+    }
+
+    private static async Task BulkInsertDownloadedIdsAsync(
+        SqlConnection sqlConnection,
+        HashSet<Guid> downloadedBatchIds,
+        CancellationToken cancellationToken)
+    {
+        var table = new DataTable();
+        table.Columns.Add("Id", typeof(Guid));
+        foreach (var id in downloadedBatchIds)
+        {
+            table.Rows.Add(id);
+        }
+
+        using var bulkCopy = new SqlBulkCopy(sqlConnection)
+        {
+            DestinationTableName = "#DownloadedBatchIds",
+            BulkCopyTimeout = 0,
+        };
+
+        await bulkCopy.WriteToServerAsync(table, cancellationToken).ConfigureAwait(false);
     }
 
     private static async Task<int> DeleteNonCommittedBatchesAsync(SqlConnection sqlConnection,
