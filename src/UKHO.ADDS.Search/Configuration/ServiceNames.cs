@@ -4,7 +4,7 @@
     {
         public const string Mocks = "adds-mock";
 
-        public const string KeyCloak= "keycloak";
+        public const string KeyCloak= "tools-keycloak";
 
         public const string Storage = "storage";
 
@@ -22,8 +22,8 @@
 
         public const string Query = "query";
 
-        public const string FileShareEmulator = "fileshare-emulator";
+        public const string FileShareEmulator = "tools-fileshare-emulator";
 
-        public const string FileShareBuilder = "fileshare-builder";
+        public const string FileShareBuilder = "tools-fileshare-builder";
     }
 }

@@ -8,8 +8,8 @@
   </PropertyGroup>
 
   <ItemGroup>
-    <PackageReference Include="Aspire.Microsoft.Data.SqlClient" Version="13.1.1" />
-    <PackageReference Include="Aspire.Azure.Storage.Blobs" Version="13.1.1" />
+    <PackageReference Include="Aspire.Microsoft.Data.SqlClient" Version="13.1.2" />
+    <PackageReference Include="Aspire.Azure.Storage.Blobs" Version="13.1.2" />
     <PackageReference Include="Azure.Identity" Version="1.17.1" />
     <PackageReference Include="Microsoft.Identity.Client" Version="4.78.0" />
     <PackageReference Include="Microsoft.Extensions.Hosting" Version="10.0.0" />

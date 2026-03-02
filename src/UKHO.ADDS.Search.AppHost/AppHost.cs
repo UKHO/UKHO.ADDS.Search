@@ -14,8 +14,6 @@ namespace UKHO.ADDS.Search.AppHost
 
             var azureStoragePathParameter = builder.AddParameter("azure-storage");
 
-            var emulatorDataImageParameter = builder.AddParameter("emulator-data-image");
-
             var environmentParameter = builder.AddParameter("environment");
 
             var emulatorPersistentParameter = builder.AddParameter("emulator-persistent");
@@ -33,6 +31,13 @@ namespace UKHO.ADDS.Search.AppHost
                                      e.WithDataBindMount(azureStoragePathValue);
                                  });
 
+            var storage2e = builder.AddAzureStorage(ServiceNames.Storage + "2")
+                .RunAsEmulator(e =>
+                {
+                });
+
+            var storageBlob2 = storage2e.AddBlobs(ServiceNames.Blobs + "init");
+
             var storageQueue = storage.AddQueues(ServiceNames.Queues);
             var storageTable = storage.AddTables(ServiceNames.Tables);
             var storageBlob = storage.AddBlobs(ServiceNames.Blobs);
@@ -46,7 +51,8 @@ namespace UKHO.ADDS.Search.AppHost
                                        .WithDataVolume()
                                        .WaitFor(storage);
 
-            var fileShareEmulatorDataImage = await emulatorDataImageParameter.Resource.GetValueAsync(CancellationToken.None) ?? string.Empty;
+            var environment = await environmentParameter.Resource.GetValueAsync(CancellationToken.None) ?? string.Empty;
+            var fileShareEmulatorDataImage = $"fss-data-{environment}"; 
 
             var fileShareEmulatorDataVolumeName = $"{ServiceNames.FileShareEmulator}-data";
 

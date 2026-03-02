@@ -13,9 +13,11 @@
   <Folder Name="/@external/">
     <Project Path="src/UKHO.ADDS.Search.FileShareEmulator/UKHO.ADDS.Search.FileShareEmulator.csproj" />
   </Folder>
+  <Folder Name="/@fss/">
+    <Project Path="file-share-service/UKHO.FileShareService.API/UKHO.FileShareService.API/UKHO.FileShareService.API.csproj" />
+    <Project Path="file-share-service/UKHO.FileShareService.API/UKHO.FileShareService.Common/UKHO.FileShareService.Common.csproj" />
+  </Folder>
   <Folder Name="/@tools/">
     <Project Path="src/FileShareImageBuilder/FileShareImageBuilder.csproj" Id="8b00358d-0918-4577-b1b2-1592c04bea55" />
   </Folder>
-  <Project Path="file-share-service/UKHO.FileShareService.API/UKHO.FileShareService.API/UKHO.FileShareService.API.csproj" />
-  <Project Path="file-share-service/UKHO.FileShareService.API/UKHO.FileShareService.Common/UKHO.FileShareService.Common.csproj" />
 </Solution>
