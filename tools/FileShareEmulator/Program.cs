@@ -1,4 +1,6 @@
 using FileShareEmulator.Components;
+using FileShareEmulator.Services;
+using UKHO.Search.Configuration;
 
 namespace FileShareEmulator;
 
@@ -13,11 +15,16 @@ public class Program
         builder.Services.AddRazorComponents()
             .AddInteractiveServerComponents();
 
+        builder.AddSqlServerClient(StorageNames.FileShareEmulatorDatabase);
+        builder.AddAzureBlobServiceClient(connectionName: ServiceNames.Blobs);
+
+        builder.Services.AddScoped<StatisticsService>();
+
         var app = builder.Build();
 
         app.MapDefaultEndpoints();
 
-        // Configure the HTTP request pipeline.
+        // Configure the HTTP request pipeline
         if (!app.Environment.IsDevelopment())
         {
             app.UseExceptionHandler("/Error");

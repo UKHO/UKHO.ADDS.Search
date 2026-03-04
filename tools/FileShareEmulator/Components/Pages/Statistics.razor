@@ -1,0 +1,59 @@
+@page "/statistics"
+@attribute [StreamRendering]
+
+@using FileShareEmulator.Services
+@inject StatisticsService StatisticsService
+
+<PageTitle>Statistics</PageTitle>
+
+<h1>Statistics</h1>
+
+@if (_snapshot is null)
+{
+    <p><em>Loading...</em></p>
+}
+else
+{
+    <div class="row">
+        <div class="col-12 col-md-8">
+            <table class="table table-sm">
+                <tbody>
+                    <tr>
+                        <th scope="row">Batches</th>
+                        <td>@_snapshot.BatchCount.ToString("N0")</td>
+                    </tr>
+                    <tr>
+                        <th scope="row">Files</th>
+                        <td>@_snapshot.FileCount.ToString("N0")</td>
+                    </tr>
+                    <tr>
+                        <th scope="row">Batch attributes</th>
+                        <td>@_snapshot.BatchAttributeCount.ToString("N0")</td>
+                    </tr>
+                    <tr>
+                        <th scope="row">File attributes</th>
+                        <td>@_snapshot.FileAttributeCount.ToString("N0")</td>
+                    </tr>
+                    <tr>
+                        <th scope="row">Batch read users</th>
+                        <td>@_snapshot.BatchReadUserCount.ToString("N0")</td>
+                    </tr>
+                    <tr>
+                        <th scope="row">Batch read groups</th>
+                        <td>@_snapshot.BatchReadGroupCount.ToString("N0")</td>
+                    </tr>
+                </tbody>
+            </table>
+        </div>
+    </div>
+}
+
+@code
+{
+    private StatisticsSnapshot? _snapshot;
+
+    protected override async Task OnInitializedAsync()
+    {
+        _snapshot = await StatisticsService.GetAsync().ConfigureAwait(false);
+    }
+}

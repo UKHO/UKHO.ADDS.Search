@@ -7,8 +7,13 @@
     <BlazorDisableThrowNavigationException>true</BlazorDisableThrowNavigationException>
   </PropertyGroup>
 
+    <ItemGroup>
+	    <PackageReference Include="Aspire.Microsoft.Data.SqlClient" Version="13.1.1" />
+	    <PackageReference Include="Aspire.Azure.Storage.Blobs" Version="13.1.1" />
+	</ItemGroup>
   <ItemGroup>
     <ProjectReference Include="..\..\src\UKHO.Search.Services\UKHO.Search.Services.csproj" />
+    <ProjectReference Include="..\..\src\UKHO.Search\UKHO.Search.csproj" />
   </ItemGroup>
 
 </Project>
