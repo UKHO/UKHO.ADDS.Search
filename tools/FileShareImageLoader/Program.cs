@@ -26,6 +26,7 @@ internal static class Program
             builder.AddAzureBlobServiceClient(connectionName: "blobs");
 
             builder.Services.AddSingleton<BacpacImporter>();
+            builder.Services.AddSingleton<SchemaMigration>();
             builder.Services.AddSingleton<ContentImporter>();
 
             await using var app = builder.Build();
@@ -38,6 +39,11 @@ internal static class Program
             var importer = app.Services.GetRequiredService<BacpacImporter>();
             await importer
                 .EnsureDatabaseSeededAsync(sqlConnectionString, StorageNames.FileShareEmulatorDatabase, bacpacPath, CancellationToken.None)
+                .ConfigureAwait(false);
+
+            var schemaMigration = app.Services.GetRequiredService<SchemaMigration>();
+            await schemaMigration
+                .ApplyAsync(sqlConnectionString, CancellationToken.None)
                 .ConfigureAwait(false);
 
             var contentImporter = app.Services.GetRequiredService<ContentImporter>();
