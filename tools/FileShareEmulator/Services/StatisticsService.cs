@@ -27,6 +27,33 @@ public sealed class StatisticsService
         _sqlConnection = sqlConnection;
     }
 
+    public sealed record IndexingStatus(int TotalBatches, int IndexedBatches);
+
+    public async Task<IndexingStatus> GetIndexingStatusAsync(CancellationToken cancellationToken = default)
+    {
+        await EnsureConnectionOpenAsync(cancellationToken).ConfigureAwait(false);
+
+        await using var cmd = _sqlConnection.CreateCommand();
+        cmd.CommandType = CommandType.Text;
+        cmd.CommandTimeout = 30;
+        cmd.CommandText = @"
+SELECT
+    (SELECT COUNT_BIG(1) FROM [dbo].[Batch]) AS TotalBatches,
+    (SELECT COUNT_BIG(1) FROM [dbo].[Batch] WHERE [IndexStatus] <> 0) AS IndexedBatches;";
+
+        await using var reader = await cmd.ExecuteReaderAsync(CommandBehavior.SingleRow, cancellationToken)
+            .ConfigureAwait(false);
+
+        if (!await reader.ReadAsync(cancellationToken).ConfigureAwait(false))
+        {
+            return new IndexingStatus(0, 0);
+        }
+
+        return new IndexingStatus(
+            TotalBatches: checked((int)reader.GetInt64(0)),
+            IndexedBatches: checked((int)reader.GetInt64(1)));
+    }
+
     public async Task<StatisticsSnapshot> GetAsync(CancellationToken cancellationToken = default)
     {
         await using var cmd = _sqlConnection.CreateCommand();
@@ -42,10 +69,7 @@ SELECT
     (SELECT COUNT_BIG(1) FROM [BatchReadUser]) AS BatchReadUserCount,
     (SELECT COUNT_BIG(1) FROM [BatchReadGroup]) AS BatchReadGroupCount;";
 
-        if (_sqlConnection.State != ConnectionState.Open)
-        {
-            await _sqlConnection.OpenAsync(cancellationToken).ConfigureAwait(false);
-        }
+        await EnsureConnectionOpenAsync(cancellationToken).ConfigureAwait(false);
 
         await using var reader = await cmd.ExecuteReaderAsync(CommandBehavior.SingleRow, cancellationToken)
             .ConfigureAwait(false);
@@ -75,6 +99,14 @@ SELECT
             BatchReadGroupCount: batchReadGroupCount,
             Labels: Labels,
             LocalMetadata: localMetadata);
+    }
+
+    private async Task EnsureConnectionOpenAsync(CancellationToken cancellationToken)
+    {
+        if (_sqlConnection.State != ConnectionState.Open)
+        {
+            await _sqlConnection.OpenAsync(cancellationToken).ConfigureAwait(false);
+        }
     }
 
     private static async Task<IReadOnlyDictionary<string, string?>> GetLocalMetadataAsync(SqlConnection connection,

@@ -1,0 +1,90 @@
+@page "/indexing"
+
+@using FileShareEmulator.Services
+@inject StatisticsService StatisticsService
+
+<PageTitle>Indexing</PageTitle>
+
+<h1>Indexing</h1>
+
+@if (_status is null)
+{
+    <p><em>Loading...</em></p>
+}
+else
+{
+    <p>Total batches: @_status.TotalBatches.ToString("N0")</p>
+    <p>Indexed @_status.IndexedBatches.ToString("N0") batches of @_status.TotalBatches.ToString("N0")</p>
+}
+
+<div class="row g-2 align-items-end">
+    <div class="col-auto">
+        <button class="btn btn-primary" disabled="@(_isIndexing)">Index All</button>
+    </div>
+
+    <div class="col-auto">
+        <label class="form-label" for="indexCount">Count</label>
+        <input id="indexCount" class="form-control" style="width: 8rem" @bind="CountText" @bind:event="oninput" />
+    </div>
+
+    <div class="col-auto">
+        <button class="btn btn-secondary" disabled="@(!_canIndex || _isIndexing)">Index</button>
+    </div>
+</div>
+
+@code
+{
+    private StatisticsService.IndexingStatus? _status;
+    private PeriodicTimer? _timer;
+
+    private string _countText = "50";
+    private bool _canIndex;
+    private bool _isIndexing;
+
+    protected override async Task OnInitializedAsync()
+    {
+        ValidateCount();
+        _status = await StatisticsService.GetIndexingStatusAsync().ConfigureAwait(false);
+
+        _timer = new PeriodicTimer(TimeSpan.FromSeconds(1));
+        _ = PollAsync();
+    }
+
+    private async Task PollAsync()
+    {
+        if (_timer is null) return;
+
+        try
+        {
+            while (await _timer.WaitForNextTickAsync().ConfigureAwait(false))
+            {
+                _status = await StatisticsService.GetIndexingStatusAsync().ConfigureAwait(false);
+                await InvokeAsync(StateHasChanged);
+            }
+        }
+        catch (OperationCanceledException)
+        {
+        }
+    }
+
+    private string CountText
+    {
+        get => _countText;
+        set
+        {
+            _countText = value;
+            ValidateCount();
+        }
+    }
+
+    private void ValidateCount()
+    {
+        _canIndex = int.TryParse(_countText, out var count) && count > 0;
+    }
+
+    public ValueTask DisposeAsync()
+    {
+        _timer?.Dispose();
+        return ValueTask.CompletedTask;
+    }
+}
