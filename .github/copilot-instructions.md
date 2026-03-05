@@ -8,6 +8,24 @@ Be concise but complete. Prefer current research (Microsoft Learn) for Microsoft
 - Prefer latest C#/.NET features; async/await; nullable reference types.
 - Do not interact with git (no branch creation, no git commands) unless explicitly requested.
 
+## Architecture (Onion)
+This repository uses **Onion Architecture**.
+
+Dependency direction (must point inward):
+`Hosts (Web/Worker) -> Infrastructure -> Services -> Domain`
+
+Layer mapping:
+- **Domain**: `src/UKHO.Search/UKHO.Search.csproj`, `src/UKHO.Search.Query/UKHO.Search.Query.csproj`, `src/UKHO.Search.Ingestion/UKHO.Search.Ingestion.csproj`
+- **Services**: projects named `UKHO.Search.Services.*.csproj`
+- **Infrastructure**: projects named `UKHO.Search.Infrastructure.*.csproj`
+- **Hosts/UI**: projects under `src/Hosts/*` (and any other web/host projects)
+
+Rules:
+- Domain projects must not reference Services, Infrastructure, or Host projects.
+- Services projects must not reference Infrastructure or Host projects.
+- Infrastructure projects must not reference Host projects.
+- Only Host projects contain UI/endpoints and startup/DI wiring. Do not place domain logic or infrastructure implementations in hosts.
+
 ## MCP Tool Selection
 - Azure DevOps intent: use Azure DevOps tools.
 - GitHub intent: use GitHub tools.

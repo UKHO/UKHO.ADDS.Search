@@ -9,17 +9,20 @@
     <Project Path="src/UKHO.Search.Services.Query/UKHO.Search.Services.Query.csproj" Id="2471e589-cf95-4e95-9373-9d689fcfb19a" />
     <Project Path="src/UKHO.Search.Services/UKHO.Search.Services.csproj" Id="efcc5cd8-55df-459b-bd47-97094b081370" />
   </Folder>
-  <Folder Name="/02 Infrastructure/">
+  <Folder Name="/02 Providers/">
+    <Project Path="src/UKHO.Search.Ingestion.Providers.FileShare/UKHO.Search.Ingestion.Providers.FileShare.csproj" Id="0f6ff02f-b01f-4af0-810e-f17486008344" />
+  </Folder>
+  <Folder Name="/03 Infrastructure/">
     <Project Path="src/UKHO.Search.Infrastructure.Ingestion/UKHO.Search.Infrastructure.Ingestion.csproj" Id="cdb73126-6bb7-4d74-bf3e-8bec3f75a48c" />
     <Project Path="src/UKHO.Search.Infrastructure.Query/UKHO.Search.Infrastructure.Query.csproj" Id="38339a3b-8fbc-453c-877e-8dcfc1ce184a" />
     <Project Path="src/UKHO.Search.Infrastructure/UKHO.Search.Infrastructure.csproj" Id="b73eb1ec-a022-4467-a0bc-b72565a7bb3e" />
   </Folder>
-  <Folder Name="/03 Hosts/">
+  <Folder Name="/04 Hosts/">
     <Project Path="src/Hosts/IngestionServiceHost/IngestionServiceHost.csproj" />
     <Project Path="src/Hosts/QueryServiceHost/QueryServiceHost.csproj" />
     <Project Path="src/Hosts/UKHO.Search.ServiceDefaults/UKHO.Search.ServiceDefaults.csproj" />
   </Folder>
-  <Folder Name="/03 Hosts/@local/">
+  <Folder Name="/04 Hosts/@local/">
     <Project Path="src/Hosts/AppHost/AppHost.csproj" />
   </Folder>
   <Folder Name="/99 Tools/">

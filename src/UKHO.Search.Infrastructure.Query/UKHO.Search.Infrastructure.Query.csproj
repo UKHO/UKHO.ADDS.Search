@@ -8,6 +8,7 @@
 
   <ItemGroup>
     <ProjectReference Include="..\UKHO.Search.Infrastructure\UKHO.Search.Infrastructure.csproj" />
+    <ProjectReference Include="..\UKHO.Search.Services.Query\UKHO.Search.Services.Query.csproj" />
   </ItemGroup>
 
 </Project>
