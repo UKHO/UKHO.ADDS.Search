@@ -15,7 +15,7 @@ namespace IngestionServiceHost
             var builder = WebApplication.CreateBuilder(args);
             builder.AddServiceDefaults();
 
-            builder.AddConfiguration(ServiceConfiguration.ServiceName, ServiceNames.Configuration);
+            builder.AddConfiguration(ServiceConfiguration.ServiceGroupName, ServiceNames.Configuration);
 
             builder.AddElasticsearchClient(ServiceNames.ElasticSearch);
             builder.AddAzureQueueServiceClient(ServiceNames.Queues);

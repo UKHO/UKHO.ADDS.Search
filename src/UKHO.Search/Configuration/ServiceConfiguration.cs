@@ -2,6 +2,6 @@
 {
     public class ServiceConfiguration
     {
-        public const string ServiceName = "search";
+        public const string ServiceGroupName = "search";
     }
 }

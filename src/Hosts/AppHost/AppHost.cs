@@ -99,7 +99,7 @@ namespace AppHost
                     // Configuration
                     if (builder.ExecutionContext.IsRunMode)
                     {
-                        builder.AddConfigurationEmulator(ServiceConfiguration.ServiceName, [ingestionService, queryService!],
+                        builder.AddConfigurationEmulator(ServiceConfiguration.ServiceGroupName, [ingestionService, queryService!],
                             [fileShareEmulator], @"../../../configuration/configuration.json",
                             @"../../../configuration/external-services.json");
                     }
