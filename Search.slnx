@@ -16,6 +16,12 @@
     <Project Path="tools/FileShareImageBuilder/FileShareImageBuilder.csproj" Id="d05948ce-767a-4d18-8fb0-d2a13e1f4557" />
     <Project Path="tools/FileShareImageLoader/FileShareImageLoader.csproj" Id="8ed6b18d-5417-4ec9-be3a-88729c2eb987" />
   </Folder>
+  <Folder Name="/@configuration/">
+    <Project Path="configuration/UKHO.Aspire.Configuration.Emulator/UKHO.Aspire.Configuration.Emulator.csproj" />
+    <Project Path="configuration/UKHO.Aspire.Configuration.Hosting/UKHO.Aspire.Configuration.Hosting.csproj" />
+    <Project Path="configuration/UKHO.Aspire.Configuration.Seeder/UKHO.Aspire.Configuration.Seeder.csproj" />
+    <Project Path="configuration/UKHO.Aspire.Configuration/UKHO.Aspire.Configuration.csproj" />
+  </Folder>
   <Folder Name="/@fss/">
     <Project Path="file-share-service/UKHO.FileShareService.API/UKHO.FileShareService.API/UKHO.FileShareService.API.csproj" />
     <Project Path="file-share-service/UKHO.FileShareService.API/UKHO.FileShareService.Common/UKHO.FileShareService.Common.csproj" />

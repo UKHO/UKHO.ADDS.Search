@@ -1,0 +1,88 @@
+{
+    "local": {
+        "ingestion": {
+            "test": {
+                "TestValue": 1
+            }
+        },
+        "query": {
+            "test": {
+              "TestValue": 1
+            }
+        }
+    },
+    "dev": {
+      "ingestion": {
+        "test": {
+          "TestValue": 1
+        }
+      },
+      "query": {
+        "test": {
+          "TestValue": 1
+        }
+      }
+  },
+  "vni": {
+    "ingestion": {
+      "test": {
+        "TestValue": 1
+      }
+    },
+    "query": {
+      "test": {
+        "TestValue": 1
+      }
+    }
+  },
+  "vne": {
+    "ingestion": {
+      "test": {
+        "TestValue": 1
+      }
+    },
+    "query": {
+      "test": {
+        "TestValue": 1
+      }
+    }
+  },
+  "iat": {
+    "ingestion": {
+      "test": {
+        "TestValue": 1
+      }
+    },
+    "query": {
+      "test": {
+        "TestValue": 1
+      }
+    }
+  },
+  "prp": {
+    "ingestion": {
+      "test": {
+        "TestValue": 1
+      }
+    },
+    "query": {
+      "test": {
+        "TestValue": 1
+      }
+    }
+
+  },
+  "live": {
+    "ingestion": {
+      "test": {
+        "TestValue": 1
+      }
+    },
+    "query": {
+      "test": {
+        "TestValue": 1
+      }
+    }
+
+  }
+}

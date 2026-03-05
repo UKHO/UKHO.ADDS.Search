@@ -8,7 +8,9 @@
   </PropertyGroup>
 
   <ItemGroup>
+    <ProjectReference Include="..\..\configuration\UKHO.Aspire.Configuration\UKHO.Aspire.Configuration.csproj" />
     <ProjectReference Include="..\UKHO.Search.Services\UKHO.Search.Services.csproj" />
+    <ProjectReference Include="..\UKHO.Search\UKHO.Search.csproj" />
   </ItemGroup>
 
 </Project>

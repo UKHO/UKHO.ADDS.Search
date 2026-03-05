@@ -16,6 +16,8 @@
 
         public const string ElasticSearch = "elastic";
 
+        public const string Configuration = "configuration";
+
         public const string Ingestion = "ingestion";
 
         public const string Query = "query";

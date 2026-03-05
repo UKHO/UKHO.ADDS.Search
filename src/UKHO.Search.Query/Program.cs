@@ -1,3 +1,5 @@
+using UKHO.Aspire.Configuration;
+using UKHO.Search.Configuration;
 using UKHO.Search.Query.Components;
 
 namespace UKHO.Search.Query;
@@ -8,6 +10,8 @@ public class Program
     {
         var builder = WebApplication.CreateBuilder(args);
         builder.AddServiceDefaults();
+
+        builder.AddConfiguration(ServiceNames.Query, ServiceNames.Configuration);
 
         // Add services to the container.
         builder.Services.AddRazorComponents()

@@ -1,7 +1,10 @@
-using Projects;
-using UKHO.Search.Configuration;
 using Docker.DotNet;
 using Docker.DotNet.Models;
+using Projects;
+using UKHO.Aspire.Configuration;
+using UKHO.Aspire.Configuration.Hosting;
+using UKHO.Search.AppHost.Extensions;
+using UKHO.Search.Configuration;
 
 namespace UKHO.Search.AppHost;
 
@@ -52,7 +55,9 @@ public class AppHost
         {
             case RunMode.Services:
             {
-                var keycloak = builder.AddKeycloak(ServiceNames.KeyCloak, 8080, keyCloakUsernameParameter,
+                var addsEnvironment = builder.AddPublishOnlyParameter("addsEnvironment");
+
+                    var keycloak = builder.AddKeycloak(ServiceNames.KeyCloak, 8080, keyCloakUsernameParameter,
                         keyCloakPasswordParameter)
                     .WithDataVolume()
                     .WithRealmImport("./Realms")
@@ -63,7 +68,7 @@ public class AppHost
                     .WithDataVolume()
                     .WaitFor(storage);
 
-                builder.AddProject<UKHO_Search_Ingestion>(ServiceNames.Ingestion)
+                var ingestionService = builder.AddProject<UKHO_Search_Ingestion>(ServiceNames.Ingestion)
                     .WithExternalHttpEndpoints()
                     .WithReference(storageQueue)
                     .WithReference(storageTable)
@@ -74,14 +79,14 @@ public class AppHost
                     .WaitFor(storageBlob)
                     .WaitFor(elasticSearch);
 
-                builder.AddProject<UKHO_Search_Query>(ServiceNames.Query)
+                var queryService = builder.AddProject<UKHO_Search_Query>(ServiceNames.Query)
                     .WithExternalHttpEndpoints()
                     .WithReference(keycloak)
                     .WithReference(elasticSearch)
                     .WaitFor(keycloak)
                     .WaitFor(elasticSearch);
 
-                builder.AddProject<FileShareEmulator>(ServiceNames.FileShareEmulator)
+                var fileShareEmulator = builder.AddProject<FileShareEmulator>(ServiceNames.FileShareEmulator)
                     .WithExternalHttpEndpoints()
                     .WithEnvironment("environment", environmentParameter)
                     .WithReference(sqlServer)
@@ -90,6 +95,18 @@ public class AppHost
                     .WaitFor(sqlServer)
                     .WaitFor(storageQueue)
                     .WaitFor(storageBlob);
+
+                // Configuration
+                if (builder.ExecutionContext.IsRunMode)
+                {
+                    builder.AddConfigurationEmulator(ServiceNames.Configuration, [ingestionService, queryService!],
+                        [fileShareEmulator], @"../../configuration/configuration.json",
+                        @"../../configuration/external-services.json");
+                }
+                else
+                {
+                    var appConfig = builder.AddConfiguration(ServiceNames.Configuration, addsEnvironment!, [ingestionService, queryService]);
+                }
 
                 break;
             }
@@ -168,10 +185,10 @@ public class AppHost
             }
 
             return new DockerImageMetadata(
-                Tags: inspect.RepoTags is { Count: > 0 } ? string.Join(",", inspect.RepoTags) : string.Empty,
-                Digest: inspect.RepoDigests is { Count: > 0 } ? string.Join(",", inspect.RepoDigests) : string.Empty,
-                SizeBytes: inspect.Size,
-                CreatedUtc: inspect.Created.ToUniversalTime().ToString("O"));
+                inspect.RepoTags is { Count: > 0 } ? string.Join(",", inspect.RepoTags) : string.Empty,
+                inspect.RepoDigests is { Count: > 0 } ? string.Join(",", inspect.RepoDigests) : string.Empty,
+                inspect.Size,
+                inspect.Created.ToUniversalTime().ToString("O"));
         }
         catch
         {

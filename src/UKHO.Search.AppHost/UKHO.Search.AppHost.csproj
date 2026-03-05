@@ -23,6 +23,7 @@
 	</ItemGroup>
 	
 	<ItemGroup>
+	  <ProjectReference Include="..\..\configuration\UKHO.Aspire.Configuration.Hosting\UKHO.Aspire.Configuration.Hosting.csproj" IsAspireProjectResource="false" />
 	  <ProjectReference Include="..\..\tools\FileShareEmulator\FileShareEmulator.csproj" />
 	  <ProjectReference Include="..\..\tools\FileShareImageBuilder\FileShareImageBuilder.csproj" />
 	  <ProjectReference Include="..\..\tools\FileShareImageLoader\FileShareImageLoader.csproj" />
