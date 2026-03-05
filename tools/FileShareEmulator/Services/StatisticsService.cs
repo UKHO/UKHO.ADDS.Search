@@ -1,11 +1,25 @@
 using System.Data;
 using Microsoft.Data.SqlClient;
-using UKHO.Search.Configuration;
+using Humanizer;
 
 namespace FileShareEmulator.Services;
 
 public sealed class StatisticsService
 {
+    private static readonly IReadOnlyDictionary<string, string?> EmptyMetadata =
+        new Dictionary<string, string?>(0, StringComparer.OrdinalIgnoreCase);
+
+    private static readonly IReadOnlyDictionary<string, string> Labels =
+        new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase)
+        {
+            [nameof(StatisticsSnapshot.BatchCount)] = HumanizeLabel(nameof(StatisticsSnapshot.BatchCount)),
+            [nameof(StatisticsSnapshot.FileCount)] = HumanizeLabel(nameof(StatisticsSnapshot.FileCount)),
+            [nameof(StatisticsSnapshot.BatchAttributeCount)] = HumanizeLabel(nameof(StatisticsSnapshot.BatchAttributeCount)),
+            [nameof(StatisticsSnapshot.FileAttributeCount)] = HumanizeLabel(nameof(StatisticsSnapshot.FileAttributeCount)),
+            [nameof(StatisticsSnapshot.BatchReadUserCount)] = HumanizeLabel(nameof(StatisticsSnapshot.BatchReadUserCount)),
+            [nameof(StatisticsSnapshot.BatchReadGroupCount)] = HumanizeLabel(nameof(StatisticsSnapshot.BatchReadGroupCount))
+        };
+
     private readonly SqlConnection _sqlConnection;
 
     public StatisticsService(SqlConnection sqlConnection)
@@ -38,15 +52,57 @@ SELECT
 
         if (!await reader.ReadAsync(cancellationToken).ConfigureAwait(false))
         {
-            return new StatisticsSnapshot(0, 0, 0, 0, 0, 0);
+            return new StatisticsSnapshot(0, 0, 0, 0, 0, 0, Labels, EmptyMetadata);
         }
 
+        var batchCount = checked((int)reader.GetInt64(0));
+        var fileCount = checked((int)reader.GetInt64(1));
+        var batchAttributeCount = checked((int)reader.GetInt64(2));
+        var fileAttributeCount = checked((int)reader.GetInt64(3));
+        var batchReadUserCount = checked((int)reader.GetInt64(4));
+        var batchReadGroupCount = checked((int)reader.GetInt64(5));
+
+        await reader.DisposeAsync().ConfigureAwait(false);
+
+        var localMetadata = await GetLocalMetadataAsync(_sqlConnection, cancellationToken).ConfigureAwait(false);
+
         return new StatisticsSnapshot(
-            BatchCount: checked((int)reader.GetInt64(0)),
-            FileCount: checked((int)reader.GetInt64(1)),
-            BatchAttributeCount: checked((int)reader.GetInt64(2)),
-            FileAttributeCount: checked((int)reader.GetInt64(3)),
-            BatchReadUserCount: checked((int)reader.GetInt64(4)),
-            BatchReadGroupCount: checked((int)reader.GetInt64(5)));
+            BatchCount: batchCount,
+            FileCount: fileCount,
+            BatchAttributeCount: batchAttributeCount,
+            FileAttributeCount: fileAttributeCount,
+            BatchReadUserCount: batchReadUserCount,
+            BatchReadGroupCount: batchReadGroupCount,
+            Labels: Labels,
+            LocalMetadata: localMetadata);
+    }
+
+    private static async Task<IReadOnlyDictionary<string, string?>> GetLocalMetadataAsync(SqlConnection connection,
+        CancellationToken cancellationToken)
+    {
+        await using var cmd = connection.CreateCommand();
+        cmd.CommandType = CommandType.Text;
+        cmd.CommandTimeout = 30;
+        cmd.CommandText = @"
+SELECT [Name], [Value]
+FROM [dbo].[LocalMetadata]
+ORDER BY [Name];";
+
+        await using var reader = await cmd.ExecuteReaderAsync(cancellationToken).ConfigureAwait(false);
+        var result = new Dictionary<string, string?>(StringComparer.OrdinalIgnoreCase);
+
+        while (await reader.ReadAsync(cancellationToken).ConfigureAwait(false))
+        {
+            var name = reader.GetString(0);
+            var value = reader.IsDBNull(1) ? null : reader.GetString(1);
+            result[HumanizeLabel(name)] = value;
+        }
+
+        return result;
+    }
+
+    private static string HumanizeLabel(string value)
+    {
+        return value.Humanize(LetterCasing.Title);
     }
 }

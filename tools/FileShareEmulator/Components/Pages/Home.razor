@@ -1,9 +1,74 @@
 ﻿@page "/"
+@attribute [StreamRendering]
+
+@using FileShareEmulator.Services
+@inject StatisticsService StatisticsService
 
 <PageTitle>Home</PageTitle>
 
-<h1>File Share Emulator</h1>
+<h2>Statistics</h2>
 
-<p>
-    Use <a href="statistics">Statistics</a> to view database counts.
-</p>
+@if (_snapshot is null)
+{
+    <p><em>Loading...</em></p>
+}
+else
+{
+    <div class="row">
+        <div class="col-12 col-md-8">
+            <table class="table table-sm">
+                <colgroup>
+                    <col style="width: 22rem;" />
+                    <col />
+                </colgroup>
+                <tbody>
+                    <tr>
+                        <th scope="row" class="text-nowrap">@_snapshot.Labels[nameof(StatisticsSnapshot.BatchCount)]</th>
+                        <td>@_snapshot.BatchCount.ToString("N0")</td>
+                    </tr>
+                    <tr>
+                        <th scope="row" class="text-nowrap">@_snapshot.Labels[nameof(StatisticsSnapshot.FileCount)]</th>
+                        <td>@_snapshot.FileCount.ToString("N0")</td>
+                    </tr>
+                    <tr>
+                        <th scope="row" class="text-nowrap">@_snapshot.Labels[nameof(StatisticsSnapshot.BatchAttributeCount)]</th>
+                        <td>@_snapshot.BatchAttributeCount.ToString("N0")</td>
+                    </tr>
+                    <tr>
+                        <th scope="row" class="text-nowrap">@_snapshot.Labels[nameof(StatisticsSnapshot.FileAttributeCount)]</th>
+                        <td>@_snapshot.FileAttributeCount.ToString("N0")</td>
+                    </tr>
+                    <tr>
+                        <th scope="row" class="text-nowrap">@_snapshot.Labels[nameof(StatisticsSnapshot.BatchReadUserCount)]</th>
+                        <td>@_snapshot.BatchReadUserCount.ToString("N0")</td>
+                    </tr>
+                <tr>
+                        <th scope="row" class="text-nowrap">@_snapshot.Labels[nameof(StatisticsSnapshot.BatchReadGroupCount)]</th>
+                    <td>@_snapshot.BatchReadGroupCount.ToString("N0")</td>
+                </tr>
+
+                    @if (_snapshot.LocalMetadata.Count > 0)
+                    {
+                        @foreach (var item in _snapshot.LocalMetadata)
+                        {
+                            <tr>
+                                <th scope="row" class="text-nowrap">@item.Key</th>
+                                <td>@(string.IsNullOrWhiteSpace(item.Value) ? "-" : item.Value)</td>
+                            </tr>
+                        }
+                    }
+                </tbody>
+            </table>
+        </div>
+    </div>
+}
+
+@code
+{
+    private StatisticsSnapshot? _snapshot;
+
+    protected override async Task OnInitializedAsync()
+    {
+        _snapshot = await StatisticsService.GetAsync().ConfigureAwait(false);
+    }
+}

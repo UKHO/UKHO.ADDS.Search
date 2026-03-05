@@ -6,5 +6,7 @@ public sealed record StatisticsSnapshot(
     int BatchAttributeCount,
     int FileAttributeCount,
     int BatchReadUserCount,
-    int BatchReadGroupCount
+    int BatchReadGroupCount,
+    IReadOnlyDictionary<string, string> Labels,
+    IReadOnlyDictionary<string, string?> LocalMetadata
 );

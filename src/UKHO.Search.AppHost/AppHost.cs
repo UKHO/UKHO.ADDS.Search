@@ -1,5 +1,7 @@
 using Projects;
 using UKHO.Search.Configuration;
+using Docker.DotNet;
+using Docker.DotNet.Models;
 
 namespace UKHO.Search.AppHost;
 
@@ -81,6 +83,7 @@ public class AppHost
 
                 builder.AddProject<FileShareEmulator>(ServiceNames.FileShareEmulator)
                     .WithExternalHttpEndpoints()
+                    .WithEnvironment("environment", environmentParameter)
                     .WithReference(sqlServer)
                     .WithReference(storageQueue)
                     .WithReference(storageBlob)
@@ -106,6 +109,8 @@ public class AppHost
                 var loaderDataImage = $"fss-data-{environment}";
                 var loaderDataVolumeName = $"{ServiceNames.FileShareEmulator}-data";
 
+                var imageMetadata = await GetDockerImageMetadataAsync(loaderDataImage);
+
                 // The data loader (for file share emulator) needs a set of seed files available at runtime.
                 // Docker/Aspire cannot mount a Docker image filesystem directly as a volume, so we:
                 // 1) create/mount a named volume (persistent across runs) and
@@ -126,6 +131,11 @@ public class AppHost
                     .WithDockerfile("../../tools/FileShareImageLoader", "Dockerfile")
                     .WithBuildArg("BUILD_CONFIGURATION", "Debug")
                     .WithEnvironment("environment", environmentParameter)
+                    .WithEnvironment("dataimage", loaderDataImage)
+                    .WithEnvironment("dataimage_tags", imageMetadata.Tags)
+                    .WithEnvironment("dataimage_digest", imageMetadata.Digest)
+                    .WithEnvironment("dataimage_size_bytes", imageMetadata.SizeBytes.ToString())
+                    .WithEnvironment("dataimage_created_utc", imageMetadata.CreatedUtc)
                     .WithReference(storageBlob)
                     .WithReference(sqlServer)
                     .WaitFor(storageBlob)
@@ -139,4 +149,35 @@ public class AppHost
 
         await builder.Build().RunAsync();
     }
+
+    private static async Task<DockerImageMetadata> GetDockerImageMetadataAsync(string imageReference)
+    {
+        try
+        {
+            using var client = new DockerClientConfiguration().CreateClient();
+
+            // Attempt by reference; Docker can resolve tags and local images.
+            ImageInspectResponse inspect;
+            try
+            {
+                inspect = await client.Images.InspectImageAsync(imageReference).ConfigureAwait(false);
+            }
+            catch
+            {
+                inspect = await client.Images.InspectImageAsync(imageReference + ":latest").ConfigureAwait(false);
+            }
+
+            return new DockerImageMetadata(
+                Tags: inspect.RepoTags is { Count: > 0 } ? string.Join(",", inspect.RepoTags) : string.Empty,
+                Digest: inspect.RepoDigests is { Count: > 0 } ? string.Join(",", inspect.RepoDigests) : string.Empty,
+                SizeBytes: inspect.Size,
+                CreatedUtc: inspect.Created.ToUniversalTime().ToString("O"));
+        }
+        catch
+        {
+            return new DockerImageMetadata(string.Empty, string.Empty, 0, string.Empty);
+        }
+    }
+
+    private sealed record DockerImageMetadata(string Tags, string Digest, long SizeBytes, string CreatedUtc);
 }

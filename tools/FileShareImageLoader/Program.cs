@@ -42,8 +42,20 @@ internal static class Program
                 .ConfigureAwait(false);
 
             var schemaMigration = app.Services.GetRequiredService<SchemaMigration>();
+
+            var dataImageName =
+                Environment.GetEnvironmentVariable("dataimage")
+                ?? "unknown";
+
+            var imageInfo = new LocalMetadataImageInfo(
+                Version: Environment.GetEnvironmentVariable("dataimage_version"),
+                Tags: Environment.GetEnvironmentVariable("dataimage_tags"),
+                Digest: Environment.GetEnvironmentVariable("dataimage_digest"),
+                SizeBytes: Environment.GetEnvironmentVariable("dataimage_size_bytes"),
+                CreatedUtc: Environment.GetEnvironmentVariable("dataimage_created_utc"));
+
             await schemaMigration
-                .ApplyAsync(sqlConnectionString, CancellationToken.None)
+                .ApplyAsync(sqlConnectionString, dataImageName, imageInfo, CancellationToken.None)
                 .ConfigureAwait(false);
 
             var contentImporter = app.Services.GetRequiredService<ContentImporter>();

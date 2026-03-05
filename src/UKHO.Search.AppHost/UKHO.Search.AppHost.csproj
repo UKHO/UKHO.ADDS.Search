@@ -19,6 +19,7 @@
 		<PackageReference Include="Aspire.Hosting.Elasticsearch" Version="13.1.0" />
 		<PackageReference Include="Aspire.Hosting.Keycloak" Version="13.1.2-preview.1.26125.13" />
 		<PackageReference Include="Aspire.Hosting.SqlServer" Version="13.1.2" />
+    <PackageReference Include="Docker.DotNet" Version="3.125.15" />
 	</ItemGroup>
 	
 	<ItemGroup>
