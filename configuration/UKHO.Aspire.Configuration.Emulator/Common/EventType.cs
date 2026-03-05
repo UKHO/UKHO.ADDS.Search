@@ -1,8 +1,9 @@
-namespace UKHO.Aspire.Configuration.Emulator.Common;
-
-public static class EventType
+namespace UKHO.Aspire.Configuration.Emulator.Common
 {
-    public const string ConfigurationSettingDeleted = "Microsoft.AppConfiguration.KeyValueDeleted";
+    public static class EventType
+    {
+        public const string ConfigurationSettingDeleted = "Microsoft.AppConfiguration.KeyValueDeleted";
 
-    public const string ConfigurationSettingModified = "Microsoft.AppConfiguration.KeyValueModified";
+        public const string ConfigurationSettingModified = "Microsoft.AppConfiguration.KeyValueModified";
+    }
 }

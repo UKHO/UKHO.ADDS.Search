@@ -1,90 +1,91 @@
 using System.Text.Json;
 using System.Text.Json.Nodes;
 
-namespace UKHO.Aspire.Configuration.Emulator.Common;
-
-public class KeyValuePairJsonEncoder : IKeyValuePairJsonEncoder
+namespace UKHO.Aspire.Configuration.Emulator.Common
 {
-    public JsonDocument Encode(
-        IEnumerable<KeyValuePair<string, string?>> pairs,
-        string? prefix = null,
-        string? separator = null)
+    public class KeyValuePairJsonEncoder : IKeyValuePairJsonEncoder
     {
-        JsonNode root = new JsonObject();
-
-        foreach (var (key, value) in pairs)
+        public JsonDocument Encode(
+            IEnumerable<KeyValuePair<string, string?>> pairs,
+            string? prefix = null,
+            string? separator = null)
         {
-            var keys = key.Split(separator).ToList();
+            JsonNode root = new JsonObject();
 
-            if (!string.IsNullOrEmpty(prefix))
+            foreach (var (key, value) in pairs)
             {
-                if (keys[0] == prefix)
-                {
-                    keys.RemoveAt(0);
-                }
-                else if (keys[0].StartsWith(prefix))
-                {
-                    keys[0] = keys[0][prefix.Length..];
-                }
-            }
+                var keys = key.Split(separator).ToList();
 
-            var current = root;
-
-            for (var i = 0; i < keys.Count; i++)
-            {
-                if (int.TryParse(keys[i], out var index))
+                if (!string.IsNullOrEmpty(prefix))
                 {
-                    if (i == keys.Count - 1)
+                    if (keys[0] == prefix)
                     {
-                        current.AsArray().Insert(index, value);
-
-                        break;
+                        keys.RemoveAt(0);
                     }
-
-                    if (current.AsArray().ElementAtOrDefault(index) is not { } next)
+                    else if (keys[0].StartsWith(prefix))
                     {
-                        if (int.TryParse(keys[i + 1], out _))
+                        keys[0] = keys[0][prefix.Length..];
+                    }
+                }
+
+                var current = root;
+
+                for (var i = 0; i < keys.Count; i++)
+                {
+                    if (int.TryParse(keys[i], out var index))
+                    {
+                        if (i == keys.Count - 1)
                         {
-                            next = new JsonArray();
-                        }
-                        else
-                        {
-                            next = new JsonObject();
+                            current.AsArray().Insert(index, value);
+
+                            break;
                         }
 
-                        current.AsArray().Insert(index, next);
-                    }
+                        if (current.AsArray().ElementAtOrDefault(index) is not { } next)
+                        {
+                            if (int.TryParse(keys[i + 1], out _))
+                            {
+                                next = new JsonArray();
+                            }
+                            else
+                            {
+                                next = new JsonObject();
+                            }
 
-                    current = next;
-                }
-                else
-                {
-                    if (i == keys.Count - 1)
+                            current.AsArray().Insert(index, next);
+                        }
+
+                        current = next;
+                    }
+                    else
                     {
-                        current[keys[i]] = value;
+                        if (i == keys.Count - 1)
+                        {
+                            current[keys[i]] = value;
                         
-                        break;
-                    }
-
-                    if (current[keys[i]] is not { } next)
-                    {
-                        if (int.TryParse(keys[i + 1], out _))
-                        {
-                            next = new JsonArray();
-                        }
-                        else
-                        {
-                            next = new JsonObject();
+                            break;
                         }
 
-                        current[keys[i]] = next;
-                    }
+                        if (current[keys[i]] is not { } next)
+                        {
+                            if (int.TryParse(keys[i + 1], out _))
+                            {
+                                next = new JsonArray();
+                            }
+                            else
+                            {
+                                next = new JsonObject();
+                            }
 
-                    current = next;
+                            current[keys[i]] = next;
+                        }
+
+                        current = next;
+                    }
                 }
             }
-        }
 
-        return root.Deserialize<JsonDocument>()!;
+            return root.Deserialize<JsonDocument>()!;
+        }
     }
 }

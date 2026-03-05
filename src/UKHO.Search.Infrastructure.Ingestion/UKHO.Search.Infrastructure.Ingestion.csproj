@@ -6,6 +6,11 @@
     <Nullable>enable</Nullable>
   </PropertyGroup>
 
+	<ItemGroup>
+		<PackageReference Include="Aspire.Elastic.Clients.Elasticsearch" Version="13.1.0" />
+		<PackageReference Include="Aspire.Azure.Storage.Queues" Version="13.1.2" />
+	</ItemGroup>
+
   <ItemGroup>
     <ProjectReference Include="..\UKHO.Search.Infrastructure\UKHO.Search.Infrastructure.csproj" />
     <ProjectReference Include="..\UKHO.Search.Ingestion.Providers.FileShare\UKHO.Search.Ingestion.Providers.FileShare.csproj" />

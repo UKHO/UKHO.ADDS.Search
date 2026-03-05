@@ -1,39 +1,40 @@
 using Microsoft.AspNetCore.Mvc;
 
-namespace UKHO.Aspire.Configuration.Emulator.Common;
-
-public class InvalidCharacterResult(string name) :
-    IResult,
-    IContentTypeHttpResult,
-    IStatusCodeHttpResult,
-    IValueHttpResult,
-    IValueHttpResult<ProblemDetails>
+namespace UKHO.Aspire.Configuration.Emulator.Common
 {
-    public async Task ExecuteAsync(HttpContext httpContext)
+    public class InvalidCharacterResult(string name) :
+        IResult,
+        IContentTypeHttpResult,
+        IStatusCodeHttpResult,
+        IValueHttpResult,
+        IValueHttpResult<ProblemDetails>
     {
-        if (StatusCode.HasValue)
+        public async Task ExecuteAsync(HttpContext httpContext)
         {
-            httpContext.Response.StatusCode = StatusCode.Value;
+            if (StatusCode.HasValue)
+            {
+                httpContext.Response.StatusCode = StatusCode.Value;
+            }
+
+            if (Value is not null)
+            {
+                await httpContext.Response.WriteAsJsonAsync(Value, options: default, ContentType);
+            }
         }
 
-        if (Value is not null)
+        public string? ContentType => "application/problem+json";
+
+        public int? StatusCode => StatusCodes.Status400BadRequest;
+
+        object? IValueHttpResult.Value => Value;
+
+        public ProblemDetails? Value => new()
         {
-            await httpContext.Response.WriteAsJsonAsync(Value, options: default, ContentType);
-        }
+            Type = "https://azconfig.io/errors/invalid-argument",
+            Title = $"Invalid request parameter '{name}'",
+            Status = StatusCode,
+            Detail = $"{name}: Invalid character",
+            Extensions = new Dictionary<string, object?> { { nameof(name), name } }
+        };
     }
-
-    public string? ContentType => "application/problem+json";
-
-    public int? StatusCode => StatusCodes.Status400BadRequest;
-
-    object? IValueHttpResult.Value => Value;
-
-    public ProblemDetails? Value => new()
-    {
-        Type = "https://azconfig.io/errors/invalid-argument",
-        Title = $"Invalid request parameter '{name}'",
-        Status = StatusCode,
-        Detail = $"{name}: Invalid character",
-        Extensions = new Dictionary<string, object?> { { nameof(name), name } }
-    };
 }

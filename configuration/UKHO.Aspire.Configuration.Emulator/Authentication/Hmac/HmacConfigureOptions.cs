@@ -1,30 +1,31 @@
 using Microsoft.AspNetCore.Authentication;
 using Microsoft.Extensions.Options;
 
-namespace UKHO.Aspire.Configuration.Emulator.Authentication.Hmac;
-
-public class HmacConfigureOptions(IAuthenticationConfigurationProvider configurationProvider) : IConfigureNamedOptions<HmacOptions>
+namespace UKHO.Aspire.Configuration.Emulator.Authentication.Hmac
 {
-    public void Configure(HmacOptions options)
+    public class HmacConfigureOptions(IAuthenticationConfigurationProvider configurationProvider) : IConfigureNamedOptions<HmacOptions>
     {
-        Configure(Options.DefaultName, options);
-    }
-
-    public void Configure(string? name, HmacOptions options)
-    {
-        if (string.IsNullOrEmpty(name))
+        public void Configure(HmacOptions options)
         {
-            return;
+            Configure(Options.DefaultName, options);
         }
 
-        var section = configurationProvider.GetSchemeConfiguration(name);
-
-        if (section == null || section.GetChildren().Count() == 0)
+        public void Configure(string? name, HmacOptions options)
         {
-            return;
-        }
+            if (string.IsNullOrEmpty(name))
+            {
+                return;
+            }
 
-        options.Credential = section.GetValue<string>(nameof(options.Credential)) ?? options.Credential;
-        options.Secret = section.GetValue<string>(nameof(options.Secret)) ?? options.Secret;
+            var section = configurationProvider.GetSchemeConfiguration(name);
+
+            if (section == null || section.GetChildren().Count() == 0)
+            {
+                return;
+            }
+
+            options.Credential = section.GetValue<string>(nameof(options.Credential)) ?? options.Credential;
+            options.Secret = section.GetValue<string>(nameof(options.Secret)) ?? options.Secret;
+        }
     }
 }

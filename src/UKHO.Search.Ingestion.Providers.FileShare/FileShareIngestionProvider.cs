@@ -1,8 +1,9 @@
-﻿namespace UKHO.Search.Ingestion.Providers.FileShare;
-
-public class FileShareIngestionProvider : IIngestionDataProvider
+﻿namespace UKHO.Search.Ingestion.Providers.FileShare
 {
-    public string Name => "File Share";
+    public class FileShareIngestionProvider : IIngestionDataProvider
+    {
+        public string Name => "file-share";
 
-    public string QueueName => "file-share-queue";
+        public string QueueName => "file-share-queue";
+    }
 }

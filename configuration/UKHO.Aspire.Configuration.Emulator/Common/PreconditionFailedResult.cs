@@ -1,30 +1,31 @@
 using System.Reflection;
 using Microsoft.AspNetCore.Http.Metadata;
 
-namespace UKHO.Aspire.Configuration.Emulator.Common;
-
-public class PreconditionFailedResult :
-    IResult,
-    IEndpointMetadataProvider,
-    IStatusCodeHttpResult
+namespace UKHO.Aspire.Configuration.Emulator.Common
 {
-    public Task ExecuteAsync(HttpContext httpContext)
+    public class PreconditionFailedResult :
+        IResult,
+        IEndpointMetadataProvider,
+        IStatusCodeHttpResult
     {
-        if (StatusCode.HasValue)
+        public Task ExecuteAsync(HttpContext httpContext)
         {
-            httpContext.Response.StatusCode = StatusCode.Value;
+            if (StatusCode.HasValue)
+            {
+                httpContext.Response.StatusCode = StatusCode.Value;
+            }
+
+            return Task.CompletedTask;
         }
 
-        return Task.CompletedTask;
+        public static void PopulateMetadata(MethodInfo method, EndpointBuilder builder)
+        {
+            ArgumentNullException.ThrowIfNull(method);
+            ArgumentNullException.ThrowIfNull(builder);
+
+            builder.Metadata.Add(new ProducesResponseTypeMetadata(StatusCodes.Status412PreconditionFailed, typeof(void)));
+        }
+
+        public int? StatusCode => StatusCodes.Status412PreconditionFailed;
     }
-
-    public static void PopulateMetadata(MethodInfo method, EndpointBuilder builder)
-    {
-        ArgumentNullException.ThrowIfNull(method);
-        ArgumentNullException.ThrowIfNull(builder);
-
-        builder.Metadata.Add(new ProducesResponseTypeMetadata(StatusCodes.Status412PreconditionFailed, typeof(void)));
-    }
-
-    public int? StatusCode => StatusCodes.Status412PreconditionFailed;
 }

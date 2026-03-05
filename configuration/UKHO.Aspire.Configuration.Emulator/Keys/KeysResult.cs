@@ -2,47 +2,48 @@ using System.Text.Json;
 using System.Text.Json.Serialization.Metadata;
 using UKHO.Aspire.Configuration.Emulator.Common;
 
-namespace UKHO.Aspire.Configuration.Emulator.Keys;
-
-public class KeysResult(
-    IEnumerable<string> keys,
-    DateTimeOffset? mementoDatetime = default,
-    string? select = default) :
-    IResult,
-    IContentTypeHttpResult,
-    IStatusCodeHttpResult,
-    IValueHttpResult
+namespace UKHO.Aspire.Configuration.Emulator.Keys
 {
-    public async Task ExecuteAsync(HttpContext httpContext)
+    public class KeysResult(
+        IEnumerable<string> keys,
+        DateTimeOffset? mementoDatetime = default,
+        string? select = default) :
+        IResult,
+        IContentTypeHttpResult,
+        IStatusCodeHttpResult,
+        IValueHttpResult
     {
-        if (mementoDatetime.HasValue)
+        public async Task ExecuteAsync(HttpContext httpContext)
         {
-            httpContext.Response.Headers["Memento-Datetime"] = mementoDatetime.Value.ToString("R");
-        }
-
-        if (StatusCode.HasValue)
-        {
-            httpContext.Response.StatusCode = StatusCode.Value;
-        }
-
-        await httpContext.Response.WriteAsJsonAsync(
-            Value,
-            new JsonSerializerOptions(JsonSerializerDefaults.Web)
+            if (mementoDatetime.HasValue)
             {
-                TypeInfoResolver = new DefaultJsonTypeInfoResolver
+                httpContext.Response.Headers["Memento-Datetime"] = mementoDatetime.Value.ToString("R");
+            }
+
+            if (StatusCode.HasValue)
+            {
+                httpContext.Response.StatusCode = StatusCode.Value;
+            }
+
+            await httpContext.Response.WriteAsJsonAsync(
+                Value,
+                new JsonSerializerOptions(JsonSerializerDefaults.Web)
                 {
-                    Modifiers =
+                    TypeInfoResolver = new DefaultJsonTypeInfoResolver
                     {
-                        new SelectJsonTypeInfoModifier(select?.Split(',')).Modify
+                        Modifiers =
+                        {
+                            new SelectJsonTypeInfoModifier(select?.Split(',')).Modify
+                        }
                     }
-                }
-            },
-            ContentType);
+                },
+                ContentType);
+        }
+
+        public string? ContentType => MediaType.Keys;
+
+        public int? StatusCode => StatusCodes.Status200OK;
+
+        public object Value => new { items = keys.Select(key => new { name = key }) };
     }
-
-    public string? ContentType => MediaType.Keys;
-
-    public int? StatusCode => StatusCodes.Status200OK;
-
-    public object Value => new { items = keys.Select(key => new { name = key }) };
 }

@@ -1,11 +1,12 @@
 using System.Text.Json;
 
-namespace UKHO.Aspire.Configuration.Emulator.Common;
-
-public interface IKeyValuePairJsonEncoder
+namespace UKHO.Aspire.Configuration.Emulator.Common
 {
-    JsonDocument Encode(
-        IEnumerable<KeyValuePair<string, string?>> pairs,
-        string? prefix = null,
-        string? separator = null);
+    public interface IKeyValuePairJsonEncoder
+    {
+        JsonDocument Encode(
+            IEnumerable<KeyValuePair<string, string?>> pairs,
+            string? prefix = null,
+            string? separator = null);
+    }
 }

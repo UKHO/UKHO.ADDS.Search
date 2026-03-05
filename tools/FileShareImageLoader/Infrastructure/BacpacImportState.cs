@@ -1,13 +1,14 @@
-namespace FileShareImageLoader.Infrastructure;
-
-public static class BacpacImportState
+namespace FileShareImageLoader.Infrastructure
 {
-    private static volatile bool _completed;
-
-    public static bool Completed => _completed;
-
-    public static void MarkCompleted()
+    public static class BacpacImportState
     {
-        _completed = true;
+        private static volatile bool _completed;
+
+        public static bool Completed => _completed;
+
+        public static void MarkCompleted()
+        {
+            _completed = true;
+        }
     }
 }

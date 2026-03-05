@@ -2,14 +2,14 @@ using Microsoft.AspNetCore.Builder;
 using Microsoft.AspNetCore.Diagnostics.HealthChecks;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Diagnostics.HealthChecks;
+using Microsoft.Extensions.Hosting;
 using Microsoft.Extensions.Logging;
-using Microsoft.Extensions.ServiceDiscovery;
 using OpenTelemetry;
 using OpenTelemetry.Metrics;
 using OpenTelemetry.Trace;
 
 #pragma warning disable IDE0130
-namespace Microsoft.Extensions.Hosting
+namespace UKHO.Search.ServiceDefaults
 #pragma warning restore IDE0130
 {
     // Adds common Aspire services: service discovery, resilience, health checks, and OpenTelemetry.

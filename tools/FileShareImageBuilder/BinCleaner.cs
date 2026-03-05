@@ -1,20 +1,21 @@
-namespace FileShareImageBuilder;
-
-public sealed class BinCleaner
+namespace FileShareImageBuilder
 {
-    public Task CleanAsync(CancellationToken cancellationToken = default)
+    public sealed class BinCleaner
     {
-        _ = cancellationToken;
+        public Task CleanAsync(CancellationToken cancellationToken = default)
+        {
+            _ = cancellationToken;
 
-        var dataImagePath = ConfigurationReader.GetDataImagePath();
-        var binDirectory = Path.Combine(dataImagePath, "bin");
+            var dataImagePath = ConfigurationReader.GetDataImagePath();
+            var binDirectory = Path.Combine(dataImagePath, "bin");
 
-        if (!Directory.Exists(binDirectory)) return Task.CompletedTask;
+            if (!Directory.Exists(binDirectory)) return Task.CompletedTask;
 
-        Console.WriteLine($"[BinCleaner] Deleting bin directory: {binDirectory}");
-        Directory.Delete(binDirectory, true);
-        Console.WriteLine("[BinCleaner] Bin directory deleted.");
+            Console.WriteLine($"[BinCleaner] Deleting bin directory: {binDirectory}");
+            Directory.Delete(binDirectory, true);
+            Console.WriteLine("[BinCleaner] Bin directory deleted.");
 
-        return Task.CompletedTask;
+            return Task.CompletedTask;
+        }
     }
 }

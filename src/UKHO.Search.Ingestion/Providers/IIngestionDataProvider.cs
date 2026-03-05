@@ -1,8 +1,9 @@
-﻿namespace UKHO.Search.Ingestion.Providers;
-
-public interface IIngestionDataProvider
+﻿namespace UKHO.Search.Ingestion.Providers
 {
-    string Name { get; }
+    public interface IIngestionDataProvider
+    {
+        string Name { get; }
 
-    string QueueName { get; }
+        string QueueName { get; }
+    }
 }

@@ -1,88 +1,58 @@
 {
     "local": {
         "ingestion": {
-            "test": {
-                "TestValue": 1
-            }
+            "indexname": "ukho-search"
         },
         "query": {
-            "test": {
-              "TestValue": 1
-            }
+            "indexname": "ukho-search"
         }
     },
     "dev": {
-      "ingestion": {
-        "test": {
-          "TestValue": 1
+        "ingestion": {
+            "indexname": "ukho-search"
+        },
+        "query": {
+            "indexname": "ukho-search"
         }
-      },
-      "query": {
-        "test": {
-          "TestValue": 1
+    },
+    "vni": {
+        "ingestion": {
+            "indexname": "ukho-search"
+        },
+        "query": {
+            "indexname": "ukho-search"
         }
-      }
-  },
-  "vni": {
-    "ingestion": {
-      "test": {
-        "TestValue": 1
-      }
     },
-    "query": {
-      "test": {
-        "TestValue": 1
-      }
-    }
-  },
-  "vne": {
-    "ingestion": {
-      "test": {
-        "TestValue": 1
-      }
+    "vne": {
+        "ingestion": {
+            "indexname": "ukho-search"
+        },
+        "query": {
+            "indexname": "ukho-search"
+        }
     },
-    "query": {
-      "test": {
-        "TestValue": 1
-      }
-    }
-  },
-  "iat": {
-    "ingestion": {
-      "test": {
-        "TestValue": 1
-      }
+    "iat": {
+        "ingestion": {
+            "indexname": "ukho-search"
+        },
+        "query": {
+            "indexname": "ukho-search"
+        }
     },
-    "query": {
-      "test": {
-        "TestValue": 1
-      }
-    }
-  },
-  "prp": {
-    "ingestion": {
-      "test": {
-        "TestValue": 1
-      }
+    "prp": {
+        "ingestion": {
+            "indexname": "ukho-search"
+        },
+        "query": {
+            "indexname": "ukho-search"
+        }
     },
-    "query": {
-      "test": {
-        "TestValue": 1
-      }
+    "live": {
+        "ingestion": {
+            "indexname": "ukho-search"
+        },
+        "query": {
+            "indexname": "ukho-search"
+        }
     }
-
-  },
-  "live": {
-    "ingestion": {
-      "test": {
-        "TestValue": 1
-      }
-    },
-    "query": {
-      "test": {
-        "TestValue": 1
-      }
-    }
-
-  }
 }

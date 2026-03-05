@@ -1,15 +1,16 @@
 using System.Text.Json.Serialization;
-using UKHO.Search.Ingestion.Serialization;
+using UKHO.Search.Ingestion.Requests.Serialization;
 
-namespace UKHO.Search.Ingestion;
-
-[JsonConverter(typeof(IngestionPropertyJsonConverter))]
-public sealed record IngestionProperty
+namespace UKHO.Search.Ingestion.Requests
 {
-    public string Name { get; init; } = string.Empty;
+    [JsonConverter(typeof(IngestionPropertyJsonConverter))]
+    public sealed record IngestionProperty
+    {
+        public string Name { get; init; } = string.Empty;
 
-    public IngestionPropertyType Type { get; init; }
+        public IngestionPropertyType Type { get; init; }
 
-    [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
-    public object? Value { get; init; }
+        [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
+        public object? Value { get; init; }
+    }
 }

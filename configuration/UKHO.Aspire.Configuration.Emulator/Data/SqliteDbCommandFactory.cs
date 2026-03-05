@@ -1,30 +1,31 @@
 using System.Data.Common;
 
-namespace UKHO.Aspire.Configuration.Emulator.Data;
-
-public class SqliteDbCommandFactory(ILogger<SqliteDbCommandFactory>? logger = null) : IDbCommandFactory
+namespace UKHO.Aspire.Configuration.Emulator.Data
 {
-    public DbCommand Create(DbConnection connection, string? text = null, IEnumerable<DbParameter>? parameters = null)
+    public class SqliteDbCommandFactory(ILogger<SqliteDbCommandFactory>? logger = null) : IDbCommandFactory
     {
-        logger?.LogDebug("Creating a command.");
-        var command = connection.CreateCommand();
-
-        if (text is not null)
+        public DbCommand Create(DbConnection connection, string? text = null, IEnumerable<DbParameter>? parameters = null)
         {
-            logger?.LogDebug("Setting the command text.");
-            command.CommandText = text;
-        }
+            logger?.LogDebug("Creating a command.");
+            var command = connection.CreateCommand();
 
-        if (parameters is not null)
-        {
-            logger?.LogDebug("Enumerating the parameters.");
-            foreach (var parameter in parameters)
+            if (text is not null)
             {
-                logger?.LogDebug("Adding the parameter with the name '{ParameterName}' and the value '{ParameterValue}'.", parameter.ParameterName, parameter.Value);
-                command.Parameters.Add(parameter);
+                logger?.LogDebug("Setting the command text.");
+                command.CommandText = text;
             }
-        }
 
-        return command;
+            if (parameters is not null)
+            {
+                logger?.LogDebug("Enumerating the parameters.");
+                foreach (var parameter in parameters)
+                {
+                    logger?.LogDebug("Adding the parameter with the name '{ParameterName}' and the value '{ParameterValue}'.", parameter.ParameterName, parameter.Value);
+                    command.Parameters.Add(parameter);
+                }
+            }
+
+            return command;
+        }
     }
 }

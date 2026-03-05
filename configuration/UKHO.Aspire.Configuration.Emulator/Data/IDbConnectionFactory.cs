@@ -1,8 +1,9 @@
 using System.Data.Common;
 
-namespace UKHO.Aspire.Configuration.Emulator.Data;
-
-public interface IDbConnectionFactory
+namespace UKHO.Aspire.Configuration.Emulator.Data
 {
-    public DbConnection Create();
+    public interface IDbConnectionFactory
+    {
+        public DbConnection Create();
+    }
 }

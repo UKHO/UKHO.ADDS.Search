@@ -8,7 +8,6 @@
   </PropertyGroup>
 
   <ItemGroup>
-    <PackageReference Include="Aspire.Elastic.Clients.Elasticsearch" Version="13.1.0" />
     <PackageReference Include="Radzen.Blazor" Version="8.7.4" />
   </ItemGroup>
 

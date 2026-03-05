@@ -1,7 +1,7 @@
 ﻿using System.Diagnostics;
 using Microsoft.Extensions.Diagnostics.HealthChecks;
 
-namespace UKHO.Search.AppHost.Extensions
+namespace AppHost.Extensions
 {
     internal static class ResourceBuilderExtensions
     {

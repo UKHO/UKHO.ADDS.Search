@@ -1,19 +1,20 @@
 using System.Text.Json;
 
-namespace UKHO.Search.Ingestion.Serialization;
-
-public static class IngestionJsonSerializerOptions
+namespace UKHO.Search.Ingestion.Requests.Serialization
 {
-    public static JsonSerializerOptions Create()
+    public static class IngestionJsonSerializerOptions
     {
-        var options = new JsonSerializerOptions(JsonSerializerDefaults.Web)
+        public static JsonSerializerOptions Create()
         {
-            DefaultIgnoreCondition = System.Text.Json.Serialization.JsonIgnoreCondition.WhenWritingNull,
-        };
+            var options = new JsonSerializerOptions(JsonSerializerDefaults.Web)
+            {
+                DefaultIgnoreCondition = System.Text.Json.Serialization.JsonIgnoreCondition.WhenWritingNull,
+            };
 
-        options.Converters.Add(new IngestionPropertyTypeJsonConverter());
-        options.Converters.Add(new IngestionPropertyJsonConverter());
+            options.Converters.Add(new IngestionPropertyTypeJsonConverter());
+            options.Converters.Add(new IngestionPropertyJsonConverter());
 
-        return options;
+            return options;
+        }
     }
 }
