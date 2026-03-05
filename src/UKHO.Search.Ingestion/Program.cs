@@ -1,6 +1,8 @@
 using UKHO.Aspire.Configuration;
 using UKHO.Search.Configuration;
 using UKHO.Search.Ingestion.Components;
+using Radzen;
+using Radzen.Blazor;
 
 namespace UKHO.Search.Ingestion;
 
@@ -16,6 +18,10 @@ public class Program
         // Add services to the container.
         builder.Services.AddRazorComponents()
             .AddInteractiveServerComponents();
+
+        builder.Services.AddRadzenComponents();
+        builder.Services.AddRadzenQueryStringThemeService();
+        builder.Services.AddLocalization();
 
         var app = builder.Build();
 

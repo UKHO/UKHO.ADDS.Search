@@ -8,6 +8,10 @@
   </PropertyGroup>
 
   <ItemGroup>
+    <PackageReference Include="Radzen.Blazor" Version="8.7.4" />
+  </ItemGroup>
+
+  <ItemGroup>
     <ProjectReference Include="..\..\configuration\UKHO.Aspire.Configuration\UKHO.Aspire.Configuration.csproj" />
     <ProjectReference Include="..\UKHO.Search.Services\UKHO.Search.Services.csproj" />
     <ProjectReference Include="..\UKHO.Search\UKHO.Search.csproj" />

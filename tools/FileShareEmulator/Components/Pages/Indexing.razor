@@ -5,39 +5,39 @@
 
 <PageTitle>Indexing</PageTitle>
 
-<h1>Indexing</h1>
+<RadzenCard Style="max-width: 900px;">
+    <h1 style="margin: 0;">Indexing</h1>
 
-@if (_status is null)
-{
-    <p><em>Loading...</em></p>
-}
-else
-{
-    <p>Total batches: @_status.TotalBatches.ToString("N0")</p>
-    <p>Indexed @_status.IndexedBatches.ToString("N0") batches of @_status.TotalBatches.ToString("N0")</p>
-}
+    @if (_status is null)
+    {
+        <RadzenText TextStyle="TextStyle.Body1" Style="margin-top: 1rem;">Loading...</RadzenText>
+    }
+    else
+    {
+        <RadzenStack Orientation="Orientation.Vertical" Gap="0.25rem" Style="margin-top: 1rem;">
+            <RadzenText TextStyle="TextStyle.Body1">Total Batches: @_status.TotalBatches.ToString("N0")</RadzenText>
+            <RadzenText TextStyle="TextStyle.Body1">Indexed @_status.IndexedBatches.ToString("N0") Batches Of @_status.TotalBatches.ToString("N0")</RadzenText>
+        </RadzenStack>
+    }
 
-<div class="row g-2 align-items-end">
-    <div class="col-auto">
-        <button class="btn btn-primary" disabled="@(_isIndexing)">Index All</button>
-    </div>
+    <RadzenStack Orientation="Orientation.Horizontal" AlignItems="AlignItems.End" Gap="1rem" Style="margin-top: 1rem; flex-wrap: wrap;">
+        <RadzenButton Text="Index All" ButtonStyle="ButtonStyle.Primary" Disabled="@_isIndexing" />
 
-    <div class="col-auto">
-        <label class="form-label" for="indexCount">Count</label>
-        <input id="indexCount" class="form-control" style="width: 8rem" @bind="CountText" @bind:event="oninput" />
-    </div>
+        <RadzenStack Orientation="Orientation.Vertical" Gap="0.25rem">
+            <RadzenLabel Text="Count" Component="indexCount" />
+            <RadzenNumeric id="indexCount" TValue="int" Style="width: 8rem" Min="1" Value="@(_count ?? 0)" Change="@(args => SetCount(args))" />
+        </RadzenStack>
 
-    <div class="col-auto">
-        <button class="btn btn-secondary" disabled="@(!_canIndex || _isIndexing)">Index</button>
-    </div>
-</div>
+        <RadzenButton Text="Index" ButtonStyle="ButtonStyle.Secondary" Disabled="@(!_canIndex || _isIndexing)" />
+    </RadzenStack>
+</RadzenCard>
 
 @code
 {
     private StatisticsService.IndexingStatus? _status;
     private PeriodicTimer? _timer;
 
-    private string _countText = "50";
+    private int? _count = 50;
     private bool _canIndex;
     private bool _isIndexing;
 
@@ -67,19 +67,21 @@ else
         }
     }
 
-    private string CountText
+    private int? Count
     {
-        get => _countText;
-        set
-        {
-            _countText = value;
-            ValidateCount();
-        }
+        get => _count;
+        set => SetCount(value);
+    }
+
+    private void SetCount(int? value)
+    {
+        _count = value;
+        ValidateCount();
     }
 
     private void ValidateCount()
     {
-        _canIndex = int.TryParse(_countText, out var count) && count > 0;
+        _canIndex = _count is > 0;
     }
 
     public ValueTask DisposeAsync()

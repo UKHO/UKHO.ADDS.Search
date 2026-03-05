@@ -1,23 +1,23 @@
 ﻿@inherits LayoutComponentBase
 
-<div class="page">
-    <div class="sidebar">
+
+<RadzenComponents />
+
+<RadzenLayout>
+    <RadzenHeader>
+        <RadzenStack Orientation="Orientation.Horizontal" AlignItems="AlignItems.Center" JustifyContent="JustifyContent.SpaceBetween" Style="width: 100%; padding: 0.75rem 1rem;">
+            <RadzenText TextStyle="TextStyle.H6">UKHO Search Ingestion</RadzenText>
+            <RadzenLink Path="https://learn.microsoft.com/aspnet/core/" Text="About" Target="_blank" />
+        </RadzenStack>
+    </RadzenHeader>
+
+    <RadzenSidebar Style="width: 260px;">
         <NavMenu />
-    </div>
+    </RadzenSidebar>
 
-    <main>
-        <div class="top-row px-4">
-            <a href="https://learn.microsoft.com/aspnet/core/" target="_blank">About</a>
-        </div>
-
-        <article class="content px-4">
+    <RadzenBody>
+        <RadzenContentContainer Style="padding: 1rem;">
             @Body
-        </article>
-    </main>
-</div>
-
-<div id="blazor-error-ui" data-nosnippet>
-    An unhandled error has occurred.
-    <a href="." class="reload">Reload</a>
-    <span class="dismiss">🗙</span>
-</div>
+        </RadzenContentContainer>
+    </RadzenBody>
+</RadzenLayout>

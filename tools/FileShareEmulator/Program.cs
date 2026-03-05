@@ -1,5 +1,7 @@
 using FileShareEmulator.Components;
 using FileShareEmulator.Services;
+using Radzen;
+using Radzen.Blazor;
 using UKHO.Search.Configuration;
 
 namespace FileShareEmulator;
@@ -19,6 +21,10 @@ public class Program
         builder.AddAzureBlobServiceClient(connectionName: ServiceNames.Blobs);
 
         builder.Services.AddScoped<StatisticsService>();
+
+        builder.Services.AddRadzenComponents();
+        builder.Services.AddRadzenQueryStringThemeService();
+        builder.Services.AddLocalization();
 
         var app = builder.Build();
 

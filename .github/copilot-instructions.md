@@ -25,6 +25,9 @@ Be concise but complete. Prefer current research (Microsoft Learn) for Microsoft
 ## Testing Guidelines
 - Prefer Playwright end-to-end tests over bUnit/component tests for Blazor UI verification in this repository.
 
+## .csproj File Editing Guidelines
+- When editing `.csproj` files, keep `PackageReference` entries in `ItemGroup` blocks that contain only `PackageReference` entries (do not mix `ProjectReference` and `PackageReference` in the same `ItemGroup`).
+
 ## Detailed Topic Guides
 Refer to specialized instruction files for full detail:
 - Architecture: `.github/instructions/architecture.instructions.md`
