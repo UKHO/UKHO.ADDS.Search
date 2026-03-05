@@ -7,6 +7,6 @@
 	</PropertyGroup>
 
 	<ItemGroup>
-		 <InternalsVisibleTo Include="UKHO.Search.Tests"  />
+		 <InternalsVisibleTo Include="UKHO.Search.Tests" />
 	</ItemGroup>
 </Project>

@@ -1,9 +1,19 @@
 <Solution>
   <Folder Name="/00 Domain/">
+    <Project Path="src/UKHO.Search.Ingestion/UKHO.Search.Ingestion.csproj" Id="c245f1bc-029a-4b84-93fc-fdf4f19c567e" />
+    <Project Path="src/UKHO.Search.Query/UKHO.Search.Query.csproj" Id="52a17483-574c-441e-b037-af616b6306b2" />
     <Project Path="src/UKHO.Search/UKHO.Search.csproj" Id="4a3ac56d-82a6-4196-9333-770d951c5178" />
   </Folder>
-  <Folder Name="/01 Services/" />
-  <Folder Name="/02 Infrastructure/" />
+  <Folder Name="/01 Services/">
+    <Project Path="src/UKHO.Search.Services.Ingestion/UKHO.Search.Services.Ingestion.csproj" Id="385d35f0-aa5a-458c-9eb7-b992c81a09b7" />
+    <Project Path="src/UKHO.Search.Services.Query/UKHO.Search.Services.Query.csproj" Id="2471e589-cf95-4e95-9373-9d689fcfb19a" />
+    <Project Path="src/UKHO.Search.Services/UKHO.Search.Services.csproj" Id="efcc5cd8-55df-459b-bd47-97094b081370" />
+  </Folder>
+  <Folder Name="/02 Infrastructure/">
+    <Project Path="src/UKHO.Search.Infrastructure.Ingestion/UKHO.Search.Infrastructure.Ingestion.csproj" Id="cdb73126-6bb7-4d74-bf3e-8bec3f75a48c" />
+    <Project Path="src/UKHO.Search.Infrastructure.Query/UKHO.Search.Infrastructure.Query.csproj" Id="38339a3b-8fbc-453c-877e-8dcfc1ce184a" />
+    <Project Path="src/UKHO.Search.Infrastructure/UKHO.Search.Infrastructure.csproj" Id="b73eb1ec-a022-4467-a0bc-b72565a7bb3e" />
+  </Folder>
   <Folder Name="/03 Hosts/">
     <Project Path="src/Hosts/IngestionServiceHost/IngestionServiceHost.csproj" />
     <Project Path="src/Hosts/QueryServiceHost/QueryServiceHost.csproj" />
@@ -29,6 +39,8 @@
   </Folder>
   <Folder Name="/@test/" />
   <Folder Name="/@test/00 Domain/">
+    <Project Path="test/UKHO.Search.Ingestion.Tests/UKHO.Search.Ingestion.Tests.csproj" />
+    <Project Path="test/UKHO.Search.Query.Tests/UKHO.Search.Query.Tests.csproj" />
     <Project Path="test/UKHO.Search.Tests/UKHO.Search.Tests.csproj" Id="be8fa9d3-90f0-449f-9ad0-795a833a3b38" />
   </Folder>
 </Solution>

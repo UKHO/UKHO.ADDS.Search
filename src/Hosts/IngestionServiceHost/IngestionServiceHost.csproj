@@ -14,7 +14,7 @@
 
   <ItemGroup>
     <ProjectReference Include="..\..\..\configuration\UKHO.Aspire.Configuration\UKHO.Aspire.Configuration.csproj" />
-    <ProjectReference Include="..\..\UKHO.Search\UKHO.Search.csproj" />
+    <ProjectReference Include="..\..\UKHO.Search.Infrastructure.Ingestion\UKHO.Search.Infrastructure.Ingestion.csproj" />
     <ProjectReference Include="..\UKHO.Search.ServiceDefaults\UKHO.Search.ServiceDefaults.csproj" />
   </ItemGroup>
 
