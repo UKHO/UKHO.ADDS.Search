@@ -2,6 +2,7 @@
 
 @using FileShareEmulator.Services
 @inject StatisticsService StatisticsService
+@inject IndexService IndexService
 
 <PageTitle>Indexing</PageTitle>
 
@@ -21,14 +22,16 @@
     }
 
     <RadzenStack Orientation="Orientation.Horizontal" AlignItems="AlignItems.End" Gap="1rem" Style="margin-top: 1rem; flex-wrap: wrap;">
-        <RadzenButton Text="Index All" ButtonStyle="ButtonStyle.Primary" Disabled="@_isIndexing" />
+        <RadzenButton Text="Index All" ButtonStyle="ButtonStyle.Primary" Disabled="@_isIndexing" Click="@IndexAllAsync" />
 
         <RadzenStack Orientation="Orientation.Vertical" Gap="0.25rem">
             <RadzenLabel Text="Count" Component="indexCount" />
             <RadzenNumeric id="indexCount" TValue="int" Style="width: 8rem" Min="1" Value="@(_count ?? 0)" Change="@(args => SetCount(args))" />
         </RadzenStack>
 
-        <RadzenButton Text="Index" ButtonStyle="ButtonStyle.Secondary" Disabled="@(!_canIndex || _isIndexing)" />
+        <RadzenButton Text="Index" ButtonStyle="ButtonStyle.Secondary" Disabled="@(!_canIndex || _isIndexing)" Click="@IndexNextAsync" />
+
+        <RadzenButton Text="Reset All" ButtonStyle="ButtonStyle.Light" Disabled="@_isIndexing" Click="@ResetAllAsync" />
     </RadzenStack>
 </RadzenCard>
 
@@ -82,6 +85,51 @@
     private void ValidateCount()
     {
         _canIndex = _count is > 0;
+    }
+
+    private async Task IndexAllAsync()
+    {
+        if (_isIndexing) return;
+
+        _isIndexing = true;
+        try
+        {
+            _ = await IndexService.IndexAllPendingAsync().ConfigureAwait(false);
+        }
+        finally
+        {
+            _isIndexing = false;
+        }
+    }
+
+    private async Task IndexNextAsync()
+    {
+        if (_isIndexing || !_canIndex || _count is null) return;
+
+        _isIndexing = true;
+        try
+        {
+            _ = await IndexService.IndexNextPendingAsync(_count.Value).ConfigureAwait(false);
+        }
+        finally
+        {
+            _isIndexing = false;
+        }
+    }
+
+    private async Task ResetAllAsync()
+    {
+        if (_isIndexing) return;
+
+        _isIndexing = true;
+        try
+        {
+            _ = await IndexService.ResetAllToPendingAsync().ConfigureAwait(false);
+        }
+        finally
+        {
+            _isIndexing = false;
+        }
     }
 
     public ValueTask DisposeAsync()

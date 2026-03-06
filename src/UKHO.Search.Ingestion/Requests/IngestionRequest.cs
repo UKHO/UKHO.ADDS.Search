@@ -8,18 +8,10 @@ namespace UKHO.Search.Ingestion.Requests
         [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
         public IReadOnlyList<IngestionProperty> Properties { get; init; } = Array.Empty<IngestionProperty>();
 
-        public Uri DataCallback { get; init; } = new("https://example.invalid");
-
         [JsonConstructor]
-        public IngestionRequest(IReadOnlyList<IngestionProperty> properties, Uri dataCallback)
+        public IngestionRequest(IReadOnlyList<IngestionProperty> properties)
         {
             Properties = properties ?? throw new JsonException("IngestionRequest.Properties cannot be null.");
-            DataCallback = dataCallback ?? throw new JsonException("IngestionRequest.DataCallback is required.");
-
-            if (!DataCallback.IsAbsoluteUri)
-            {
-                throw new JsonException("IngestionRequest.DataCallback must be an absolute URI.");
-            }
 
             var duplicates = Properties
                 .Where(p => !string.IsNullOrWhiteSpace(p.Name))

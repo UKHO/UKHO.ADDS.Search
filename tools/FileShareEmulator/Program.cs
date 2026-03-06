@@ -22,8 +22,10 @@ namespace FileShareEmulator
 
             builder.AddSqlServerClient(StorageNames.FileShareEmulatorDatabase);
             builder.AddAzureBlobServiceClient(connectionName: ServiceNames.Blobs);
+            builder.AddAzureQueueServiceClient(connectionName: ServiceNames.Queues);
 
             builder.Services.AddScoped<StatisticsService>();
+            builder.Services.AddScoped<IndexService>();
 
             builder.Services.AddRadzenComponents();
             builder.Services.AddRadzenQueryStringThemeService();

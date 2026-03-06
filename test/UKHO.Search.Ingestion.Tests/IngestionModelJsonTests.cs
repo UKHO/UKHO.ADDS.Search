@@ -39,7 +39,6 @@ namespace UKHO.Search.Ingestion.Tests
         {
             var request = new IngestionRequest
             {
-                DataCallback = new Uri("https://example.test/callback/123"),
                 Properties =
                 [
                     new IngestionProperty { Name = "String", Type = IngestionPropertyType.String, Value = "hello" },
@@ -64,7 +63,6 @@ namespace UKHO.Search.Ingestion.Tests
             var hydrated = JsonSerializer.Deserialize<IngestionRequest>(json, Options);
             hydrated.ShouldNotBeNull();
 
-            hydrated!.DataCallback.ShouldBe(new Uri("https://example.test/callback/123"));
             hydrated.Properties.Count.ShouldBe(request.Properties.Count);
 
             hydrated.TryGetString("string", out var s).ShouldBeTrue();
