@@ -1,4 +1,4 @@
-<Project Sdk="Microsoft.NET.Sdk.Web">
+﻿<Project Sdk="Microsoft.NET.Sdk.Web">
 
 	<PropertyGroup>
 		<TargetFramework>net10.0</TargetFramework>
@@ -10,6 +10,8 @@
 	<ItemGroup>
 		<PackageReference Include="Aspire.Microsoft.Data.SqlClient" Version="13.1.1" />
 		<PackageReference Include="Aspire.Azure.Storage.Blobs" Version="13.1.1" />
+		<PackageReference Include="Scalar.AspNetCore" Version="2.12.20" />
+		<PackageReference Include="Microsoft.AspNetCore.OpenApi" Version="9.0.12" />
 		<PackageReference Include="Radzen.Blazor" Version="8.7.4" />
 		<PackageReference Include="Humanizer" Version="2.14.1" />
 	</ItemGroup>

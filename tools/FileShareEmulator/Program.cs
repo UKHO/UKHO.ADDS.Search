@@ -1,8 +1,9 @@
-using FileShareEmulator.Components;
 using FileShareEmulator.Api;
+using FileShareEmulator.Components;
 using FileShareEmulator.Services;
 using Radzen;
 using Radzen.Blazor;
+using Scalar.AspNetCore;
 using UKHO.Search.Configuration;
 using UKHO.Search.ServiceDefaults;
 
@@ -28,6 +29,8 @@ namespace FileShareEmulator
             builder.Services.AddRadzenQueryStringThemeService();
             builder.Services.AddLocalization();
 
+            builder.Services.AddOpenApi();
+
             var app = builder.Build();
 
             app.MapDefaultEndpoints();
@@ -40,6 +43,9 @@ namespace FileShareEmulator
                 // The default HSTS value is 30 days. You may want to change this for production scenarios, see https://aka.ms/aspnetcore-hsts.
                 app.UseHsts();
             }
+
+            app.MapOpenApi();
+            app.MapScalarApiReference(_ => _.Servers = []); // Stop OpenAPI specifying the wrong port in the generated OpenAPI doc
 
             app.UseStatusCodePagesWithReExecute("/not-found", createScopeForStatusCodePages: true);
             app.UseHttpsRedirection();

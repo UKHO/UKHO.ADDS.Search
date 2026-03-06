@@ -104,7 +104,8 @@ namespace AppHost
                         .WaitFor(sqlServer)
                         .WaitFor(storageQueue)
                         .WaitFor(storageBlob)
-                        .WaitFor(ingestionService);
+                        .WaitFor(ingestionService)
+                        .WithScalar("Emulator API");
 
                     // Configuration
                     if (builder.ExecutionContext.IsRunMode)
