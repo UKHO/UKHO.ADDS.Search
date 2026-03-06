@@ -14,13 +14,8 @@ namespace AppHost
         {
             var builder = DistributedApplication.CreateBuilder(args);
 
-            var keyCloakUsernameParameter = builder.AddParameter("keycloak-username");
-            var keyCloakPasswordParameter = builder.AddParameter("keycloak-password");
-
             var environmentParameter = builder.AddParameter("environment");
             var environment = await environmentParameter.Resource.GetValueAsync(CancellationToken.None) ?? string.Empty;
-
-            var emulatorPersistentParameter = builder.AddParameter("emulator-persistent");
 
             var azureStoragePathParameter = builder.AddParameter("azure-storage");
             var azureStoragePathValue = await azureStoragePathParameter.Resource.GetValueAsync(CancellationToken.None);
@@ -58,6 +53,9 @@ namespace AppHost
                     var addsEnvironment = builder.AddPublishOnlyParameter("addsEnvironment");
 
                     var elasticPasswordParameter = builder.AddParameter("elastic-password");
+                    var keyCloakUsernameParameter = builder.AddParameter("keycloak-username");
+                    var keyCloakPasswordParameter = builder.AddParameter("keycloak-password");
+
 
                     var keycloak = builder.AddKeycloak(ServiceNames.KeyCloak, 8080, keyCloakUsernameParameter,
                             keyCloakPasswordParameter)
