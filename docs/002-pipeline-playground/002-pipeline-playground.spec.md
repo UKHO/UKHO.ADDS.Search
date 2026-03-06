@@ -1,5 +1,5 @@
 # Pipeline Playground Specification (Key-Ordered, Channel-Based)  
-**Target runtime:** .NET 9 (or latest available), C# latest  
+**Target runtime:** .NET 10 (or latest available), C# latest  
 **Primary building block:** `System.Threading.Channels`  
 **Goal:** Provide a *node-graph* playground that developers can rapidly assemble and evolve into a production ingestion pipeline (e.g., Elasticsearch indexing), with **keyed ordering**, **backpressure**, **bounded concurrency**, and **well-defined error propagation**.
 
