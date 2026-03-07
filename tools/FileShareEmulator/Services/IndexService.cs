@@ -2,6 +2,7 @@ using System.Data;
 using System.Text.Json;
 using Azure.Storage.Queues;
 using Microsoft.Data.SqlClient;
+using Microsoft.Extensions.Logging;
 using UKHO.Search.Ingestion.Requests;
 
 namespace FileShareEmulator.Services
@@ -12,12 +13,20 @@ namespace FileShareEmulator.Services
         private readonly JsonSerializerOptions _jsonOptions;
         private readonly QueueServiceClient _queueServiceClient;
 
+        private readonly BatchSecurityTokenService _batchSecurityTokenService;
+        private readonly ILogger<IndexService> _logger;
+
         private readonly SqlConnection _sqlConnection;
 
-        public IndexService(SqlConnection sqlConnection, QueueServiceClient queueServiceClient)
+        public IndexService(SqlConnection sqlConnection,
+            QueueServiceClient queueServiceClient,
+            BatchSecurityTokenService batchSecurityTokenService,
+            ILogger<IndexService> logger)
         {
             _sqlConnection = sqlConnection;
             _queueServiceClient = queueServiceClient;
+            _batchSecurityTokenService = batchSecurityTokenService;
+            _logger = logger;
 
             _jsonOptions = new JsonSerializerOptions(JsonSerializerDefaults.Web);
         }
@@ -77,6 +86,8 @@ namespace FileShareEmulator.Services
         private async Task<IngestionRequest> CreateRequestAsync(Guid batchId, CancellationToken cancellationToken)
         {
             var attributes = await GetBatchAttributesAsync(batchId, cancellationToken).ConfigureAwait(false);
+            var securityTokens = await _batchSecurityTokenService.GetSecurityTokensAsync(batchId, cancellationToken)
+                .ConfigureAwait(false);
 
             var properties = new List<IngestionProperty>(attributes.Count + 1);
 
@@ -96,8 +107,12 @@ namespace FileShareEmulator.Services
             {
                 Id = batchId.ToString("D"),
                 Properties = properties,
-                SecurityTokens = ["fileshare-emulator"]
+                SecurityTokens = securityTokens
             };
+
+            _logger.LogDebug("Created ingestion request for batch {BatchId} with {SecurityTokenCount} security tokens.",
+                batchId,
+                securityTokens.Length);
 
             return new IngestionRequest
             {

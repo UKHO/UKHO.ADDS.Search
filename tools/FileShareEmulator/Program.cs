@@ -24,6 +24,7 @@ namespace FileShareEmulator
             builder.AddAzureQueueServiceClient(ServiceNames.Queues);
 
             builder.Services.AddScoped<StatisticsService>();
+            builder.Services.AddScoped<BatchSecurityTokenService>();
             builder.Services.AddScoped<IndexService>();
 
             builder.Services.AddRadzenComponents();
