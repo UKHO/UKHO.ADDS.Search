@@ -18,4 +18,9 @@
     <ProjectReference Include="..\UKHO.Search.Services.Ingestion\UKHO.Search.Services.Ingestion.csproj" />
   </ItemGroup>
 
+  <ItemGroup>
+    <Folder Include="Pipeline\Documents\" />
+    <Folder Include="Pipeline\Operations\" />
+  </ItemGroup>
+
 </Project>

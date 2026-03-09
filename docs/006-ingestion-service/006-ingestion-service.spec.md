@@ -113,11 +113,33 @@ A concrete graph assembled from **existing standard nodes** (`UKHO.Search.Pipeli
 - An ingestion-specific Elasticsearch indexing node implemented on top of `INode` / `NodeBase` (see §6.6)
 - `DeadLetterSinkNode<T>` or an ingestion-specific dead-letter sink implemented on top of `SinkNodeBase` (see §6.7)
 
+#### v0.01 scope note (provider-specific)
+
+In v0.01, the ingestion pipeline is wired with the **File Share ingestion provider** (`UKHO.Search.Ingestion.Providers.FileShare.FileShareIngestionDataProvider`). The graph is still assembled in a way that supports registering additional `IIngestionDataProviderFactory` instances later; in this slice only the File Share provider is expected to be registered.
+
 ### 3.4 Infrastructure integrations (existing + to be extended)
 
 - Elasticsearch client: `Elastic.Clients.Elasticsearch.ElasticsearchClient` (already used in `UKHO.Search.Infrastructure.Ingestion`)
 - Provider discovery: `UKHO.Search.Services.Ingestion.Providers.IIngestionProviderService`
 - Provider factories: `UKHO.Search.Ingestion.Providers.IIngestionDataProviderFactory` + `CreateProvider()`
+
+### 3.5 Code ownership / project boundaries (v0.01)
+
+To keep responsibilities clear:
+
+- The File Share provider project (`src/UKHO.Search.Ingestion.Providers.FileShare`) owns the **provider-specific ingestion processing graph**, including the parts that are expected to evolve with File Share domain knowledge:
+  - reading input messages from the File Share queue (one queue per provider factory)
+  - deserializing to `IngestionRequest`
+  - mapping `AddItemRequest` / `UpdateItemRequest` into canonical indexing payloads (structural canonical document in v0.01)
+  - any file-share-specific parsing/extraction/enrichment nodes
+  - a provider-level entrypoint method that takes a queue input and starts the ingestion graph (invoked by the ingestion host)
+
+- `src/UKHO.Search.Infrastructure.Ingestion` owns **shared infrastructure adapters and primitives** (source-agnostic) such as:
+  - Azure queue client abstractions (`IQueueClient`, `IQueueClientFactory`) and message ack/visibility/poison mechanics
+  - Elasticsearch bulk client adapter(s)
+  - dead-letter persistence (Blob) and diagnostics sinks
+
+This keeps File Share-specific ingestion behavior and pipeline composition with the provider, while keeping external system adapters and reusable plumbing in Infrastructure.
 
 ---
 
@@ -243,27 +265,30 @@ Handling:
 
 ## 6. Node Responsibilities (Ingestion-Specific)
 
-### 6.1 `IngestionSourceNode`
+### 6.1 File Share provider ingestion graph (provider-owned)
 
-Purpose: produce `Envelope<IngestionRequest>` from an ingestion provider.
+Purpose: the File Share provider owns the ingestion graph that reads from the File Share queue and produces canonical index operations.
 
 Requirements:
 
 - Transport: **Azure Storage Queues**.
 - The service registers one or more `IIngestionDataProviderFactory` instances.
 - When the service starts, **a queue must be monitored for each factory present**.
-- The source listens to the queue identified by `IIngestionDataProviderFactory.QueueName`.
-- The ingestion host provides the Azure queue client via `AddAzureQueueServiceClient(...)`.
-- When a message is received from a factory queue:
-  - call `factory.CreateProvider()` to obtain an `IIngestionDataProvider` instance,
-  - use the provider to deserialize/interpret the queue message into an `IngestionRequest`,
-  - then emit `Envelope<IngestionRequest>` into the pipeline.
-- Must support backpressure: `await output.WriteAsync(...)`.
-- Must assign:
-  - `MessageId`
-  - `TimestampUtc`
-  - `CorrelationId` if present from the source message
-  - `Key` derived from request payload `Id`
+- For File Share (v0.01), the provider owns the graph that:
+  - listens to `IIngestionDataProviderFactory.QueueName`
+  - reads queue messages and deserializes them to `IngestionRequest`
+  - maps `AddItemRequest` / `UpdateItemRequest` to a structural canonical document and emits the resulting `IndexOperation` path
+
+Provider entrypoint:
+
+- The File Share provider must expose a method that takes a queue input (queue client / queue reader abstraction) and starts the ingestion graph.
+- The ingestion host calls this provider entrypoint from its hosted service to start/stop ingestion.
+
+Implementation notes (current codebase):
+
+- The provider-owned entrypoint is `UKHO.Search.Ingestion.Providers.FileShare.Pipeline.FileShareIngestionGraph.BuildAzureQueueBacked(...)`.
+- Queue-backed ingestion is started via a single Infrastructure entrypoint `UKHO.Search.Infrastructure.Ingestion.Pipeline.FileShareIngestionPipelineAdapter.BuildAzureQueueBacked(...)`, which supplies Infrastructure-owned node implementations/adapters (queue source, bulk indexing, dead-letter sinks, diagnostics, ack) and invokes the provider-owned entrypoint.
+- The ingestion host’s `IngestionPipelineHostedService` uses this adapter; there should be no other queue-backed graph builder entrypoints.
 
 Error handling:
 
@@ -499,6 +524,10 @@ Reliability:
 
 - The sink must not throw for a single malformed message body; it must attempt to persist what it can and continue.
 - If the sink cannot persist to Blob Storage due to configuration or dependency failures, this is treated as a **pipeline-scoped fatal error** (fail-fast by default).
+
+Operational configuration (optional):
+
+- `ingestion:deadletterFatalIfCannotPersist` (bool, default: `true`): when `false`, the dead-letter sink logs and continues if Blob persistence fails (message remains un-acked so it can be retried).
 
 ---
 

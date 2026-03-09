@@ -1,0 +1,51 @@
+using System.Text.Json;
+using Shouldly;
+using UKHO.Search.Ingestion.Pipeline.Operations;
+using UKHO.Search.Ingestion.Providers.FileShare.Pipeline.Documents;
+using UKHO.Search.Ingestion.Providers.FileShare.Pipeline.Nodes;
+using UKHO.Search.Ingestion.Requests;
+using UKHO.Search.Pipelines.Channels;
+using UKHO.Search.Pipelines.Messaging;
+using Xunit;
+
+namespace UKHO.Search.Ingestion.Tests.Pipeline
+{
+    public sealed class FileShareProviderDispatchBuildPathTests
+    {
+        [Fact]
+        public async Task AddItem_produces_canonical_document_via_provider_dispatch_and_build_path()
+        {
+            var input = BoundedChannelFactory.Create<Envelope<IngestionRequest>>(1, true, true);
+            var output = BoundedChannelFactory.Create<Envelope<IndexOperation>>(1, true, true);
+            var deadLetter = BoundedChannelFactory.Create<Envelope<IngestionRequest>>(1, true, true);
+
+            var canonicalBuilder = new CanonicalDocumentBuilder("unknown");
+
+            var node = new IngestionRequestDispatchNode("dispatch", input.Reader, output.Writer, deadLetter.Writer, canonicalBuilder);
+
+            await node.StartAsync(CancellationToken.None);
+
+            var add = new AddItemRequest("doc-1", Array.Empty<IngestionProperty>(), new[] { "t1" });
+            var request = new IngestionRequest(IngestionRequestType.AddItem, add, null, null, null);
+
+            await input.Writer.WriteAsync(new Envelope<IngestionRequest>("doc-1", request));
+            input.Writer.TryComplete();
+
+            await node.Completion.WaitAsync(TimeSpan.FromSeconds(2));
+
+            output.Reader.TryRead(out var envelope)
+                  .ShouldBeTrue();
+            deadLetter.Reader.TryRead(out var _)
+                      .ShouldBeFalse();
+
+            var upsert = envelope.Payload.ShouldBeOfType<UpsertOperation>();
+            upsert.DocumentId.ShouldBe("doc-1");
+            upsert.Document.DocumentId.ShouldBe("doc-1");
+            upsert.Document.DocumentType.ShouldBe("unknown");
+
+            var roundTripped = upsert.Document.Source["ingestionRequest"]!.Deserialize<IngestionRequest>();
+            roundTripped.ShouldNotBeNull();
+            roundTripped!.RequestType.ShouldBe(IngestionRequestType.AddItem);
+        }
+    }
+}

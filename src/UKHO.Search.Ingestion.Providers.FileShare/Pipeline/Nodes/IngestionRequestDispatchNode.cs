@@ -1,0 +1,135 @@
+using System.Threading.Channels;
+using Microsoft.Extensions.Logging;
+using UKHO.Search.Ingestion.Pipeline.Operations;
+using UKHO.Search.Ingestion.Providers.FileShare.Pipeline.Documents;
+using UKHO.Search.Ingestion.Requests;
+using UKHO.Search.Pipelines.Errors;
+using UKHO.Search.Pipelines.Messaging;
+using UKHO.Search.Pipelines.Nodes;
+using UKHO.Search.Pipelines.Supervision;
+
+namespace UKHO.Search.Ingestion.Providers.FileShare.Pipeline.Nodes
+{
+    public sealed class IngestionRequestDispatchNode : NodeBase<Envelope<IngestionRequest>, Envelope<IndexOperation>>
+    {
+        private readonly CanonicalDocumentBuilder canonicalBuilder;
+        private readonly ChannelWriter<Envelope<IngestionRequest>> deadLetterOutput;
+        private readonly ILogger? logger;
+
+        public IngestionRequestDispatchNode(string name, ChannelReader<Envelope<IngestionRequest>> input, ChannelWriter<Envelope<IndexOperation>> output, ChannelWriter<Envelope<IngestionRequest>> deadLetterOutput, CanonicalDocumentBuilder canonicalBuilder, ILogger? logger = null, IPipelineFatalErrorReporter? fatalErrorReporter = null) : base(name, input, output, logger, fatalErrorReporter)
+        {
+            this.deadLetterOutput = deadLetterOutput;
+            this.canonicalBuilder = canonicalBuilder;
+            this.logger = logger;
+        }
+
+        protected override async ValueTask HandleItemAsync(Envelope<IngestionRequest> item, CancellationToken cancellationToken)
+        {
+            item.Context.AddBreadcrumb(Name);
+
+            if (item.Status != MessageStatus.Ok)
+            {
+                await deadLetterOutput.WriteAsync(item, cancellationToken)
+                                      .ConfigureAwait(false);
+                Metrics.RecordOut(item);
+                return;
+            }
+
+            IndexOperation operation;
+
+            try
+            {
+                operation = Dispatch(item);
+            }
+            catch (Exception ex)
+            {
+                item.MarkFailed(new PipelineError
+                {
+                    Category = PipelineErrorCategory.Transform,
+                    Code = "DISPATCH_ERROR",
+                    Message = "Failed to dispatch ingestion request to an index operation.",
+                    ExceptionType = ex.GetType()
+                                      .FullName,
+                    ExceptionMessage = ex.Message,
+                    StackTrace = ex.StackTrace,
+                    IsTransient = false,
+                    OccurredAtUtc = DateTimeOffset.UtcNow,
+                    NodeName = Name,
+                    Details = new Dictionary<string, string>()
+                });
+
+                logger?.LogWarning(ex, "Dispatch failed. NodeName={NodeName} Key={Key} MessageId={MessageId} Attempt={Attempt}", Name, item.Key, item.MessageId, item.Attempt);
+
+                await deadLetterOutput.WriteAsync(item, cancellationToken)
+                                      .ConfigureAwait(false);
+                Metrics.RecordOut(item);
+                return;
+            }
+
+            var outEnvelope = item.MapPayload(operation);
+
+            await WriteAsync(outEnvelope, cancellationToken)
+                .ConfigureAwait(false);
+        }
+
+        protected override void CompleteOutputs(Exception? error = null)
+        {
+            base.CompleteOutputs(error);
+            deadLetterOutput.TryComplete(error);
+        }
+
+        private IndexOperation Dispatch(Envelope<IngestionRequest> item)
+        {
+            var request = item.Payload;
+            var documentId = item.Key;
+
+            switch (request.RequestType)
+            {
+                case IngestionRequestType.AddItem:
+                {
+                    if (request.AddItem is null)
+                    {
+                        throw new InvalidOperationException("AddItem payload missing.");
+                    }
+
+                    var doc = canonicalBuilder.BuildForUpsert(documentId, request);
+                    return new UpsertOperation(documentId, doc);
+                }
+
+                case IngestionRequestType.UpdateItem:
+                {
+                    if (request.UpdateItem is null)
+                    {
+                        throw new InvalidOperationException("UpdateItem payload missing.");
+                    }
+
+                    var doc = canonicalBuilder.BuildForUpsert(documentId, request);
+                    return new UpsertOperation(documentId, doc);
+                }
+
+                case IngestionRequestType.DeleteItem:
+                {
+                    if (request.DeleteItem is null)
+                    {
+                        throw new InvalidOperationException("DeleteItem payload missing.");
+                    }
+
+                    return new DeleteOperation(documentId);
+                }
+
+                case IngestionRequestType.UpdateAcl:
+                {
+                    if (request.UpdateAcl is null)
+                    {
+                        throw new InvalidOperationException("UpdateAcl payload missing.");
+                    }
+
+                    return new AclUpdateOperation(documentId, request.UpdateAcl.SecurityTokens);
+                }
+
+                default:
+                    throw new InvalidOperationException($"Unsupported request type '{request.RequestType}'.");
+            }
+        }
+    }
+}

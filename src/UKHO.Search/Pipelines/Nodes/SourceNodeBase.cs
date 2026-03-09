@@ -79,8 +79,8 @@ namespace UKHO.Search.Pipelines.Nodes
             catch (Exception ex)
             {
                 logger?.LogError(ex, "Node '{NodeName}' failed.", Name);
-                output.TryComplete(ex);
                 fatalErrorReporter?.ReportFatal(Name, ex);
+                output.TryComplete(ex);
                 throw;
             }
             finally

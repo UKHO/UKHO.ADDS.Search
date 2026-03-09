@@ -1,5 +1,4 @@
 using System.Text.Json;
-using UKHO.Search.Ingestion.Providers;
 using UKHO.Search.Ingestion.Requests;
 using UKHO.Search.Ingestion.Requests.Serialization;
 

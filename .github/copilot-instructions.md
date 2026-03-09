@@ -34,6 +34,8 @@ Rules:
 - Services projects must not reference Infrastructure or Host projects.
 - Infrastructure projects must not reference Host projects.
 - Only Host projects contain UI/endpoints and startup/DI wiring. Do not place domain logic or infrastructure implementations in hosts.
+- For ingestion, keep queue/client wiring in `UKHO.Search.Infrastructure.Ingestion`, but place file-share-specific pipeline nodes (parsing/enrichment of file-share data) in `UKHO.Search.Ingestion.Providers.FileShare` (provider project).
+- Prefer a single, obvious public entrypoint for queue-backed ingestion; avoid multiple builder APIs. Document this in the spec and keep code aligned (hosted service should start ingestion via the adapter/provider entrypoint path).
 
 ## MCP Tool Selection
 - Azure DevOps intent: use Azure DevOps tools.

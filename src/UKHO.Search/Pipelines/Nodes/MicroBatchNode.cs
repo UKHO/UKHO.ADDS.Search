@@ -108,6 +108,7 @@ namespace UKHO.Search.Pipelines.Nodes
 
                     if (remaining <= TimeSpan.Zero)
                     {
+                        DrainAvailable();
                         await FlushAsync(GetFlushToken(cancellationToken))
                             .ConfigureAwait(false);
                         continue;
@@ -121,6 +122,7 @@ namespace UKHO.Search.Pipelines.Nodes
 
                     if (completed == waitForDelay)
                     {
+                        DrainAvailable();
                         await FlushAsync(GetFlushToken(cancellationToken))
                             .ConfigureAwait(false);
                         continue;

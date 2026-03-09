@@ -1,5 +1,3 @@
-using UKHO.Search.Ingestion.Providers;
-
 namespace UKHO.Search.Ingestion.Providers.FileShare
 {
     public sealed class FileShareIngestionDataProviderFactory : IIngestionDataProviderFactory

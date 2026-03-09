@@ -1,0 +1,118 @@
+using System.Text.Json;
+using Shouldly;
+using UKHO.Search.Ingestion.Pipeline.Operations;
+using UKHO.Search.Ingestion.Providers.FileShare.Pipeline.Documents;
+using UKHO.Search.Ingestion.Providers.FileShare.Pipeline.Nodes;
+using UKHO.Search.Ingestion.Requests;
+using UKHO.Search.Pipelines.Channels;
+using UKHO.Search.Pipelines.Errors;
+using UKHO.Search.Pipelines.Messaging;
+using Xunit;
+
+namespace UKHO.Search.Ingestion.Tests.Pipeline
+{
+    public sealed class IngestionRequestDispatchNodeTests
+    {
+        [Fact]
+        public async Task AddItem_is_dispatched_to_upsert_with_canonical_document()
+        {
+            var input = BoundedChannelFactory.Create<Envelope<IngestionRequest>>(1, true, true);
+            var output = BoundedChannelFactory.Create<Envelope<IndexOperation>>(1, true, true);
+            var deadLetter = BoundedChannelFactory.Create<Envelope<IngestionRequest>>(1, true, true);
+
+            var canonicalBuilder = new CanonicalDocumentBuilder("unknown");
+
+            var node = new IngestionRequestDispatchNode("dispatch", input.Reader, output.Writer, deadLetter.Writer, canonicalBuilder);
+
+            await node.StartAsync(CancellationToken.None);
+
+            var add = new AddItemRequest("doc-1", Array.Empty<IngestionProperty>(), new[] { "t1" });
+            var request = new IngestionRequest(IngestionRequestType.AddItem, add, null, null, null);
+
+            await input.Writer.WriteAsync(new Envelope<IngestionRequest>("doc-1", request));
+            input.Writer.TryComplete();
+
+            await node.Completion.WaitAsync(TimeSpan.FromSeconds(2));
+
+            output.Reader.TryRead(out var envelope)
+                  .ShouldBeTrue();
+
+            var upsert = envelope.Payload.ShouldBeOfType<UpsertOperation>();
+            upsert.DocumentId.ShouldBe("doc-1");
+            upsert.Document.DocumentId.ShouldBe("doc-1");
+            upsert.Document.DocumentType.ShouldBe("unknown");
+
+            upsert.Document.Source.ShouldNotBeNull();
+            upsert.Document.Source.ContainsKey("ingestionRequest")
+                  .ShouldBeTrue();
+
+            var roundTripped = upsert.Document.Source["ingestionRequest"]!.Deserialize<IngestionRequest>();
+            roundTripped.ShouldNotBeNull();
+            roundTripped!.RequestType.ShouldBe(IngestionRequestType.AddItem);
+        }
+
+        [Fact]
+        public async Task DeleteItem_is_dispatched_to_delete_operation()
+        {
+            var input = BoundedChannelFactory.Create<Envelope<IngestionRequest>>(1, true, true);
+            var output = BoundedChannelFactory.Create<Envelope<IndexOperation>>(1, true, true);
+            var deadLetter = BoundedChannelFactory.Create<Envelope<IngestionRequest>>(1, true, true);
+
+            var canonicalBuilder = new CanonicalDocumentBuilder("unknown");
+
+            var node = new IngestionRequestDispatchNode("dispatch", input.Reader, output.Writer, deadLetter.Writer, canonicalBuilder);
+
+            await node.StartAsync(CancellationToken.None);
+
+            var delete = new DeleteItemRequest("doc-1");
+            var request = new IngestionRequest(IngestionRequestType.DeleteItem, null, null, delete, null);
+
+            await input.Writer.WriteAsync(new Envelope<IngestionRequest>("doc-1", request));
+            input.Writer.TryComplete();
+
+            await node.Completion.WaitAsync(TimeSpan.FromSeconds(2));
+
+            output.Reader.TryRead(out var envelope)
+                  .ShouldBeTrue();
+            envelope.Payload.ShouldBeOfType<DeleteOperation>()
+                    .DocumentId.ShouldBe("doc-1");
+        }
+
+        [Fact]
+        public async Task Unsupported_dispatch_is_failed_and_routed_to_deadletter()
+        {
+            var input = BoundedChannelFactory.Create<Envelope<IngestionRequest>>(1, true, true);
+            var output = BoundedChannelFactory.Create<Envelope<IndexOperation>>(1, true, true);
+            var deadLetter = BoundedChannelFactory.Create<Envelope<IngestionRequest>>(1, true, true);
+
+            var canonicalBuilder = new CanonicalDocumentBuilder("unknown");
+
+            var node = new IngestionRequestDispatchNode("dispatch", input.Reader, output.Writer, deadLetter.Writer, canonicalBuilder);
+
+            await node.StartAsync(CancellationToken.None);
+
+            var invalid = new IngestionRequest
+            {
+                RequestType = IngestionRequestType.AddItem,
+                AddItem = null,
+                UpdateItem = null,
+                DeleteItem = null,
+                UpdateAcl = null
+            };
+
+            await input.Writer.WriteAsync(new Envelope<IngestionRequest>("doc-1", invalid));
+            input.Writer.TryComplete();
+
+            await node.Completion.WaitAsync(TimeSpan.FromSeconds(2));
+
+            output.Reader.TryRead(out var _)
+                  .ShouldBeFalse();
+
+            deadLetter.Reader.TryRead(out var failed)
+                      .ShouldBeTrue();
+            failed.Status.ShouldBe(MessageStatus.Failed);
+            failed.Error.ShouldNotBeNull();
+            failed.Error!.Category.ShouldBe(PipelineErrorCategory.Transform);
+        }
+    }
+}
