@@ -4,21 +4,21 @@ namespace UKHO.Search.Services.Ingestion.Providers
 {
     public sealed class IngestionProviderService : IIngestionProviderService
     {
-        private readonly IReadOnlyDictionary<string, IIngestionDataProvider> _providers;
+        private readonly IReadOnlyDictionary<string, IIngestionDataProviderFactory> _providers;
 
-        public IngestionProviderService(IEnumerable<IIngestionDataProvider> providers)
+        public IngestionProviderService(IEnumerable<IIngestionDataProviderFactory> providers)
         {
             ArgumentNullException.ThrowIfNull(providers);
 
             _providers = providers.ToDictionary(x => x.Name, StringComparer.OrdinalIgnoreCase);
         }
 
-        public IEnumerable<IIngestionDataProvider> GetAllProviders()
+        public IEnumerable<IIngestionDataProviderFactory> GetAllProviders()
         {
             return _providers.Values;
         }
 
-        public IIngestionDataProvider GetProvider(string name)
+        public IIngestionDataProviderFactory GetProvider(string name)
         {
             ArgumentException.ThrowIfNullOrWhiteSpace(name);
 

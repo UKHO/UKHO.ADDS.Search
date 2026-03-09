@@ -11,8 +11,4 @@
     <ProjectReference Include="..\UKHO.Search\UKHO.Search.csproj" />
   </ItemGroup>
 
-  <ItemGroup>
-    <Folder Include="Providers\" />
-  </ItemGroup>
-
 </Project>

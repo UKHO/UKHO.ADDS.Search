@@ -1,4 +1,5 @@
-﻿using Microsoft.Extensions.DependencyInjection;
+﻿using Microsoft.Extensions.Configuration;
+using Microsoft.Extensions.DependencyInjection;
 using UKHO.Search.Infrastructure.Ingestion.Bootstrap;
 using UKHO.Search.Infrastructure.Ingestion.Statistics;
 using UKHO.Search.Ingestion.Providers;
@@ -11,7 +12,13 @@ namespace UKHO.Search.Infrastructure.Ingestion.Injection
     {
         public static IServiceCollection AddIngestionServices(this IServiceCollection collection)
         {
-            collection.AddSingleton<IIngestionDataProvider, FileShareIngestionProvider>();
+            collection.AddSingleton<IIngestionDataProviderFactory>(sp =>
+            {
+                var configuration = sp.GetRequiredService<IConfiguration>();
+                var queueName = configuration["ingestion:filesharequeuename"] ?? "file-share-queue";
+
+                return new FileShareIngestionDataProviderFactory(queueName);
+            });
 
             collection.AddSingleton<IIngestionProviderService, IngestionProviderService>();
             collection.AddSingleton<IBootstrapService, BootstrapService>();

@@ -19,6 +19,7 @@ namespace IngestionServiceHost
 
             builder.AddElasticsearchClient(ServiceNames.ElasticSearch);
             builder.AddAzureQueueServiceClient(ServiceNames.Queues);
+            builder.AddAzureBlobServiceClient(ServiceNames.Blobs);
 
             builder.Services.AddIngestionServices();
 

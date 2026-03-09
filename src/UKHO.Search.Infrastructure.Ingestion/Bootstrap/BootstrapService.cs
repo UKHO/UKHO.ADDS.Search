@@ -47,6 +47,11 @@ namespace UKHO.Search.Infrastructure.Ingestion.Bootstrap
                 var queueClient = _queueClient.GetQueueClient(queueName);
                 await queueClient.CreateIfNotExistsAsync(cancellationToken: cancellationToken)
                                  .ConfigureAwait(false);
+
+                var poisonQueueName = queueName + (_configuration["ingestion:poisonQueueSuffix"] ?? "-poison");
+                var poisonQueueClient = _queueClient.GetQueueClient(poisonQueueName);
+                await poisonQueueClient.CreateIfNotExistsAsync(cancellationToken: cancellationToken)
+                                       .ConfigureAwait(false);
             }
         }
     }
