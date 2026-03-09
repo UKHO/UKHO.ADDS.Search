@@ -5,10 +5,10 @@ namespace UKHO.Search.Pipelines.Retry
 {
     public sealed class ExponentialBackoffRetryPolicy : IRetryPolicy
     {
-        private readonly TimeSpan baseDelay;
-        private readonly double jitterFactor;
-        private readonly TimeSpan maxDelay;
-        private readonly Random random;
+        private readonly TimeSpan _baseDelay;
+        private readonly double _jitterFactor;
+        private readonly TimeSpan _maxDelay;
+        private readonly Random _random;
 
         public ExponentialBackoffRetryPolicy(int maxAttempts, TimeSpan baseDelay, TimeSpan maxDelay, double jitterFactor = 0.2, Random? random = null)
         {
@@ -33,10 +33,10 @@ namespace UKHO.Search.Pipelines.Retry
             }
 
             MaxAttempts = maxAttempts;
-            this.baseDelay = baseDelay;
-            this.maxDelay = maxDelay;
-            this.jitterFactor = jitterFactor;
-            this.random = random ?? Random.Shared;
+            this._baseDelay = baseDelay;
+            this._maxDelay = maxDelay;
+            this._jitterFactor = jitterFactor;
+            this._random = random ?? Random.Shared;
         }
 
         public int MaxAttempts { get; }
@@ -60,20 +60,20 @@ namespace UKHO.Search.Pipelines.Retry
 
             var exponent = attempt - 2;
             var factor = Math.Pow(2, exponent);
-            var delayMs = baseDelay.TotalMilliseconds * factor;
+            var delayMs = _baseDelay.TotalMilliseconds * factor;
 
             var delay = TimeSpan.FromMilliseconds(delayMs);
-            if (delay > maxDelay)
+            if (delay > _maxDelay)
             {
-                delay = maxDelay;
+                delay = _maxDelay;
             }
 
-            if (jitterFactor <= 0)
+            if (_jitterFactor <= 0)
             {
                 return delay;
             }
 
-            var jitterMultiplier = 1.0 + (random.NextDouble() * 2.0 - 1.0) * jitterFactor;
+            var jitterMultiplier = 1.0 + (_random.NextDouble() * 2.0 - 1.0) * _jitterFactor;
             var jittered = TimeSpan.FromMilliseconds(delay.TotalMilliseconds * jitterMultiplier);
             if (jittered < TimeSpan.Zero)
             {

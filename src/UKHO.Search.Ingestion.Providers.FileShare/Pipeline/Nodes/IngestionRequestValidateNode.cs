@@ -10,13 +10,13 @@ namespace UKHO.Search.Ingestion.Providers.FileShare.Pipeline.Nodes
 {
     public sealed class IngestionRequestValidateNode : NodeBase<Envelope<IngestionRequest>, Envelope<IngestionRequest>>
     {
-        private readonly ChannelWriter<Envelope<IngestionRequest>> deadLetterOutput;
-        private readonly ILogger? logger;
+        private readonly ChannelWriter<Envelope<IngestionRequest>> _deadLetterOutput;
+        private readonly ILogger? _logger;
 
         public IngestionRequestValidateNode(string name, ChannelReader<Envelope<IngestionRequest>> input, ChannelWriter<Envelope<IngestionRequest>> output, ChannelWriter<Envelope<IngestionRequest>> deadLetterOutput, ILogger? logger = null, IPipelineFatalErrorReporter? fatalErrorReporter = null) : base(name, input, output, logger, fatalErrorReporter)
         {
-            this.deadLetterOutput = deadLetterOutput;
-            this.logger = logger;
+            this._deadLetterOutput = deadLetterOutput;
+            this._logger = logger;
         }
 
         protected override async ValueTask HandleItemAsync(Envelope<IngestionRequest> item, CancellationToken cancellationToken)
@@ -25,7 +25,7 @@ namespace UKHO.Search.Ingestion.Providers.FileShare.Pipeline.Nodes
 
             if (item.Status != MessageStatus.Ok)
             {
-                await deadLetterOutput.WriteAsync(item, cancellationToken)
+                await _deadLetterOutput.WriteAsync(item, cancellationToken)
                                       .ConfigureAwait(false);
                 Metrics.RecordOut(item);
                 return;
@@ -35,9 +35,9 @@ namespace UKHO.Search.Ingestion.Providers.FileShare.Pipeline.Nodes
             {
                 item.MarkFailed(error);
 
-                logger?.LogWarning("Validation failed. NodeName={NodeName} Key={Key} MessageId={MessageId} Attempt={Attempt} ErrorCode={ErrorCode}", Name, item.Key, item.MessageId, item.Attempt, item.Error?.Code);
+                _logger?.LogWarning("Validation failed. NodeName={NodeName} Key={Key} MessageId={MessageId} Attempt={Attempt} ErrorCode={ErrorCode}", Name, item.Key, item.MessageId, item.Attempt, item.Error?.Code);
 
-                await deadLetterOutput.WriteAsync(item, cancellationToken)
+                await _deadLetterOutput.WriteAsync(item, cancellationToken)
                                       .ConfigureAwait(false);
                 Metrics.RecordOut(item);
                 return;
@@ -50,7 +50,7 @@ namespace UKHO.Search.Ingestion.Providers.FileShare.Pipeline.Nodes
         protected override void CompleteOutputs(Exception? error = null)
         {
             base.CompleteOutputs(error);
-            deadLetterOutput.TryComplete(error);
+            _deadLetterOutput.TryComplete(error);
         }
 
         private bool TryValidate(Envelope<IngestionRequest> envelope, out PipelineError error)

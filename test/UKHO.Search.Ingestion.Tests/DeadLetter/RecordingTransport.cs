@@ -5,11 +5,11 @@ namespace UKHO.Search.Ingestion.Tests.DeadLetter
 {
     public sealed class RecordingTransport : HttpPipelineTransport
     {
-        private readonly int statusCode;
+        private readonly int _statusCode;
 
         public RecordingTransport(int statusCode)
         {
-            this.statusCode = statusCode;
+            this._statusCode = statusCode;
         }
 
         public List<RecordedRequest> Requests { get; } = new();
@@ -43,7 +43,7 @@ namespace UKHO.Search.Ingestion.Tests.DeadLetter
 
             Requests.Add(new RecordedRequest(request.Method.Method, request.Uri.ToUri(), body));
 
-            message.Response = new SimpleResponse(statusCode);
+            message.Response = new SimpleResponse(_statusCode);
         }
     }
 }

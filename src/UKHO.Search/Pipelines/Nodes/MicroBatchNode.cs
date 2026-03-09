@@ -10,21 +10,21 @@ namespace UKHO.Search.Pipelines.Nodes
 {
     public sealed class MicroBatchNode<TPayload> : INode
     {
-        private readonly List<Envelope<TPayload>> buffer = new();
-        private readonly CancellationMode cancellationMode;
-        private readonly Func<TPayload, int>? estimateSizeBytes;
-        private readonly IPipelineFatalErrorReporter? fatalErrorReporter;
-        private readonly ChannelReader<Envelope<TPayload>> input;
-        private readonly ILogger? logger;
-        private readonly int? maxBytes;
-        private readonly TimeSpan maxDelay;
-        private readonly int maxItems;
-        private readonly NodeMetrics metrics;
-        private readonly ChannelWriter<BatchEnvelope<TPayload>> output;
-        private readonly int partitionId;
-        private DateTimeOffset? batchCreatedUtc;
-        private int bufferedBytes;
-        private Task? completion;
+        private readonly List<Envelope<TPayload>> _buffer = new();
+        private readonly CancellationMode _cancellationMode;
+        private readonly Func<TPayload, int>? _estimateSizeBytes;
+        private readonly IPipelineFatalErrorReporter? _fatalErrorReporter;
+        private readonly ChannelReader<Envelope<TPayload>> _input;
+        private readonly ILogger? _logger;
+        private readonly int? _maxBytes;
+        private readonly TimeSpan _maxDelay;
+        private readonly int _maxItems;
+        private readonly NodeMetrics _metrics;
+        private readonly ChannelWriter<BatchEnvelope<TPayload>> _output;
+        private readonly int _partitionId;
+        private DateTimeOffset? _batchCreatedUtc;
+        private int _bufferedBytes;
+        private Task? _completion;
 
         public MicroBatchNode(string name, int partitionId, ChannelReader<Envelope<TPayload>> input, ChannelWriter<BatchEnvelope<TPayload>> output, int maxItems, TimeSpan maxDelay, int? maxBytes = null, Func<TPayload, int>? estimateSizeBytes = null, ILogger? logger = null, IPipelineFatalErrorReporter? fatalErrorReporter = null, CancellationMode cancellationMode = CancellationMode.Immediate)
         {
@@ -49,26 +49,26 @@ namespace UKHO.Search.Pipelines.Nodes
             }
 
             Name = name;
-            this.partitionId = partitionId;
-            this.input = input;
-            this.output = output;
-            this.maxItems = maxItems;
-            this.maxDelay = maxDelay;
-            this.maxBytes = maxBytes;
-            this.estimateSizeBytes = estimateSizeBytes;
-            this.cancellationMode = cancellationMode;
-            this.logger = logger;
-            this.fatalErrorReporter = fatalErrorReporter;
-            metrics = new NodeMetrics(name, () => buffer.Count);
+            this._partitionId = partitionId;
+            this._input = input;
+            this._output = output;
+            this._maxItems = maxItems;
+            this._maxDelay = maxDelay;
+            this._maxBytes = maxBytes;
+            this._estimateSizeBytes = estimateSizeBytes;
+            this._cancellationMode = cancellationMode;
+            this._logger = logger;
+            this._fatalErrorReporter = fatalErrorReporter;
+            _metrics = new NodeMetrics(name, () => _buffer.Count);
         }
 
         public string Name { get; }
 
-        public Task Completion => completion ?? Task.CompletedTask;
+        public Task Completion => _completion ?? Task.CompletedTask;
 
         public Task StartAsync(CancellationToken cancellationToken)
         {
-            completion ??= Task.Run(() => RunAsync(cancellationToken), CancellationToken.None);
+            _completion ??= Task.Run(() => RunAsync(cancellationToken), CancellationToken.None);
             return Task.CompletedTask;
         }
 
@@ -83,12 +83,12 @@ namespace UKHO.Search.Pipelines.Nodes
             {
                 while (true)
                 {
-                    if (buffer.Count == 0)
+                    if (_buffer.Count == 0)
                     {
-                        if (!await input.WaitToReadAsync(cancellationToken)
+                        if (!await _input.WaitToReadAsync(cancellationToken)
                                         .ConfigureAwait(false))
                         {
-                            await input.Completion.ConfigureAwait(false);
+                            await _input.Completion.ConfigureAwait(false);
                             break;
                         }
 
@@ -102,7 +102,7 @@ namespace UKHO.Search.Pipelines.Nodes
                         continue;
                     }
 
-                    var deadlineUtc = batchCreatedUtc!.Value + maxDelay;
+                    var deadlineUtc = _batchCreatedUtc!.Value + _maxDelay;
                     var nowUtc = DateTimeOffset.UtcNow;
                     var remaining = deadlineUtc - nowUtc;
 
@@ -114,7 +114,7 @@ namespace UKHO.Search.Pipelines.Nodes
                         continue;
                     }
 
-                    var waitForRead = input.WaitToReadAsync(cancellationToken)
+                    var waitForRead = _input.WaitToReadAsync(cancellationToken)
                                            .AsTask();
                     var waitForDelay = Task.Delay(remaining, cancellationToken);
                     var completed = await Task.WhenAny(waitForRead, waitForDelay)
@@ -130,7 +130,7 @@ namespace UKHO.Search.Pipelines.Nodes
 
                     if (!await waitForRead.ConfigureAwait(false))
                     {
-                        await input.Completion.ConfigureAwait(false);
+                        await _input.Completion.ConfigureAwait(false);
                         break;
                     }
 
@@ -142,70 +142,70 @@ namespace UKHO.Search.Pipelines.Nodes
                     }
                 }
 
-                if (buffer.Count > 0)
+                if (_buffer.Count > 0)
                 {
                     await FlushAsync(GetFlushToken(cancellationToken))
                         .ConfigureAwait(false);
                 }
 
-                output.TryComplete();
+                _output.TryComplete();
             }
             catch (OperationCanceledException) when (cancellationToken.IsCancellationRequested)
             {
-                if (cancellationMode == CancellationMode.Drain)
+                if (_cancellationMode == CancellationMode.Drain)
                 {
-                    if (buffer.Count > 0)
+                    if (_buffer.Count > 0)
                     {
                         await FlushAsync(CancellationToken.None)
                             .ConfigureAwait(false);
                     }
                 }
 
-                output.TryComplete();
+                _output.TryComplete();
             }
             catch (Exception ex)
             {
-                logger?.LogError(ex, "Node '{NodeName}' failed.", Name);
-                output.TryComplete(ex);
-                fatalErrorReporter?.ReportFatal(Name, ex);
+                _logger?.LogError(ex, "Node '{NodeName}' failed.", Name);
+                _output.TryComplete(ex);
+                _fatalErrorReporter?.ReportFatal(Name, ex);
                 throw;
             }
             finally
             {
-                metrics.Dispose();
+                _metrics.Dispose();
             }
         }
 
         private CancellationToken GetFlushToken(CancellationToken cancellationToken)
         {
-            return cancellationMode == CancellationMode.Drain ? CancellationToken.None : cancellationToken;
+            return _cancellationMode == CancellationMode.Drain ? CancellationToken.None : cancellationToken;
         }
 
         private bool ShouldFlush()
         {
-            return buffer.Count >= maxItems || (maxBytes is not null && bufferedBytes >= maxBytes.Value);
+            return _buffer.Count >= _maxItems || (_maxBytes is not null && _bufferedBytes >= _maxBytes.Value);
         }
 
         private void DrainAvailable()
         {
-            while (input.TryRead(out var item))
+            while (_input.TryRead(out var item))
             {
-                metrics.RecordIn(item);
+                _metrics.RecordIn(item);
                 item.Context.AddBreadcrumb(Name);
 
-                if (buffer.Count == 0)
+                if (_buffer.Count == 0)
                 {
-                    batchCreatedUtc = DateTimeOffset.UtcNow;
+                    _batchCreatedUtc = DateTimeOffset.UtcNow;
                 }
 
-                buffer.Add(item);
+                _buffer.Add(item);
 
-                if (estimateSizeBytes is not null)
+                if (_estimateSizeBytes is not null)
                 {
-                    var estimated = estimateSizeBytes(item.Payload);
+                    var estimated = _estimateSizeBytes(item.Payload);
                     if (estimated > 0)
                     {
-                        bufferedBytes += estimated;
+                        _bufferedBytes += estimated;
                     }
                 }
 
@@ -218,15 +218,15 @@ namespace UKHO.Search.Pipelines.Nodes
 
         private async Task FlushAsync(CancellationToken cancellationToken)
         {
-            if (buffer.Count == 0)
+            if (_buffer.Count == 0)
             {
                 return;
             }
 
-            var createdUtc = batchCreatedUtc ?? DateTimeOffset.UtcNow;
+            var createdUtc = _batchCreatedUtc ?? DateTimeOffset.UtcNow;
             var flushedUtc = DateTimeOffset.UtcNow;
-            var items = buffer.ToArray();
-            var totalBytes = estimateSizeBytes is not null ? bufferedBytes : (int?)null;
+            var items = _buffer.ToArray();
+            var totalBytes = _estimateSizeBytes is not null ? _bufferedBytes : (int?)null;
 
             DateTimeOffset? minTimestampUtc = null;
             DateTimeOffset? maxTimestampUtc = null;
@@ -244,14 +244,14 @@ namespace UKHO.Search.Pipelines.Nodes
                 }
             }
 
-            buffer.Clear();
-            batchCreatedUtc = null;
-            bufferedBytes = 0;
+            _buffer.Clear();
+            _batchCreatedUtc = null;
+            _bufferedBytes = 0;
 
             var batch = new BatchEnvelope<TPayload>
             {
                 BatchId = Guid.NewGuid(),
-                PartitionId = partitionId,
+                PartitionId = _partitionId,
                 Items = items,
                 TotalEstimatedBytes = totalBytes,
                 MinItemTimestampUtc = minTimestampUtc,
@@ -260,19 +260,19 @@ namespace UKHO.Search.Pipelines.Nodes
                 FlushedUtc = flushedUtc
             };
 
-            metrics.IncrementInFlight();
+            _metrics.IncrementInFlight();
             var started = Stopwatch.GetTimestamp();
             try
             {
-                await output.WriteAsync(batch, cancellationToken)
+                await _output.WriteAsync(batch, cancellationToken)
                             .ConfigureAwait(false);
-                metrics.RecordOut(batch);
+                _metrics.RecordOut(batch);
             }
             finally
             {
                 var elapsed = Stopwatch.GetElapsedTime(started);
-                metrics.RecordDuration(elapsed);
-                metrics.DecrementInFlight();
+                _metrics.RecordDuration(elapsed);
+                _metrics.DecrementInFlight();
             }
         }
     }

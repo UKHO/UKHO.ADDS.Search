@@ -4,26 +4,26 @@ namespace UKHO.Search.Pipelines.Channels
 {
     public sealed class CountingChannelReader<T> : ChannelReader<T>, IQueueDepthProvider
     {
-        private readonly Action decrement;
-        private readonly Func<long> getDepth;
-        private readonly ChannelReader<T> inner;
+        private readonly Action _decrement;
+        private readonly Func<long> _getDepth;
+        private readonly ChannelReader<T> _inner;
 
         public CountingChannelReader(ChannelReader<T> inner, Func<long> getDepth, Action decrement)
         {
-            this.inner = inner;
-            this.getDepth = getDepth;
-            this.decrement = decrement;
+            this._inner = inner;
+            this._getDepth = getDepth;
+            this._decrement = decrement;
         }
 
-        public override Task Completion => inner.Completion;
+        public override Task Completion => _inner.Completion;
 
-        public long QueueDepth => getDepth();
+        public long QueueDepth => _getDepth();
 
         public override bool TryRead(out T item)
         {
-            if (inner.TryRead(out item))
+            if (_inner.TryRead(out item))
             {
-                decrement();
+                _decrement();
                 return true;
             }
 
@@ -32,20 +32,20 @@ namespace UKHO.Search.Pipelines.Channels
 
         public override bool TryPeek(out T item)
         {
-            return inner.TryPeek(out item);
+            return _inner.TryPeek(out item);
         }
 
         public override ValueTask<bool> WaitToReadAsync(CancellationToken cancellationToken = default)
         {
-            return inner.WaitToReadAsync(cancellationToken);
+            return _inner.WaitToReadAsync(cancellationToken);
         }
 
         public override ValueTask<T> ReadAsync(CancellationToken cancellationToken = default)
         {
-            var read = inner.ReadAsync(cancellationToken);
+            var read = _inner.ReadAsync(cancellationToken);
             if (read.IsCompletedSuccessfully)
             {
-                decrement();
+                _decrement();
                 return read;
             }
 
@@ -55,7 +55,7 @@ namespace UKHO.Search.Pipelines.Channels
         private async ValueTask<T> AwaitReadAsync(ValueTask<T> read)
         {
             var item = await read.ConfigureAwait(false);
-            decrement();
+            _decrement();
             return item;
         }
     }

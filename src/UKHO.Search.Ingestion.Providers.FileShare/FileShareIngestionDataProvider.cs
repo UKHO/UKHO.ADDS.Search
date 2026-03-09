@@ -6,7 +6,7 @@ namespace UKHO.Search.Ingestion.Providers.FileShare
 {
     public sealed class FileShareIngestionDataProvider : IIngestionDataProvider
     {
-        private static readonly JsonSerializerOptions SerializerOptions = IngestionJsonSerializerOptions.Create();
+        private static readonly JsonSerializerOptions _serializerOptions = IngestionJsonSerializerOptions.Create();
 
         public string Name => "file-share";
 
@@ -17,7 +17,7 @@ namespace UKHO.Search.Ingestion.Providers.FileShare
                 throw new JsonException("Queue message body is required.");
             }
 
-            var request = JsonSerializer.Deserialize<IngestionRequest>(messageText, SerializerOptions);
+            var request = JsonSerializer.Deserialize<IngestionRequest>(messageText, _serializerOptions);
             if (request is null)
             {
                 throw new JsonException("Queue message could not be deserialized to IngestionRequest.");

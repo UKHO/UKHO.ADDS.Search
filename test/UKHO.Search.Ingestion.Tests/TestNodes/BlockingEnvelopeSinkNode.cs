@@ -6,31 +6,31 @@ namespace UKHO.Search.Ingestion.Tests.TestNodes
 {
     public sealed class BlockingEnvelopeSinkNode<TPayload> : SinkNodeBase<Envelope<TPayload>>
     {
-        private readonly int blockAfterCount;
-        private readonly object gate = new();
-        private readonly List<Envelope<TPayload>> items = new();
-        private readonly SemaphoreSlim receivedSignal = new(0);
-        private readonly TaskCompletionSource releaseGate = new(TaskCreationOptions.RunContinuationsAsynchronously);
+        private readonly int _blockAfterCount;
+        private readonly object _gate = new();
+        private readonly List<Envelope<TPayload>> _items = new();
+        private readonly SemaphoreSlim _receivedSignal = new(0);
+        private readonly TaskCompletionSource _releaseGate = new(TaskCreationOptions.RunContinuationsAsynchronously);
 
         public BlockingEnvelopeSinkNode(string name, ChannelReader<Envelope<TPayload>> input, int blockAfterCount) : base(name, input)
         {
-            this.blockAfterCount = blockAfterCount;
+            this._blockAfterCount = blockAfterCount;
         }
 
         public IReadOnlyList<Envelope<TPayload>> Items
         {
             get
             {
-                lock (gate)
+                lock (_gate)
                 {
-                    return items.ToArray();
+                    return _items.ToArray();
                 }
             }
         }
 
         public void ReleaseBlocking()
         {
-            releaseGate.TrySetResult();
+            _releaseGate.TrySetResult();
         }
 
         public async Task WaitForCountAsync(int expectedCount, TimeSpan timeout)
@@ -39,39 +39,39 @@ namespace UKHO.Search.Ingestion.Tests.TestNodes
 
             while (true)
             {
-                lock (gate)
+                lock (_gate)
                 {
-                    if (items.Count >= expectedCount)
+                    if (_items.Count >= expectedCount)
                     {
                         return;
                     }
                 }
 
-                await receivedSignal.WaitAsync(cts.Token)
+                await _receivedSignal.WaitAsync(cts.Token)
                                     .ConfigureAwait(false);
             }
         }
 
         protected override async ValueTask HandleItemAsync(Envelope<TPayload> item, CancellationToken cancellationToken)
         {
-            lock (gate)
+            lock (_gate)
             {
-                items.Add(item);
+                _items.Add(item);
             }
 
-            receivedSignal.Release();
+            _receivedSignal.Release();
 
-            if (blockAfterCount > 0)
+            if (_blockAfterCount > 0)
             {
                 var shouldBlock = false;
-                lock (gate)
+                lock (_gate)
                 {
-                    shouldBlock = items.Count == blockAfterCount;
+                    shouldBlock = _items.Count == _blockAfterCount;
                 }
 
                 if (shouldBlock)
                 {
-                    await releaseGate.Task.WaitAsync(cancellationToken)
+                    await _releaseGate.Task.WaitAsync(cancellationToken)
                                      .ConfigureAwait(false);
                 }
             }

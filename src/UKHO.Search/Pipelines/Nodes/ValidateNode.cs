@@ -8,13 +8,13 @@ namespace UKHO.Search.Pipelines.Nodes
 {
     public sealed class ValidateNode<TPayload> : NodeBase<Envelope<TPayload>, Envelope<TPayload>>
     {
-        private readonly ChannelWriter<Envelope<TPayload>>? errorOutput;
-        private readonly bool forwardFailedToMainOutput;
+        private readonly ChannelWriter<Envelope<TPayload>>? _errorOutput;
+        private readonly bool _forwardFailedToMainOutput;
 
         public ValidateNode(string name, ChannelReader<Envelope<TPayload>> input, ChannelWriter<Envelope<TPayload>> output, ChannelWriter<Envelope<TPayload>>? errorOutput = null, bool forwardFailedToMainOutput = true, ILogger? logger = null, IPipelineFatalErrorReporter? fatalErrorReporter = null) : base(name, input, output, logger, fatalErrorReporter)
         {
-            this.errorOutput = errorOutput;
-            this.forwardFailedToMainOutput = forwardFailedToMainOutput;
+            this._errorOutput = errorOutput;
+            this._forwardFailedToMainOutput = forwardFailedToMainOutput;
         }
 
         protected override async ValueTask HandleItemAsync(Envelope<TPayload> item, CancellationToken cancellationToken)
@@ -38,14 +38,14 @@ namespace UKHO.Search.Pipelines.Nodes
                 });
             }
 
-            if (item.Status == MessageStatus.Failed && errorOutput is not null)
+            if (item.Status == MessageStatus.Failed && _errorOutput is not null)
             {
-                await errorOutput.WriteAsync(item, cancellationToken)
+                await _errorOutput.WriteAsync(item, cancellationToken)
                                  .ConfigureAwait(false);
                 Metrics.RecordOut(item);
             }
 
-            if (item.Status != MessageStatus.Failed || forwardFailedToMainOutput)
+            if (item.Status != MessageStatus.Failed || _forwardFailedToMainOutput)
             {
                 await WriteAsync(item, cancellationToken)
                     .ConfigureAwait(false);
@@ -55,7 +55,7 @@ namespace UKHO.Search.Pipelines.Nodes
         protected override void CompleteOutputs(Exception? error = null)
         {
             base.CompleteOutputs(error);
-            errorOutput?.TryComplete(error);
+            _errorOutput?.TryComplete(error);
         }
     }
 }

@@ -10,6 +10,8 @@ Be concise but complete. Prefer current research (Microsoft Learn) for Microsoft
 - Use Allman braces style for C# code.
 - Add `//` comments on their own line for non-obvious logic.
 - Do not interact with git (no branch creation, no git commands) unless explicitly requested.
+- When adding or modifying code in this repo, always follow `.github/instructions/coding-standards.instructions.md`: Allman braces, block-scoped namespaces, one public type per file, and underscore-prefixed private fields. Double-check new files for these conventions before finishing.
+- In this workspace/PowerShell environment, do not use the `rg` (ripgrep) command; assume it isn't available.
 
 ## Logging Standards
 - Prefer using `ILogger` abstractions (Microsoft.Extensions.Logging.Abstractions) over `Action<string>` logging callbacks in this codebase, including Domain pipeline nodes.

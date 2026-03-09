@@ -187,26 +187,26 @@ namespace UKHO.Search.Ingestion.Tests.Pipeline
 
         private sealed class SequencedBulkClient : IBulkIndexClient<IndexOperation>
         {
-            private readonly Queue<BulkIndexResponse> responses;
+            private readonly Queue<BulkIndexResponse> _responses;
 
             public SequencedBulkClient(IEnumerable<BulkIndexResponse> responses)
             {
-                this.responses = new Queue<BulkIndexResponse>(responses);
+                this._responses = new Queue<BulkIndexResponse>(responses);
             }
 
             public ValueTask<BulkIndexResponse> BulkIndexAsync(BulkIndexRequest<IndexOperation> request, CancellationToken cancellationToken)
             {
-                return ValueTask.FromResult(responses.Dequeue());
+                return ValueTask.FromResult(_responses.Dequeue());
             }
         }
 
         private sealed class KeyedBulkClient : IBulkIndexClient<IndexOperation>
         {
-            private readonly Dictionary<Guid, Queue<BulkIndexResponse>> responses;
+            private readonly Dictionary<Guid, Queue<BulkIndexResponse>> _responses;
 
             public KeyedBulkClient(Dictionary<Guid, Queue<BulkIndexResponse>> responses)
             {
-                this.responses = responses;
+                this._responses = responses;
             }
 
             public List<(string Key, Guid MessageId)> Calls { get; } = new();
@@ -216,7 +216,7 @@ namespace UKHO.Search.Ingestion.Tests.Pipeline
                 var first = request.Items[0];
                 Calls.Add((first.Key, first.MessageId));
 
-                var queue = responses[first.MessageId];
+                var queue = _responses[first.MessageId];
                 return ValueTask.FromResult(queue.Dequeue());
             }
         }

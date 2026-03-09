@@ -13,23 +13,23 @@ namespace UKHO.Search.Infrastructure.Ingestion.Pipeline.Nodes
 {
     public sealed class InOrderBulkIndexNode : INode
     {
-        private static readonly HashSet<int> DefaultTransientStatusCodes = new() { 429, 503 };
+        private static readonly HashSet<int> _defaultTransientStatusCodes = new() { 429, 503 };
 
-        private readonly TimeSpan baseDelay;
-        private readonly IBulkIndexClient<IndexOperation> client;
-        private readonly ChannelWriter<Envelope<IndexOperation>> deadLetterOutput;
-        private readonly Func<TimeSpan, CancellationToken, Task> delay;
-        private readonly IPipelineFatalErrorReporter? fatalErrorReporter;
-        private readonly ChannelReader<BatchEnvelope<IndexOperation>> input;
-        private readonly TimeSpan jitter;
-        private readonly ILogger? logger;
-        private readonly int maxAttempts;
-        private readonly TimeSpan maxDelay;
-        private readonly NodeMetrics metrics;
-        private readonly Random random;
-        private readonly ChannelWriter<Envelope<IndexOperation>> successOutput;
-        private readonly ISet<int> transientStatusCodes;
-        private Task? completion;
+        private readonly TimeSpan _baseDelay;
+        private readonly IBulkIndexClient<IndexOperation> _client;
+        private readonly ChannelWriter<Envelope<IndexOperation>> _deadLetterOutput;
+        private readonly Func<TimeSpan, CancellationToken, Task> _delay;
+        private readonly IPipelineFatalErrorReporter? _fatalErrorReporter;
+        private readonly ChannelReader<BatchEnvelope<IndexOperation>> _input;
+        private readonly TimeSpan _jitter;
+        private readonly ILogger? _logger;
+        private readonly int _maxAttempts;
+        private readonly TimeSpan _maxDelay;
+        private readonly NodeMetrics _metrics;
+        private readonly Random _random;
+        private readonly ChannelWriter<Envelope<IndexOperation>> _successOutput;
+        private readonly ISet<int> _transientStatusCodes;
+        private Task? _completion;
 
         public InOrderBulkIndexNode(string name,
             ChannelReader<BatchEnvelope<IndexOperation>> input,
@@ -67,29 +67,29 @@ namespace UKHO.Search.Infrastructure.Ingestion.Pipeline.Nodes
             }
 
             Name = name;
-            this.input = input;
-            this.client = client;
-            this.successOutput = successOutput;
-            this.deadLetterOutput = deadLetterOutput;
-            this.maxAttempts = maxAttempts;
-            this.baseDelay = baseDelay;
-            this.maxDelay = maxDelay;
-            this.jitter = jitter;
-            this.delay = delay ?? ((d, ct) => Task.Delay(d, ct));
-            this.transientStatusCodes = transientStatusCodes ?? DefaultTransientStatusCodes;
-            this.random = random ?? Random.Shared;
-            this.logger = logger;
-            this.fatalErrorReporter = fatalErrorReporter;
-            metrics = new NodeMetrics(name);
+            this._input = input;
+            this._client = client;
+            this._successOutput = successOutput;
+            this._deadLetterOutput = deadLetterOutput;
+            this._maxAttempts = maxAttempts;
+            this._baseDelay = baseDelay;
+            this._maxDelay = maxDelay;
+            this._jitter = jitter;
+            this._delay = delay ?? ((d, ct) => Task.Delay(d, ct));
+            this._transientStatusCodes = transientStatusCodes ?? _defaultTransientStatusCodes;
+            this._random = random ?? Random.Shared;
+            this._logger = logger;
+            this._fatalErrorReporter = fatalErrorReporter;
+            _metrics = new NodeMetrics(name);
         }
 
         public string Name { get; }
 
-        public Task Completion => completion ?? Task.CompletedTask;
+        public Task Completion => _completion ?? Task.CompletedTask;
 
         public Task StartAsync(CancellationToken cancellationToken)
         {
-            completion ??= Task.Run(() => RunAsync(cancellationToken), CancellationToken.None);
+            _completion ??= Task.Run(() => RunAsync(cancellationToken), CancellationToken.None);
             return Task.CompletedTask;
         }
 
@@ -102,13 +102,13 @@ namespace UKHO.Search.Infrastructure.Ingestion.Pipeline.Nodes
         {
             try
             {
-                while (await input.WaitToReadAsync(cancellationToken)
+                while (await _input.WaitToReadAsync(cancellationToken)
                                   .ConfigureAwait(false))
                 {
-                    while (input.TryRead(out var batch))
+                    while (_input.TryRead(out var batch))
                     {
-                        metrics.RecordIn(batch);
-                        metrics.IncrementInFlight();
+                        _metrics.RecordIn(batch);
+                        _metrics.IncrementInFlight();
                         var started = Stopwatch.GetTimestamp();
                         try
                         {
@@ -118,34 +118,34 @@ namespace UKHO.Search.Infrastructure.Ingestion.Pipeline.Nodes
                         finally
                         {
                             var elapsed = Stopwatch.GetElapsedTime(started);
-                            metrics.RecordDuration(elapsed);
-                            metrics.DecrementInFlight();
+                            _metrics.RecordDuration(elapsed);
+                            _metrics.DecrementInFlight();
                         }
                     }
                 }
 
-                await input.Completion.ConfigureAwait(false);
+                await _input.Completion.ConfigureAwait(false);
                 CompleteOutputs();
             }
             catch (OperationCanceledException) when (cancellationToken.IsCancellationRequested)
             {
-                if (input.Completion.IsCompleted)
+                if (_input.Completion.IsCompleted)
                 {
-                    await input.Completion.ConfigureAwait(false);
+                    await _input.Completion.ConfigureAwait(false);
                 }
 
                 CompleteOutputs();
             }
             catch (Exception ex)
             {
-                logger?.LogError(ex, "Node '{NodeName}' failed.", Name);
+                _logger?.LogError(ex, "Node '{NodeName}' failed.", Name);
                 CompleteOutputs(ex);
-                fatalErrorReporter?.ReportFatal(Name, ex);
+                _fatalErrorReporter?.ReportFatal(Name, ex);
                 throw;
             }
             finally
             {
-                metrics.Dispose();
+                _metrics.Dispose();
             }
         }
 
@@ -164,7 +164,7 @@ namespace UKHO.Search.Infrastructure.Ingestion.Pipeline.Nodes
                 BulkIndexResponse response;
                 try
                 {
-                    response = await client.BulkIndexAsync(new BulkIndexRequest<IndexOperation>
+                    response = await _client.BulkIndexAsync(new BulkIndexRequest<IndexOperation>
                                            {
                                                BatchId = batch.BatchId,
                                                PartitionId = batch.PartitionId,
@@ -186,7 +186,7 @@ namespace UKHO.Search.Infrastructure.Ingestion.Pipeline.Nodes
                     IncrementAttempt(pending, lastTransientError);
 
                     var delayForAttempt = GetRetryDelay(pending[0].Attempt);
-                    await delay(delayForAttempt, cancellationToken)
+                    await _delay(delayForAttempt, cancellationToken)
                         .ConfigureAwait(false);
 
                     continue;
@@ -216,7 +216,7 @@ namespace UKHO.Search.Infrastructure.Ingestion.Pipeline.Nodes
                         continue;
                     }
 
-                    var isTransient = transientStatusCodes.Contains(result.StatusCode);
+                    var isTransient = _transientStatusCodes.Contains(result.StatusCode);
                     var error = CreateBulkError("BULK_INDEX_FAILED", result.ErrorReason ?? "Bulk index failed.", isTransient, null, result.StatusCode, result.ErrorType);
 
                     if (isTransient)
@@ -252,7 +252,7 @@ namespace UKHO.Search.Infrastructure.Ingestion.Pipeline.Nodes
                 IncrementAttempt(pending, lastTransientError);
 
                 var delayForNextAttempt = GetRetryDelay(pending[0].Attempt);
-                await delay(delayForNextAttempt, cancellationToken)
+                await _delay(delayForNextAttempt, cancellationToken)
                     .ConfigureAwait(false);
             }
         }
@@ -261,7 +261,7 @@ namespace UKHO.Search.Infrastructure.Ingestion.Pipeline.Nodes
         {
             foreach (var envelope in pending)
             {
-                if (envelope.Attempt >= maxAttempts)
+                if (envelope.Attempt >= _maxAttempts)
                 {
                     return false;
                 }
@@ -330,20 +330,20 @@ namespace UKHO.Search.Infrastructure.Ingestion.Pipeline.Nodes
             }
 
             var exponent = attempt - 2;
-            var delayMs = baseDelay.TotalMilliseconds * Math.Pow(2, exponent);
+            var delayMs = _baseDelay.TotalMilliseconds * Math.Pow(2, exponent);
             var computed = TimeSpan.FromMilliseconds(delayMs);
-            if (computed > maxDelay)
+            if (computed > _maxDelay)
             {
-                computed = maxDelay;
+                computed = _maxDelay;
             }
 
-            if (jitter <= TimeSpan.Zero)
+            if (_jitter <= TimeSpan.Zero)
             {
                 return computed;
             }
 
-            var rangeMs = jitter.TotalMilliseconds;
-            var offsetMs = (random.NextDouble() * 2.0 - 1.0) * rangeMs;
+            var rangeMs = _jitter.TotalMilliseconds;
+            var offsetMs = (_random.NextDouble() * 2.0 - 1.0) * rangeMs;
             var jittered = computed + TimeSpan.FromMilliseconds(offsetMs);
 
             if (jittered < TimeSpan.Zero)
@@ -351,9 +351,9 @@ namespace UKHO.Search.Infrastructure.Ingestion.Pipeline.Nodes
                 return TimeSpan.Zero;
             }
 
-            if (jittered > maxDelay)
+            if (jittered > _maxDelay)
             {
-                return maxDelay;
+                return _maxDelay;
             }
 
             return jittered;
@@ -361,22 +361,22 @@ namespace UKHO.Search.Infrastructure.Ingestion.Pipeline.Nodes
 
         private async ValueTask WriteSuccessAsync(Envelope<IndexOperation> envelope, CancellationToken cancellationToken)
         {
-            await successOutput.WriteAsync(envelope, cancellationToken)
+            await _successOutput.WriteAsync(envelope, cancellationToken)
                                .ConfigureAwait(false);
-            metrics.RecordOut(envelope);
+            _metrics.RecordOut(envelope);
         }
 
         private async ValueTask WriteDeadLetterAsync(Envelope<IndexOperation> envelope, CancellationToken cancellationToken)
         {
-            await deadLetterOutput.WriteAsync(envelope, cancellationToken)
+            await _deadLetterOutput.WriteAsync(envelope, cancellationToken)
                                   .ConfigureAwait(false);
-            metrics.RecordOut(envelope);
+            _metrics.RecordOut(envelope);
         }
 
         private void CompleteOutputs(Exception? error = null)
         {
-            successOutput.TryComplete(error);
-            deadLetterOutput.TryComplete(error);
+            _successOutput.TryComplete(error);
+            _deadLetterOutput.TryComplete(error);
         }
     }
 }

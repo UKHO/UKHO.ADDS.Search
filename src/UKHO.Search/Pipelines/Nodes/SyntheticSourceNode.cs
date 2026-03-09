@@ -7,10 +7,10 @@ namespace UKHO.Search.Pipelines.Nodes
 {
     public sealed class SyntheticSourceNode<TPayload> : SourceNodeBase<Envelope<TPayload>>
     {
-        private readonly int keyCardinality;
-        private readonly Func<int, string>? keyFactory;
-        private readonly int messageCount;
-        private readonly Func<int, TPayload> payloadFactory;
+        private readonly int _keyCardinality;
+        private readonly Func<int, string>? _keyFactory;
+        private readonly int _messageCount;
+        private readonly Func<int, TPayload> _payloadFactory;
 
         public SyntheticSourceNode(string name, ChannelWriter<Envelope<TPayload>> output, int messageCount, int keyCardinality, Func<int, TPayload> payloadFactory, Func<int, string>? keyFactory = null, ILogger? logger = null, IPipelineFatalErrorReporter? fatalErrorReporter = null) : base(name, output, logger, fatalErrorReporter)
         {
@@ -24,18 +24,18 @@ namespace UKHO.Search.Pipelines.Nodes
                 throw new ArgumentOutOfRangeException(nameof(keyCardinality));
             }
 
-            this.messageCount = messageCount;
-            this.keyCardinality = keyCardinality;
-            this.payloadFactory = payloadFactory;
-            this.keyFactory = keyFactory;
+            this._messageCount = messageCount;
+            this._keyCardinality = keyCardinality;
+            this._payloadFactory = payloadFactory;
+            this._keyFactory = keyFactory;
         }
 
         protected override async ValueTask ProduceAsync(ChannelWriter<Envelope<TPayload>> output, CancellationToken cancellationToken)
         {
-            for (var i = 0; i < messageCount; i++)
+            for (var i = 0; i < _messageCount; i++)
             {
-                var key = keyFactory is not null ? keyFactory(i) : $"key-{i % keyCardinality}";
-                var payload = payloadFactory(i);
+                var key = _keyFactory is not null ? _keyFactory(i) : $"key-{i % _keyCardinality}";
+                var payload = _payloadFactory(i);
                 var envelope = new Envelope<TPayload>(key, payload);
                 envelope.Context.AddBreadcrumb(Name);
 

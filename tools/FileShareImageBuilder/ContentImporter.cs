@@ -45,7 +45,7 @@ namespace FileShareImageBuilder
                 }
             });
 
-            var maxBytes = ConfigurationReader.GetDataImageBinSizeGB() * 1024L * 1024L * 1024L;
+            var maxBytes = ConfigurationReader.GetDataImageBinSizeGb() * 1024L * 1024L * 1024L;
             long totalBytesDownloaded = 0;
 
             var maxBatchCount = ConfigurationReader.GetDataImageCount();

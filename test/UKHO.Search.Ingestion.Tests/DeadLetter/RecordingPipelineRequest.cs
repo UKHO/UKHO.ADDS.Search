@@ -4,8 +4,8 @@ namespace UKHO.Search.Ingestion.Tests.DeadLetter
 {
     public sealed class RecordingPipelineRequest : Request
     {
-        private readonly Dictionary<string, List<string>> headers = new(StringComparer.OrdinalIgnoreCase);
-        private RequestUriBuilder uri = new();
+        private readonly Dictionary<string, List<string>> _headers = new(StringComparer.OrdinalIgnoreCase);
+        private RequestUriBuilder _uri = new();
 
         public override RequestContent? Content { get; set; }
 
@@ -15,8 +15,8 @@ namespace UKHO.Search.Ingestion.Tests.DeadLetter
 
         public override RequestUriBuilder Uri
         {
-            get => uri;
-            set => uri = value;
+            get => _uri;
+            set => _uri = value;
         }
 
         public override void Dispose()
@@ -25,12 +25,12 @@ namespace UKHO.Search.Ingestion.Tests.DeadLetter
 
         protected override void SetHeader(string name, string value)
         {
-            headers[name] = new List<string> { value };
+            _headers[name] = new List<string> { value };
         }
 
         protected override bool TryGetHeader(string name, out string? value)
         {
-            if (headers.TryGetValue(name, out var values) && values.Count > 0)
+            if (_headers.TryGetValue(name, out var values) && values.Count > 0)
             {
                 value = values[0];
                 return true;
@@ -42,7 +42,7 @@ namespace UKHO.Search.Ingestion.Tests.DeadLetter
 
         protected override bool TryGetHeaderValues(string name, out IEnumerable<string>? values)
         {
-            if (headers.TryGetValue(name, out var list))
+            if (_headers.TryGetValue(name, out var list))
             {
                 values = list;
                 return true;
@@ -54,12 +54,12 @@ namespace UKHO.Search.Ingestion.Tests.DeadLetter
 
         protected override bool ContainsHeader(string name)
         {
-            return headers.ContainsKey(name);
+            return _headers.ContainsKey(name);
         }
 
         protected override IEnumerable<HttpHeader> EnumerateHeaders()
         {
-            foreach (var (name, values) in headers)
+            foreach (var (name, values) in _headers)
             {
                 foreach (var value in values)
                 {
@@ -70,10 +70,10 @@ namespace UKHO.Search.Ingestion.Tests.DeadLetter
 
         protected override void AddHeader(string name, string value)
         {
-            if (!headers.TryGetValue(name, out var values))
+            if (!_headers.TryGetValue(name, out var values))
             {
                 values = new List<string>();
-                headers[name] = values;
+                _headers[name] = values;
             }
 
             values.Add(value);
@@ -81,7 +81,7 @@ namespace UKHO.Search.Ingestion.Tests.DeadLetter
 
         protected override bool RemoveHeader(string name)
         {
-            return headers.Remove(name);
+            return _headers.Remove(name);
         }
     }
 }

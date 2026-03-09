@@ -18,15 +18,16 @@ namespace UKHO.Search.Tests.Pipelines
             var input = BoundedChannelFactory.Create<Envelope<int>>(10, true, true);
             var output = BoundedChannelFactory.Create<BatchEnvelope<int>>(10, true, true);
 
-            var node = new MicroBatchNode<int>("microbatch", 0, input.Reader, output.Writer, 100, TimeSpan.FromMilliseconds(200));
+            var maxDelay = TimeSpan.FromMilliseconds(500);
+            var node = new MicroBatchNode<int>("microbatch", 0, input.Reader, output.Writer, 100, maxDelay);
 
             await node.StartAsync(cts.Token);
 
             await input.Writer.WriteAsync(new Envelope<int>("key-0", 0), cts.Token);
-            await Task.Delay(TimeSpan.FromMilliseconds(100), cts.Token);
+            await Task.Delay(TimeSpan.FromMilliseconds(50), cts.Token);
             await input.Writer.WriteAsync(new Envelope<int>("key-0", 1), cts.Token);
 
-            await Task.Delay(TimeSpan.FromMilliseconds(400), cts.Token);
+            await Task.Delay(maxDelay + TimeSpan.FromMilliseconds(400), cts.Token);
             input.Writer.TryComplete();
 
             await node.Completion.WaitAsync(cts.Token);

@@ -11,30 +11,30 @@ namespace UKHO.Search.Infrastructure.Ingestion.Pipeline.Nodes
 {
     public sealed class BatchFlattenNode<TPayload> : INode
     {
-        private readonly IPipelineFatalErrorReporter? fatalErrorReporter;
-        private readonly ChannelReader<BatchEnvelope<TPayload>> input;
-        private readonly ILogger? logger;
-        private readonly NodeMetrics metrics;
-        private readonly ChannelWriter<Envelope<TPayload>> output;
-        private Task? completion;
+        private readonly IPipelineFatalErrorReporter? _fatalErrorReporter;
+        private readonly ChannelReader<BatchEnvelope<TPayload>> _input;
+        private readonly ILogger? _logger;
+        private readonly NodeMetrics _metrics;
+        private readonly ChannelWriter<Envelope<TPayload>> _output;
+        private Task? _completion;
 
         public BatchFlattenNode(string name, ChannelReader<BatchEnvelope<TPayload>> input, ChannelWriter<Envelope<TPayload>> output, ILogger? logger = null, IPipelineFatalErrorReporter? fatalErrorReporter = null)
         {
             Name = name;
-            this.input = input;
-            this.output = output;
-            this.logger = logger;
-            this.fatalErrorReporter = fatalErrorReporter;
-            metrics = new NodeMetrics(name);
+            this._input = input;
+            this._output = output;
+            this._logger = logger;
+            this._fatalErrorReporter = fatalErrorReporter;
+            _metrics = new NodeMetrics(name);
         }
 
         public string Name { get; }
 
-        public Task Completion => completion ?? Task.CompletedTask;
+        public Task Completion => _completion ?? Task.CompletedTask;
 
         public Task StartAsync(CancellationToken cancellationToken)
         {
-            completion ??= Task.Run(() => RunAsync(cancellationToken), CancellationToken.None);
+            _completion ??= Task.Run(() => RunAsync(cancellationToken), CancellationToken.None);
             return Task.CompletedTask;
         }
 
@@ -47,13 +47,13 @@ namespace UKHO.Search.Infrastructure.Ingestion.Pipeline.Nodes
         {
             try
             {
-                while (await input.WaitToReadAsync(cancellationToken)
+                while (await _input.WaitToReadAsync(cancellationToken)
                                   .ConfigureAwait(false))
                 {
-                    while (input.TryRead(out var batch))
+                    while (_input.TryRead(out var batch))
                     {
-                        metrics.RecordIn(batch);
-                        metrics.IncrementInFlight();
+                        _metrics.RecordIn(batch);
+                        _metrics.IncrementInFlight();
                         var started = Stopwatch.GetTimestamp();
                         try
                         {
@@ -61,39 +61,39 @@ namespace UKHO.Search.Infrastructure.Ingestion.Pipeline.Nodes
                             {
                                 item.Context.AddBreadcrumb(Name);
 
-                                logger?.LogInformation("Stub indexed message. NodeName={NodeName} PartitionId={PartitionId} Key={Key} MessageId={MessageId} Attempt={Attempt}", Name, batch.PartitionId, item.Key, item.MessageId, item.Attempt);
+                                _logger?.LogInformation("Stub indexed message. NodeName={NodeName} PartitionId={PartitionId} Key={Key} MessageId={MessageId} Attempt={Attempt}", Name, batch.PartitionId, item.Key, item.MessageId, item.Attempt);
 
-                                await output.WriteAsync(item, cancellationToken)
+                                await _output.WriteAsync(item, cancellationToken)
                                             .ConfigureAwait(false);
-                                metrics.RecordOut(item);
+                                _metrics.RecordOut(item);
                             }
                         }
                         finally
                         {
                             var elapsed = Stopwatch.GetElapsedTime(started);
-                            metrics.RecordDuration(elapsed);
-                            metrics.DecrementInFlight();
+                            _metrics.RecordDuration(elapsed);
+                            _metrics.DecrementInFlight();
                         }
                     }
                 }
 
-                await input.Completion.ConfigureAwait(false);
-                output.TryComplete();
+                await _input.Completion.ConfigureAwait(false);
+                _output.TryComplete();
             }
             catch (OperationCanceledException) when (cancellationToken.IsCancellationRequested)
             {
-                output.TryComplete();
+                _output.TryComplete();
             }
             catch (Exception ex)
             {
-                logger?.LogError(ex, "Node '{NodeName}' failed.", Name);
-                output.TryComplete(ex);
-                fatalErrorReporter?.ReportFatal(Name, ex);
+                _logger?.LogError(ex, "Node '{NodeName}' failed.", Name);
+                _output.TryComplete(ex);
+                _fatalErrorReporter?.ReportFatal(Name, ex);
                 throw;
             }
             finally
             {
-                metrics.Dispose();
+                _metrics.Dispose();
             }
         }
     }

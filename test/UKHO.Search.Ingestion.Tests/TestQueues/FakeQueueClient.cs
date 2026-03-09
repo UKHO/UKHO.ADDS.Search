@@ -5,7 +5,7 @@ namespace UKHO.Search.Ingestion.Tests.TestQueues
 {
     public sealed class FakeQueueClient : IQueueClient
     {
-        private readonly ConcurrentQueue<QueueReceivedMessage> messages = new();
+        private readonly ConcurrentQueue<QueueReceivedMessage> _messages = new();
 
         public FakeQueueClient(string queueName)
         {
@@ -38,7 +38,7 @@ namespace UKHO.Search.Ingestion.Tests.TestQueues
         public ValueTask<IReadOnlyList<QueueReceivedMessage>> ReceiveMessagesAsync(int maxMessages, TimeSpan visibilityTimeout, CancellationToken cancellationToken)
         {
             var list = new List<QueueReceivedMessage>(maxMessages);
-            while (list.Count < maxMessages && messages.TryDequeue(out var msg))
+            while (list.Count < maxMessages && _messages.TryDequeue(out var msg))
             {
                 list.Add(msg);
             }
@@ -72,7 +72,7 @@ namespace UKHO.Search.Ingestion.Tests.TestQueues
 
         public void Enqueue(QueueReceivedMessage message)
         {
-            messages.Enqueue(message);
+            _messages.Enqueue(message);
         }
     }
 }

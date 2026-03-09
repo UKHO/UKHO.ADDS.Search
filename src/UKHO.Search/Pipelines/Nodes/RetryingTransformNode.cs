@@ -9,11 +9,11 @@ namespace UKHO.Search.Pipelines.Nodes
 {
     public sealed class RetryingTransformNode<TIn, TOut> : NodeBase<Envelope<TIn>, Envelope<TOut>>
     {
-        private readonly Func<Envelope<TIn>, Exception, PipelineError> createError;
-        private readonly ChannelWriter<Envelope<TIn>>? errorOutput;
-        private readonly bool forwardFailedToMainOutput;
-        private readonly IRetryPolicy retryPolicy;
-        private readonly Func<TIn, CancellationToken, ValueTask<TOut>> transform;
+        private readonly Func<Envelope<TIn>, Exception, PipelineError> _createError;
+        private readonly ChannelWriter<Envelope<TIn>>? _errorOutput;
+        private readonly bool _forwardFailedToMainOutput;
+        private readonly IRetryPolicy _retryPolicy;
+        private readonly Func<TIn, CancellationToken, ValueTask<TOut>> _transform;
 
         public RetryingTransformNode(string name,
             ChannelReader<Envelope<TIn>> input,
@@ -26,11 +26,11 @@ namespace UKHO.Search.Pipelines.Nodes
             ILogger? logger = null,
             IPipelineFatalErrorReporter? fatalErrorReporter = null) : base(name, input, output, logger, fatalErrorReporter)
         {
-            this.transform = transform;
-            this.retryPolicy = retryPolicy;
-            this.createError = createError;
-            this.errorOutput = errorOutput;
-            this.forwardFailedToMainOutput = forwardFailedToMainOutput;
+            this._transform = transform;
+            this._retryPolicy = retryPolicy;
+            this._createError = createError;
+            this._errorOutput = errorOutput;
+            this._forwardFailedToMainOutput = forwardFailedToMainOutput;
         }
 
         public RetryingTransformNode(string name,
@@ -75,7 +75,7 @@ namespace UKHO.Search.Pipelines.Nodes
             {
                 try
                 {
-                    var payload = await transform(item.Payload, cancellationToken)
+                    var payload = await _transform(item.Payload, cancellationToken)
                         .ConfigureAwait(false);
                     item.MarkOk();
                     await WriteAsync(item.MapPayload(payload), cancellationToken)
@@ -84,13 +84,13 @@ namespace UKHO.Search.Pipelines.Nodes
                 }
                 catch (Exception ex)
                 {
-                    var error = createError(item, ex);
-                    if (retryPolicy.ShouldRetry(item, error))
+                    var error = _createError(item, ex);
+                    if (_retryPolicy.ShouldRetry(item, error))
                     {
                         item.MarkRetrying(error);
                         item.Attempt++;
 
-                        var delay = retryPolicy.GetDelay(item.Attempt);
+                        var delay = _retryPolicy.GetDelay(item.Attempt);
                         if (delay > TimeSpan.Zero)
                         {
                             await Task.Delay(delay, cancellationToken)
@@ -102,14 +102,14 @@ namespace UKHO.Search.Pipelines.Nodes
 
                     item.MarkFailed(error);
 
-                    if (errorOutput is not null)
+                    if (_errorOutput is not null)
                     {
-                        await errorOutput.WriteAsync(item, cancellationToken)
+                        await _errorOutput.WriteAsync(item, cancellationToken)
                                          .ConfigureAwait(false);
                         Metrics.RecordOut(item);
                     }
 
-                    if (forwardFailedToMainOutput)
+                    if (_forwardFailedToMainOutput)
                     {
                         await WriteAsync(item.MapPayload(default(TOut)!), cancellationToken)
                             .ConfigureAwait(false);
@@ -123,7 +123,7 @@ namespace UKHO.Search.Pipelines.Nodes
         protected override void CompleteOutputs(Exception? error = null)
         {
             base.CompleteOutputs(error);
-            errorOutput?.TryComplete(error);
+            _errorOutput?.TryComplete(error);
         }
     }
 }

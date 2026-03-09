@@ -13,21 +13,21 @@ namespace UKHO.Search.Infrastructure.Ingestion.DeadLetter
 {
     public sealed class BlobDeadLetterSinkNode<TPayload> : SinkNodeBase<Envelope<TPayload>>
     {
-        private readonly string blobPrefix;
-        private readonly BlobContainerClient containerClient;
-        private readonly SemaphoreSlim ensureContainerSemaphore = new(1, 1);
-        private readonly bool fatalIfCannotPersist;
-        private readonly JsonSerializerOptions jsonOptions;
-        private readonly ILogger? logger;
-        private readonly IDeadLetterMetadataProvider metadataProvider;
-        private bool containerEnsured;
+        private readonly string _blobPrefix;
+        private readonly BlobContainerClient _containerClient;
+        private readonly SemaphoreSlim _ensureContainerSemaphore = new(1, 1);
+        private readonly bool _fatalIfCannotPersist;
+        private readonly JsonSerializerOptions _jsonOptions;
+        private readonly ILogger? _logger;
+        private readonly IDeadLetterMetadataProvider _metadataProvider;
+        private bool _containerEnsured;
 
         public BlobDeadLetterSinkNode(string name, ChannelReader<Envelope<TPayload>> input, BlobServiceClient blobServiceClient, IConfiguration configuration, bool fatalIfCannotPersist = true, string? containerName = null, string? blobPrefix = null, IDeadLetterMetadataProvider? metadataProvider = null, ILogger? logger = null, IPipelineFatalErrorReporter? fatalErrorReporter = null) : base(name,
             input, logger, fatalErrorReporter)
         {
-            this.fatalIfCannotPersist = fatalIfCannotPersist;
-            this.metadataProvider = metadataProvider ?? new DefaultDeadLetterMetadataProvider();
-            this.logger = logger;
+            this._fatalIfCannotPersist = fatalIfCannotPersist;
+            this._metadataProvider = metadataProvider ?? new DefaultDeadLetterMetadataProvider();
+            this._logger = logger;
 
             var resolvedContainerName = containerName ?? configuration["ingestion:deadletterContainer"];
             if (string.IsNullOrWhiteSpace(resolvedContainerName))
@@ -35,11 +35,11 @@ namespace UKHO.Search.Infrastructure.Ingestion.DeadLetter
                 throw new InvalidOperationException("Missing required configuration value 'ingestion:deadletterContainer'.");
             }
 
-            this.blobPrefix = blobPrefix ?? configuration["ingestion:deadletterBlobPrefix"] ?? "deadletter";
+            this._blobPrefix = blobPrefix ?? configuration["ingestion:deadletterBlobPrefix"] ?? "deadletter";
 
-            containerClient = blobServiceClient.GetBlobContainerClient(resolvedContainerName);
+            _containerClient = blobServiceClient.GetBlobContainerClient(resolvedContainerName);
 
-            jsonOptions = new JsonSerializerOptions(JsonSerializerDefaults.Web);
+            _jsonOptions = new JsonSerializerOptions(JsonSerializerDefaults.Web);
         }
 
         protected override async ValueTask HandleItemAsync(Envelope<TPayload> item, CancellationToken cancellationToken)
@@ -62,9 +62,9 @@ namespace UKHO.Search.Infrastructure.Ingestion.DeadLetter
                     RawSnapshot = null,
                     Metadata = new DeadLetterMetadata
                     {
-                        AppVersion = metadataProvider.AppVersion,
-                        CommitId = metadataProvider.CommitId,
-                        HostName = metadataProvider.HostName
+                        AppVersion = _metadataProvider.AppVersion,
+                        CommitId = _metadataProvider.CommitId,
+                        HostName = _metadataProvider.HostName
                     }
                 };
 
@@ -73,7 +73,7 @@ namespace UKHO.Search.Infrastructure.Ingestion.DeadLetter
                 BinaryData data;
                 try
                 {
-                    data = BinaryData.FromString(JsonSerializer.Serialize(record, jsonOptions));
+                    data = BinaryData.FromString(JsonSerializer.Serialize(record, _jsonOptions));
                 }
                 catch (Exception ex)
                 {
@@ -96,10 +96,10 @@ namespace UKHO.Search.Infrastructure.Ingestion.DeadLetter
                         SerializationError = ex.ToString()
                     };
 
-                    data = BinaryData.FromString(JsonSerializer.Serialize(fallback, jsonOptions));
+                    data = BinaryData.FromString(JsonSerializer.Serialize(fallback, _jsonOptions));
                 }
 
-                await containerClient.GetBlobClient(blobName)
+                await _containerClient.GetBlobClient(blobName)
                                      .UploadAsync(data, true, cancellationToken)
                                      .ConfigureAwait(false);
 
@@ -107,9 +107,9 @@ namespace UKHO.Search.Infrastructure.Ingestion.DeadLetter
             }
             catch (Exception ex)
             {
-                logger?.LogError(ex, "Blob dead-letter persist failed in '{NodeName}' for MessageId={MessageId} Key='{Key}' ErrorCode='{ErrorCode}'.", Name, item.MessageId, item.Key, item.Error?.Code);
+                _logger?.LogError(ex, "Blob dead-letter persist failed in '{NodeName}' for MessageId={MessageId} Key='{Key}' ErrorCode='{ErrorCode}'.", Name, item.MessageId, item.Key, item.Error?.Code);
 
-                if (fatalIfCannotPersist)
+                if (_fatalIfCannotPersist)
                 {
                     throw;
                 }
@@ -132,34 +132,34 @@ namespace UKHO.Search.Infrastructure.Ingestion.DeadLetter
             }
             catch (Exception ex)
             {
-                logger?.LogError(ex, "Failed to delete queue message after blob dead-letter persistence. NodeName={NodeName} Key={Key} MessageId={MessageId} Attempt={Attempt}", Name, item.Key, item.MessageId, item.Attempt);
+                _logger?.LogError(ex, "Failed to delete queue message after blob dead-letter persistence. NodeName={NodeName} Key={Key} MessageId={MessageId} Attempt={Attempt}", Name, item.Key, item.MessageId, item.Attempt);
             }
         }
 
         private async Task EnsureContainerExistsAsync(CancellationToken cancellationToken)
         {
-            if (containerEnsured)
+            if (_containerEnsured)
             {
                 return;
             }
 
-            await ensureContainerSemaphore.WaitAsync(cancellationToken)
+            await _ensureContainerSemaphore.WaitAsync(cancellationToken)
                                           .ConfigureAwait(false);
             try
             {
-                if (containerEnsured)
+                if (_containerEnsured)
                 {
                     return;
                 }
 
-                await containerClient.CreateIfNotExistsAsync(cancellationToken: cancellationToken)
+                await _containerClient.CreateIfNotExistsAsync(cancellationToken: cancellationToken)
                                      .ConfigureAwait(false);
 
-                containerEnsured = true;
+                _containerEnsured = true;
             }
             finally
             {
-                ensureContainerSemaphore.Release();
+                _ensureContainerSemaphore.Release();
             }
         }
 
@@ -167,7 +167,7 @@ namespace UKHO.Search.Infrastructure.Ingestion.DeadLetter
         {
             var date = deadLetteredAtUtc.UtcDateTime;
 
-            var prefix = blobPrefix.Trim('/');
+            var prefix = _blobPrefix.Trim('/');
             var key = SanitizePathSegment(envelope.Key);
             var messageId = envelope.MessageId.ToString("D");
 

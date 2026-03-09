@@ -192,7 +192,7 @@ namespace UKHO.Aspire.Configuration.Emulator.ConfigurationSettings
                     return new PreconditionFailedResult();
                 }
 
-                setting = new ConfigurationSetting(Convert.ToBase64String(SHA256.HashData(Encoding.UTF8.GetBytes(date.UtcDateTime.ToString("yyyy-MM-dd HH:mm:ss")))), key, date, false, label is LabelFilter.Null ? null : label, input.content_type, input.value, input.tags);
+                setting = new ConfigurationSetting(Convert.ToBase64String(SHA256.HashData(Encoding.UTF8.GetBytes(date.UtcDateTime.ToString("yyyy-MM-dd HH:mm:ss")))), key, date, false, label is LabelFilter.Null ? null : label, input.ContentType, input.Value, input.Tags);
 
                 await repository.Add(setting, cancellationToken);
 
@@ -216,15 +216,15 @@ namespace UKHO.Aspire.Configuration.Emulator.ConfigurationSettings
 
             setting.Etag = Convert.ToBase64String(SHA256.HashData(Encoding.UTF8.GetBytes(date.UtcDateTime.ToString("yyyy-MM-dd HH:mm:ss"))));
             setting.LastModified = date;
-            setting.ContentType = input.content_type;
-            setting.Value = input.value;
-            setting.Tags = input.tags;
+            setting.ContentType = input.ContentType;
+            setting.Value = input.Value;
+            setting.Tags = input.Tags;
 
             await repository.Update(setting, cancellationToken);
 
             return new ConfigurationSettingResult(setting);
         }
 
-        public record SetInput(string? value, string? content_type, IDictionary<string, string>? tags);
+        public record SetInput(string? Value, string? ContentType, IDictionary<string, string>? Tags);
     }
 }

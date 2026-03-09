@@ -4,25 +4,25 @@ namespace UKHO.Search.Pipelines.Channels
 {
     public sealed class CountingChannelWriter<T> : ChannelWriter<T>
     {
-        private readonly Action increment;
-        private readonly ChannelWriter<T> inner;
+        private readonly Action _increment;
+        private readonly ChannelWriter<T> _inner;
 
         public CountingChannelWriter(ChannelWriter<T> inner, Action increment)
         {
-            this.inner = inner;
-            this.increment = increment;
+            this._inner = inner;
+            this._increment = increment;
         }
 
         public override bool TryComplete(Exception? error = null)
         {
-            return inner.TryComplete(error);
+            return _inner.TryComplete(error);
         }
 
         public override bool TryWrite(T item)
         {
-            if (inner.TryWrite(item))
+            if (_inner.TryWrite(item))
             {
-                increment();
+                _increment();
                 return true;
             }
 
@@ -31,15 +31,15 @@ namespace UKHO.Search.Pipelines.Channels
 
         public override ValueTask<bool> WaitToWriteAsync(CancellationToken cancellationToken = default)
         {
-            return inner.WaitToWriteAsync(cancellationToken);
+            return _inner.WaitToWriteAsync(cancellationToken);
         }
 
         public override ValueTask WriteAsync(T item, CancellationToken cancellationToken = default)
         {
-            var write = inner.WriteAsync(item, cancellationToken);
+            var write = _inner.WriteAsync(item, cancellationToken);
             if (write.IsCompletedSuccessfully)
             {
-                increment();
+                _increment();
                 return write;
             }
 
@@ -49,7 +49,7 @@ namespace UKHO.Search.Pipelines.Channels
         private async ValueTask AwaitWriteAsync(ValueTask write)
         {
             await write.ConfigureAwait(false);
-            increment();
+            _increment();
         }
     }
 }

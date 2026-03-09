@@ -1,5 +1,5 @@
 @implements IAsyncDisposable
-@inject IJSRuntime JS
+@inject IJSRuntime Js
 
 <div class="absolute z-9999" @ref="@AnchoredRegion">
     @ChildContent
@@ -54,7 +54,7 @@
     {
         if (firstRender)
         {
-            Module = await JS.InvokeAsync<IJSObjectReference>("import", "./Components/AzureAnchoredRegion.razor.js");
+            Module = await Js.InvokeAsync<IJSObjectReference>("import", "./Components/AzureAnchoredRegion.razor.js");
 
             await Module.InvokeVoidAsync("anchor", AnchoredRegion, Anchor, HorizontalDefaultPosition, HorizontalInset, HorizontalPositioningMode, HorizontalThreshold, VerticalDefaultPosition, VerticalInset, VerticalPositioningMode, VerticalThreshold);
         }

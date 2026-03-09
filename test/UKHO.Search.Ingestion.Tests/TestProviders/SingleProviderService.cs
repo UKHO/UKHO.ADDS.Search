@@ -5,21 +5,21 @@ namespace UKHO.Search.Ingestion.Tests.TestProviders
 {
     public sealed class SingleProviderService : IIngestionProviderService
     {
-        private readonly IIngestionDataProviderFactory factory;
+        private readonly IIngestionDataProviderFactory _factory;
 
         public SingleProviderService(IIngestionDataProviderFactory factory)
         {
-            this.factory = factory;
+            this._factory = factory;
         }
 
         public IEnumerable<IIngestionDataProviderFactory> GetAllProviders()
         {
-            return new[] { factory };
+            return new[] { _factory };
         }
 
         public IIngestionDataProviderFactory GetProvider(string name)
         {
-            return factory;
+            return _factory;
         }
     }
 }

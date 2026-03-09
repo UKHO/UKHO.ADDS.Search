@@ -9,23 +9,23 @@ namespace UKHO.Search.Pipelines.Nodes
 {
     public abstract class MultiInputNodeBase<T1, T2, TOut> : INode
     {
-        private readonly CancellationMode cancellationMode;
-        private readonly IPipelineFatalErrorReporter? fatalErrorReporter;
-        private readonly ChannelReader<T1> input1;
-        private readonly ChannelReader<T2> input2;
-        private readonly ILogger? logger;
-        private readonly ChannelWriter<TOut> output;
-        private Task? completion;
+        private readonly CancellationMode _cancellationMode;
+        private readonly IPipelineFatalErrorReporter? _fatalErrorReporter;
+        private readonly ChannelReader<T1> _input1;
+        private readonly ChannelReader<T2> _input2;
+        private readonly ILogger? _logger;
+        private readonly ChannelWriter<TOut> _output;
+        private Task? _completion;
 
         protected MultiInputNodeBase(string name, ChannelReader<T1> input1, ChannelReader<T2> input2, ChannelWriter<TOut> output, ILogger? logger = null, IPipelineFatalErrorReporter? fatalErrorReporter = null, CancellationMode cancellationMode = CancellationMode.Immediate)
         {
             Name = name;
-            this.input1 = input1;
-            this.input2 = input2;
-            this.output = output;
-            this.logger = logger;
-            this.fatalErrorReporter = fatalErrorReporter;
-            this.cancellationMode = cancellationMode;
+            this._input1 = input1;
+            this._input2 = input2;
+            this._output = output;
+            this._logger = logger;
+            this._fatalErrorReporter = fatalErrorReporter;
+            this._cancellationMode = cancellationMode;
 
             Func<long>? queueDepthProvider = null;
             if (input1 is IQueueDepthProvider || input2 is IQueueDepthProvider)
@@ -40,11 +40,11 @@ namespace UKHO.Search.Pipelines.Nodes
 
         public string Name { get; }
 
-        public Task Completion => completion ?? Task.CompletedTask;
+        public Task Completion => _completion ?? Task.CompletedTask;
 
         public Task StartAsync(CancellationToken cancellationToken)
         {
-            completion ??= Task.Run(() => RunAsync(cancellationToken), CancellationToken.None);
+            _completion ??= Task.Run(() => RunAsync(cancellationToken), CancellationToken.None);
             return Task.CompletedTask;
         }
 
@@ -59,14 +59,14 @@ namespace UKHO.Search.Pipelines.Nodes
 
         protected async ValueTask WriteAsync(TOut item, CancellationToken cancellationToken)
         {
-            await output.WriteAsync(item, cancellationToken)
+            await _output.WriteAsync(item, cancellationToken)
                         .ConfigureAwait(false);
             Metrics.RecordOut(item);
         }
 
         protected virtual void CompleteOutputs(Exception? error = null)
         {
-            output.TryComplete(error);
+            _output.TryComplete(error);
         }
 
         private async Task RunAsync(CancellationToken cancellationToken)
@@ -77,23 +77,23 @@ namespace UKHO.Search.Pipelines.Nodes
                     .ConfigureAwait(false);
 
                 // Surface any upstream faults deterministically.
-                await Task.WhenAll(input1.Completion, input2.Completion)
+                await Task.WhenAll(_input1.Completion, _input2.Completion)
                           .ConfigureAwait(false);
 
                 CompleteOutputs();
             }
             catch (OperationCanceledException) when (cancellationToken.IsCancellationRequested)
             {
-                if (cancellationMode == CancellationMode.Drain)
+                if (_cancellationMode == CancellationMode.Drain)
                 {
                     await DrainAvailableAsync()
                         .ConfigureAwait(false);
                 }
                 else
                 {
-                    if (input1.Completion.IsCompleted || input2.Completion.IsCompleted)
+                    if (_input1.Completion.IsCompleted || _input2.Completion.IsCompleted)
                     {
-                        await Task.WhenAll(input1.Completion, input2.Completion)
+                        await Task.WhenAll(_input1.Completion, _input2.Completion)
                                   .ConfigureAwait(false);
                     }
                 }
@@ -102,9 +102,9 @@ namespace UKHO.Search.Pipelines.Nodes
             }
             catch (Exception ex)
             {
-                logger?.LogError(ex, "Node '{NodeName}' failed.", Name);
+                _logger?.LogError(ex, "Node '{NodeName}' failed.", Name);
                 CompleteOutputs(ex);
-                fatalErrorReporter?.ReportFatal(Name, ex);
+                _fatalErrorReporter?.ReportFatal(Name, ex);
                 throw;
             }
             finally
@@ -121,7 +121,7 @@ namespace UKHO.Search.Pipelines.Nodes
             {
                 if (preferInput1)
                 {
-                    if (input1.TryRead(out var item1))
+                    if (_input1.TryRead(out var item1))
                     {
                         await ProcessInput1Async(item1, CancellationToken.None)
                             .ConfigureAwait(false);
@@ -129,7 +129,7 @@ namespace UKHO.Search.Pipelines.Nodes
                         continue;
                     }
 
-                    if (input2.TryRead(out var item2))
+                    if (_input2.TryRead(out var item2))
                     {
                         await ProcessInput2Async(item2, CancellationToken.None)
                             .ConfigureAwait(false);
@@ -139,7 +139,7 @@ namespace UKHO.Search.Pipelines.Nodes
                 }
                 else
                 {
-                    if (input2.TryRead(out var item2))
+                    if (_input2.TryRead(out var item2))
                     {
                         await ProcessInput2Async(item2, CancellationToken.None)
                             .ConfigureAwait(false);
@@ -147,7 +147,7 @@ namespace UKHO.Search.Pipelines.Nodes
                         continue;
                     }
 
-                    if (input1.TryRead(out var item1))
+                    if (_input1.TryRead(out var item1))
                     {
                         await ProcessInput1Async(item1, CancellationToken.None)
                             .ConfigureAwait(false);
@@ -170,7 +170,7 @@ namespace UKHO.Search.Pipelines.Nodes
             {
                 if (preferInput1)
                 {
-                    if (input1.TryRead(out var item1))
+                    if (_input1.TryRead(out var item1))
                     {
                         await ProcessInput1Async(item1, cancellationToken)
                             .ConfigureAwait(false);
@@ -178,7 +178,7 @@ namespace UKHO.Search.Pipelines.Nodes
                         continue;
                     }
 
-                    if (input2.TryRead(out var item2))
+                    if (_input2.TryRead(out var item2))
                     {
                         await ProcessInput2Async(item2, cancellationToken)
                             .ConfigureAwait(false);
@@ -188,7 +188,7 @@ namespace UKHO.Search.Pipelines.Nodes
                 }
                 else
                 {
-                    if (input2.TryRead(out var item2))
+                    if (_input2.TryRead(out var item2))
                     {
                         await ProcessInput2Async(item2, cancellationToken)
                             .ConfigureAwait(false);
@@ -196,7 +196,7 @@ namespace UKHO.Search.Pipelines.Nodes
                         continue;
                     }
 
-                    if (input1.TryRead(out var item1))
+                    if (_input1.TryRead(out var item1))
                     {
                         await ProcessInput1Async(item1, cancellationToken)
                             .ConfigureAwait(false);
@@ -210,13 +210,13 @@ namespace UKHO.Search.Pipelines.Nodes
 
                 if (!input1Completed)
                 {
-                    wait1 = input1.WaitToReadAsync(cancellationToken)
+                    wait1 = _input1.WaitToReadAsync(cancellationToken)
                                   .AsTask();
                 }
 
                 if (!input2Completed)
                 {
-                    wait2 = input2.WaitToReadAsync(cancellationToken)
+                    wait2 = _input2.WaitToReadAsync(cancellationToken)
                                   .AsTask();
                 }
 

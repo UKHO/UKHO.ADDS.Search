@@ -6,9 +6,9 @@ namespace FileShareEmulator.Services
 {
     public sealed class StatisticsService
     {
-        private static readonly IReadOnlyDictionary<string, string?> EmptyMetadata = new Dictionary<string, string?>(0, StringComparer.OrdinalIgnoreCase);
+        private static readonly IReadOnlyDictionary<string, string?> _emptyMetadata = new Dictionary<string, string?>(0, StringComparer.OrdinalIgnoreCase);
 
-        private static readonly IReadOnlyDictionary<string, string> Labels = new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase)
+        private static readonly IReadOnlyDictionary<string, string> _labels = new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase)
         {
             [nameof(StatisticsSnapshot.BatchCount)] = HumanizeLabel(nameof(StatisticsSnapshot.BatchCount)),
             [nameof(StatisticsSnapshot.FileCount)] = HumanizeLabel(nameof(StatisticsSnapshot.FileCount)),
@@ -74,7 +74,7 @@ SELECT
             if (!await reader.ReadAsync(cancellationToken)
                              .ConfigureAwait(false))
             {
-                return new StatisticsSnapshot(0, 0, 0, 0, 0, 0, Labels, EmptyMetadata);
+                return new StatisticsSnapshot(0, 0, 0, 0, 0, 0, _labels, _emptyMetadata);
             }
 
             var batchCount = checked((int)reader.GetInt64(0));
@@ -90,7 +90,7 @@ SELECT
             var localMetadata = await GetLocalMetadataAsync(_sqlConnection, cancellationToken)
                 .ConfigureAwait(false);
 
-            return new StatisticsSnapshot(batchCount, fileCount, batchAttributeCount, fileAttributeCount, batchReadUserCount, batchReadGroupCount, Labels, localMetadata);
+            return new StatisticsSnapshot(batchCount, fileCount, batchAttributeCount, fileAttributeCount, batchReadUserCount, batchReadGroupCount, _labels, localMetadata);
         }
 
         private async Task EnsureConnectionOpenAsync(CancellationToken cancellationToken)

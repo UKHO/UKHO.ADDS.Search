@@ -4,33 +4,33 @@ namespace UKHO.Search.Infrastructure.Ingestion.Pipeline.Channels
 {
     public sealed class RefCountedChannelWriter<T> : ChannelWriter<T>
     {
-        private readonly RefCountedCompletion completion;
-        private readonly ChannelWriter<T> inner;
+        private readonly RefCountedCompletion _completion;
+        private readonly ChannelWriter<T> _inner;
 
         public RefCountedChannelWriter(ChannelWriter<T> inner, RefCountedCompletion completion)
         {
-            this.inner = inner;
-            this.completion = completion;
+            this._inner = inner;
+            this._completion = completion;
         }
 
         public override bool TryComplete(Exception? error = null)
         {
-            return completion.TryComplete(inner, error);
+            return _completion.TryComplete(_inner, error);
         }
 
         public override bool TryWrite(T item)
         {
-            return inner.TryWrite(item);
+            return _inner.TryWrite(item);
         }
 
         public override ValueTask<bool> WaitToWriteAsync(CancellationToken cancellationToken = default)
         {
-            return inner.WaitToWriteAsync(cancellationToken);
+            return _inner.WaitToWriteAsync(cancellationToken);
         }
 
         public override ValueTask WriteAsync(T item, CancellationToken cancellationToken = default)
         {
-            return inner.WriteAsync(item, cancellationToken);
+            return _inner.WriteAsync(item, cancellationToken);
         }
     }
 }

@@ -7,11 +7,11 @@ namespace UKHO.Search.Ingestion.Providers.FileShare.Pipeline.Documents
 {
     public sealed class CanonicalDocumentBuilder
     {
-        private readonly string documentTypePlaceholder;
+        private readonly string _documentTypePlaceholder;
 
         public CanonicalDocumentBuilder(string documentTypePlaceholder)
         {
-            this.documentTypePlaceholder = documentTypePlaceholder;
+            this._documentTypePlaceholder = documentTypePlaceholder;
         }
 
         public CanonicalDocument BuildForUpsert(string documentId, IngestionRequest request)
@@ -27,7 +27,7 @@ namespace UKHO.Search.Ingestion.Providers.FileShare.Pipeline.Documents
             return new CanonicalDocument
             {
                 DocumentId = documentId,
-                DocumentType = documentTypePlaceholder,
+                DocumentType = _documentTypePlaceholder,
                 Source = source,
                 Normalized = new JsonObject(),
                 Descriptions = new JsonObject(),

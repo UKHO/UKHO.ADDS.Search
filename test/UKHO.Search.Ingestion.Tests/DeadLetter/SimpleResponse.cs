@@ -5,19 +5,19 @@ namespace UKHO.Search.Ingestion.Tests.DeadLetter
 {
     public sealed class SimpleResponse : Response
     {
-        private readonly Dictionary<string, List<string>> headers = new(StringComparer.OrdinalIgnoreCase);
-        private readonly string reasonPhrase;
-        private readonly int status;
+        private readonly Dictionary<string, List<string>> _headers = new(StringComparer.OrdinalIgnoreCase);
+        private readonly string _reasonPhrase;
+        private readonly int _status;
 
         public SimpleResponse(int status, string reasonPhrase = "")
         {
-            this.status = status;
-            this.reasonPhrase = reasonPhrase;
+            this._status = status;
+            this._reasonPhrase = reasonPhrase;
         }
 
-        public override int Status => status;
+        public override int Status => _status;
 
-        public override string ReasonPhrase => reasonPhrase;
+        public override string ReasonPhrase => _reasonPhrase;
 
         public override Stream? ContentStream { get; set; }
 
@@ -29,12 +29,12 @@ namespace UKHO.Search.Ingestion.Tests.DeadLetter
 
         protected override bool ContainsHeader(string name)
         {
-            return headers.ContainsKey(name);
+            return _headers.ContainsKey(name);
         }
 
         protected override IEnumerable<HttpHeader> EnumerateHeaders()
         {
-            foreach (var (name, values) in headers)
+            foreach (var (name, values) in _headers)
             {
                 foreach (var value in values)
                 {
@@ -45,7 +45,7 @@ namespace UKHO.Search.Ingestion.Tests.DeadLetter
 
         protected override bool TryGetHeader(string name, out string? value)
         {
-            if (headers.TryGetValue(name, out var values) && values.Count > 0)
+            if (_headers.TryGetValue(name, out var values) && values.Count > 0)
             {
                 value = values[0];
                 return true;
@@ -57,7 +57,7 @@ namespace UKHO.Search.Ingestion.Tests.DeadLetter
 
         protected override bool TryGetHeaderValues(string name, out IEnumerable<string>? values)
         {
-            if (headers.TryGetValue(name, out var list))
+            if (_headers.TryGetValue(name, out var list))
             {
                 values = list;
                 return true;

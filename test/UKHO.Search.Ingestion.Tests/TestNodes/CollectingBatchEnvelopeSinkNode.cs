@@ -7,9 +7,9 @@ namespace UKHO.Search.Ingestion.Tests.TestNodes
 {
     public sealed class CollectingBatchEnvelopeSinkNode<TPayload> : SinkNodeBase<BatchEnvelope<TPayload>>
     {
-        private readonly object gate = new();
-        private readonly List<Envelope<TPayload>> items = new();
-        private readonly SemaphoreSlim receivedSignal = new(0);
+        private readonly object _gate = new();
+        private readonly List<Envelope<TPayload>> _items = new();
+        private readonly SemaphoreSlim _receivedSignal = new(0);
 
         public CollectingBatchEnvelopeSinkNode(string name, ChannelReader<BatchEnvelope<TPayload>> input) : base(name, input, cancellationMode: CancellationMode.Drain)
         {
@@ -19,9 +19,9 @@ namespace UKHO.Search.Ingestion.Tests.TestNodes
         {
             get
             {
-                lock (gate)
+                lock (_gate)
                 {
-                    return items.ToArray();
+                    return _items.ToArray();
                 }
             }
         }
@@ -32,27 +32,27 @@ namespace UKHO.Search.Ingestion.Tests.TestNodes
 
             while (true)
             {
-                lock (gate)
+                lock (_gate)
                 {
-                    if (items.Count >= expectedCount)
+                    if (_items.Count >= expectedCount)
                     {
                         return;
                     }
                 }
 
-                await receivedSignal.WaitAsync(cts.Token)
+                await _receivedSignal.WaitAsync(cts.Token)
                                     .ConfigureAwait(false);
             }
         }
 
         protected override ValueTask HandleItemAsync(BatchEnvelope<TPayload> batch, CancellationToken cancellationToken)
         {
-            lock (gate)
+            lock (_gate)
             {
-                items.AddRange(batch.Items);
+                _items.AddRange(batch.Items);
             }
 
-            receivedSignal.Release(batch.Items.Count);
+            _receivedSignal.Release(batch.Items.Count);
             return ValueTask.CompletedTask;
         }
     }

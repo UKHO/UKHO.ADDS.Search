@@ -4,33 +4,33 @@ namespace UKHO.Search.Infrastructure.Ingestion.Queue
 {
     public sealed class QueueMessageAcker : IQueueMessageAcker
     {
-        private readonly ILogger logger;
-        private readonly string messageId;
-        private readonly string messageText;
-        private readonly IQueueClient queue;
-        private readonly CancellationTokenSource renewalCts = new();
-        private int deleted;
-        private string popReceipt;
+        private readonly ILogger _logger;
+        private readonly string _messageId;
+        private readonly string _messageText;
+        private readonly IQueueClient _queue;
+        private readonly CancellationTokenSource _renewalCts = new();
+        private int _deleted;
+        private string _popReceipt;
 
         public QueueMessageAcker(IQueueClient queue, string messageId, string popReceipt, string messageText, ILogger logger)
         {
-            this.queue = queue;
-            this.messageId = messageId;
-            this.popReceipt = popReceipt;
-            this.messageText = messageText;
-            this.logger = logger;
+            this._queue = queue;
+            this._messageId = messageId;
+            this._popReceipt = popReceipt;
+            this._messageText = messageText;
+            this._logger = logger;
         }
 
         public Task? VisibilityRenewalTask { get; private set; }
 
         public async ValueTask DeleteAsync(CancellationToken cancellationToken)
         {
-            if (Interlocked.CompareExchange(ref deleted, 1, 0) != 0)
+            if (Interlocked.CompareExchange(ref _deleted, 1, 0) != 0)
             {
                 return;
             }
 
-            renewalCts.Cancel();
+            _renewalCts.Cancel();
 
             if (VisibilityRenewalTask is not null)
             {
@@ -43,16 +43,16 @@ namespace UKHO.Search.Infrastructure.Ingestion.Queue
                 }
             }
 
-            await queue.DeleteMessageAsync(messageId, popReceipt, cancellationToken)
+            await _queue.DeleteMessageAsync(_messageId, _popReceipt, cancellationToken)
                        .ConfigureAwait(false);
         }
 
         public async ValueTask UpdateVisibilityAsync(TimeSpan visibilityTimeout, CancellationToken cancellationToken)
         {
-            var receipt = await queue.UpdateMessageAsync(messageId, popReceipt, messageText, visibilityTimeout, cancellationToken)
+            var receipt = await _queue.UpdateMessageAsync(_messageId, _popReceipt, _messageText, visibilityTimeout, cancellationToken)
                                      .ConfigureAwait(false);
 
-            popReceipt = receipt.PopReceipt;
+            _popReceipt = receipt.PopReceipt;
         }
 
         public async ValueTask MoveToPoisonAsync(IQueueClient poisonQueue, string poisonMessageBody, CancellationToken cancellationToken)
@@ -71,7 +71,7 @@ namespace UKHO.Search.Infrastructure.Ingestion.Queue
                 return;
             }
 
-            var linkedCts = CancellationTokenSource.CreateLinkedTokenSource(renewalCts.Token, pipelineCancellationToken);
+            var linkedCts = CancellationTokenSource.CreateLinkedTokenSource(_renewalCts.Token, pipelineCancellationToken);
             VisibilityRenewalTask = Task.Run(() => RunRenewalLoopAsync(visibilityTimeout, renewalInterval, linkedCts.Token), CancellationToken.None);
         }
 
@@ -93,7 +93,7 @@ namespace UKHO.Search.Infrastructure.Ingestion.Queue
             }
             catch (Exception ex)
             {
-                logger.LogError(ex, "Queue visibility renewal failed. MessageId={MessageId}", messageId);
+                _logger.LogError(ex, "Queue visibility renewal failed. MessageId={MessageId}", _messageId);
                 throw;
             }
         }

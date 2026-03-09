@@ -90,16 +90,16 @@ namespace UKHO.Search.Tests.Pipelines
 
         private sealed class FakeBulkIndexClient<T> : IBulkIndexClient<T>
         {
-            private readonly BulkIndexResponse response;
+            private readonly BulkIndexResponse _response;
 
             public FakeBulkIndexClient(BulkIndexResponse response)
             {
-                this.response = response;
+                this._response = response;
             }
 
             public ValueTask<BulkIndexResponse> BulkIndexAsync(BulkIndexRequest<T> request, CancellationToken cancellationToken)
             {
-                return ValueTask.FromResult(response);
+                return ValueTask.FromResult(_response);
             }
         }
     }

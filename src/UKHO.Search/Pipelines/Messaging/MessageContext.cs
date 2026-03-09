@@ -2,15 +2,15 @@ namespace UKHO.Search.Pipelines.Messaging
 {
     public sealed class MessageContext
     {
-        private readonly List<string> breadcrumbs = new();
-        private readonly Dictionary<string, object?> items = new(StringComparer.Ordinal);
-        private readonly Dictionary<string, DateTimeOffset> timingsUtc = new();
+        private readonly List<string> _breadcrumbs = new();
+        private readonly Dictionary<string, object?> _items = new(StringComparer.Ordinal);
+        private readonly Dictionary<string, DateTimeOffset> _timingsUtc = new();
 
-        public IReadOnlyList<string> Breadcrumbs => breadcrumbs;
+        public IReadOnlyList<string> Breadcrumbs => _breadcrumbs;
 
-        public IReadOnlyDictionary<string, object?> Items => items;
+        public IReadOnlyDictionary<string, object?> Items => _items;
 
-        public IReadOnlyDictionary<string, DateTimeOffset> TimingsUtc => timingsUtc;
+        public IReadOnlyDictionary<string, DateTimeOffset> TimingsUtc => _timingsUtc;
 
         public void SetItem(string key, object? value)
         {
@@ -19,7 +19,7 @@ namespace UKHO.Search.Pipelines.Messaging
                 return;
             }
 
-            items[key] = value;
+            _items[key] = value;
         }
 
         public bool TryGetItem<T>(string key, out T? value)
@@ -30,7 +30,7 @@ namespace UKHO.Search.Pipelines.Messaging
                 return false;
             }
 
-            if (!items.TryGetValue(key, out var raw) || raw is not T typed)
+            if (!_items.TryGetValue(key, out var raw) || raw is not T typed)
             {
                 value = default;
                 return false;
@@ -47,7 +47,7 @@ namespace UKHO.Search.Pipelines.Messaging
                 return;
             }
 
-            breadcrumbs.Add(value);
+            _breadcrumbs.Add(value);
         }
 
         public void MarkTimeUtc(string name, DateTimeOffset timeUtc)
@@ -57,23 +57,23 @@ namespace UKHO.Search.Pipelines.Messaging
                 return;
             }
 
-            timingsUtc[name] = timeUtc;
+            _timingsUtc[name] = timeUtc;
         }
 
         public MessageContext Clone()
         {
             var clone = new MessageContext();
 
-            clone.breadcrumbs.AddRange(breadcrumbs);
+            clone._breadcrumbs.AddRange(_breadcrumbs);
 
-            foreach (var kvp in items)
+            foreach (var kvp in _items)
             {
-                clone.items.Add(kvp.Key, kvp.Value);
+                clone._items.Add(kvp.Key, kvp.Value);
             }
 
-            foreach (var kvp in timingsUtc)
+            foreach (var kvp in _timingsUtc)
             {
-                clone.timingsUtc.Add(kvp.Key, kvp.Value);
+                clone._timingsUtc.Add(kvp.Key, kvp.Value);
             }
 
             return clone;

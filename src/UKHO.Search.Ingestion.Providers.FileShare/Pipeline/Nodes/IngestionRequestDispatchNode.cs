@@ -12,15 +12,15 @@ namespace UKHO.Search.Ingestion.Providers.FileShare.Pipeline.Nodes
 {
     public sealed class IngestionRequestDispatchNode : NodeBase<Envelope<IngestionRequest>, Envelope<IndexOperation>>
     {
-        private readonly CanonicalDocumentBuilder canonicalBuilder;
-        private readonly ChannelWriter<Envelope<IngestionRequest>> deadLetterOutput;
-        private readonly ILogger? logger;
+        private readonly CanonicalDocumentBuilder _canonicalBuilder;
+        private readonly ChannelWriter<Envelope<IngestionRequest>> _deadLetterOutput;
+        private readonly ILogger? _logger;
 
         public IngestionRequestDispatchNode(string name, ChannelReader<Envelope<IngestionRequest>> input, ChannelWriter<Envelope<IndexOperation>> output, ChannelWriter<Envelope<IngestionRequest>> deadLetterOutput, CanonicalDocumentBuilder canonicalBuilder, ILogger? logger = null, IPipelineFatalErrorReporter? fatalErrorReporter = null) : base(name, input, output, logger, fatalErrorReporter)
         {
-            this.deadLetterOutput = deadLetterOutput;
-            this.canonicalBuilder = canonicalBuilder;
-            this.logger = logger;
+            this._deadLetterOutput = deadLetterOutput;
+            this._canonicalBuilder = canonicalBuilder;
+            this._logger = logger;
         }
 
         protected override async ValueTask HandleItemAsync(Envelope<IngestionRequest> item, CancellationToken cancellationToken)
@@ -29,7 +29,7 @@ namespace UKHO.Search.Ingestion.Providers.FileShare.Pipeline.Nodes
 
             if (item.Status != MessageStatus.Ok)
             {
-                await deadLetterOutput.WriteAsync(item, cancellationToken)
+                await _deadLetterOutput.WriteAsync(item, cancellationToken)
                                       .ConfigureAwait(false);
                 Metrics.RecordOut(item);
                 return;
@@ -58,9 +58,9 @@ namespace UKHO.Search.Ingestion.Providers.FileShare.Pipeline.Nodes
                     Details = new Dictionary<string, string>()
                 });
 
-                logger?.LogWarning(ex, "Dispatch failed. NodeName={NodeName} Key={Key} MessageId={MessageId} Attempt={Attempt}", Name, item.Key, item.MessageId, item.Attempt);
+                _logger?.LogWarning(ex, "Dispatch failed. NodeName={NodeName} Key={Key} MessageId={MessageId} Attempt={Attempt}", Name, item.Key, item.MessageId, item.Attempt);
 
-                await deadLetterOutput.WriteAsync(item, cancellationToken)
+                await _deadLetterOutput.WriteAsync(item, cancellationToken)
                                       .ConfigureAwait(false);
                 Metrics.RecordOut(item);
                 return;
@@ -75,7 +75,7 @@ namespace UKHO.Search.Ingestion.Providers.FileShare.Pipeline.Nodes
         protected override void CompleteOutputs(Exception? error = null)
         {
             base.CompleteOutputs(error);
-            deadLetterOutput.TryComplete(error);
+            _deadLetterOutput.TryComplete(error);
         }
 
         private IndexOperation Dispatch(Envelope<IngestionRequest> item)
@@ -92,7 +92,7 @@ namespace UKHO.Search.Ingestion.Providers.FileShare.Pipeline.Nodes
                         throw new InvalidOperationException("AddItem payload missing.");
                     }
 
-                    var doc = canonicalBuilder.BuildForUpsert(documentId, request);
+                    var doc = _canonicalBuilder.BuildForUpsert(documentId, request);
                     return new UpsertOperation(documentId, doc);
                 }
 
@@ -103,7 +103,7 @@ namespace UKHO.Search.Ingestion.Providers.FileShare.Pipeline.Nodes
                         throw new InvalidOperationException("UpdateItem payload missing.");
                     }
 
-                    var doc = canonicalBuilder.BuildForUpsert(documentId, request);
+                    var doc = _canonicalBuilder.BuildForUpsert(documentId, request);
                     return new UpsertOperation(documentId, doc);
                 }
 

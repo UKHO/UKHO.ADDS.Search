@@ -10,21 +10,21 @@ namespace UKHO.Search.Infrastructure.Ingestion.Elastic
 {
     public sealed class ElasticsearchBulkIndexClient : IBulkIndexClient<IndexOperation>
     {
-        private readonly ElasticsearchClient client;
-        private readonly string indexName;
-        private readonly ILogger<ElasticsearchBulkIndexClient> logger;
+        private readonly ElasticsearchClient _client;
+        private readonly string _indexName;
+        private readonly ILogger<ElasticsearchBulkIndexClient> _logger;
 
         public ElasticsearchBulkIndexClient(ElasticsearchClient client, IConfiguration configuration, ILogger<ElasticsearchBulkIndexClient> logger)
         {
-            this.client = client;
-            this.logger = logger;
+            this._client = client;
+            this._logger = logger;
 
-            indexName = configuration["ingestion:indexname"] ?? throw new InvalidOperationException("Missing required configuration value 'ingestion:indexname'.");
+            _indexName = configuration["ingestion:indexname"] ?? throw new InvalidOperationException("Missing required configuration value 'ingestion:indexname'.");
         }
 
         public async ValueTask<BulkIndexResponse> BulkIndexAsync(BulkIndexRequest<IndexOperation> request, CancellationToken cancellationToken)
         {
-            var bulkRequest = new BulkRequest(indexName)
+            var bulkRequest = new BulkRequest(_indexName)
             {
                 Operations = new BulkOperationsCollection()
             };
@@ -53,12 +53,12 @@ namespace UKHO.Search.Infrastructure.Ingestion.Elastic
                 }
             }
 
-            var response = await client.BulkAsync(bulkRequest, cancellationToken)
+            var response = await _client.BulkAsync(bulkRequest, cancellationToken)
                                        .ConfigureAwait(false);
 
             if (!response.IsValidResponse)
             {
-                logger.LogWarning("Elasticsearch bulk request returned an invalid response. DebugInformation={DebugInformation}", response.DebugInformation);
+                _logger.LogWarning("Elasticsearch bulk request returned an invalid response. DebugInformation={DebugInformation}", response.DebugInformation);
             }
 
             var results = new List<BulkIndexItemResult>(request.Items.Count);

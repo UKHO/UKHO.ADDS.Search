@@ -9,21 +9,21 @@ namespace UKHO.Search.Pipelines.Nodes
 {
     public abstract class NodeBase<TIn, TOut> : INode
     {
-        private readonly CancellationMode cancellationMode;
-        private readonly IPipelineFatalErrorReporter? fatalErrorReporter;
-        private readonly ChannelReader<TIn> input;
-        private readonly ILogger? logger;
-        private readonly ChannelWriter<TOut> output;
-        private Task? completion;
+        private readonly CancellationMode _cancellationMode;
+        private readonly IPipelineFatalErrorReporter? _fatalErrorReporter;
+        private readonly ChannelReader<TIn> _input;
+        private readonly ILogger? _logger;
+        private readonly ChannelWriter<TOut> _output;
+        private Task? _completion;
 
         protected NodeBase(string name, ChannelReader<TIn> input, ChannelWriter<TOut> output, ILogger? logger = null, IPipelineFatalErrorReporter? fatalErrorReporter = null, CancellationMode cancellationMode = CancellationMode.Immediate)
         {
             Name = name;
-            this.input = input;
-            this.output = output;
-            this.logger = logger;
-            this.fatalErrorReporter = fatalErrorReporter;
-            this.cancellationMode = cancellationMode;
+            this._input = input;
+            this._output = output;
+            this._logger = logger;
+            this._fatalErrorReporter = fatalErrorReporter;
+            this._cancellationMode = cancellationMode;
 
             Func<long>? queueDepthProvider = null;
             if (input is IQueueDepthProvider qdp)
@@ -38,11 +38,11 @@ namespace UKHO.Search.Pipelines.Nodes
 
         public string Name { get; }
 
-        public Task Completion => completion ?? Task.CompletedTask;
+        public Task Completion => _completion ?? Task.CompletedTask;
 
         public Task StartAsync(CancellationToken cancellationToken)
         {
-            completion ??= Task.Run(() => RunAsync(cancellationToken), CancellationToken.None);
+            _completion ??= Task.Run(() => RunAsync(cancellationToken), CancellationToken.None);
             return Task.CompletedTask;
         }
 
@@ -55,37 +55,37 @@ namespace UKHO.Search.Pipelines.Nodes
 
         protected async ValueTask WriteAsync(TOut item, CancellationToken cancellationToken)
         {
-            await output.WriteAsync(item, cancellationToken)
+            await _output.WriteAsync(item, cancellationToken)
                         .ConfigureAwait(false);
             Metrics.RecordOut(item);
         }
 
         protected virtual void CompleteOutputs(Exception? error = null)
         {
-            output.TryComplete(error);
+            _output.TryComplete(error);
         }
 
         private async Task RunAsync(CancellationToken cancellationToken)
         {
             try
             {
-                while (await input.WaitToReadAsync(cancellationToken)
+                while (await _input.WaitToReadAsync(cancellationToken)
                                   .ConfigureAwait(false))
                 {
-                    while (input.TryRead(out var item))
+                    while (_input.TryRead(out var item))
                     {
                         await ProcessItemAsync(item, cancellationToken)
                             .ConfigureAwait(false);
                     }
                 }
 
-                await input.Completion.ConfigureAwait(false);
+                await _input.Completion.ConfigureAwait(false);
 
                 CompleteOutputs();
             }
             catch (OperationCanceledException) when (cancellationToken.IsCancellationRequested)
             {
-                if (cancellationMode == CancellationMode.Drain)
+                if (_cancellationMode == CancellationMode.Drain)
                 {
                     await DrainAvailableAsync()
                         .ConfigureAwait(false);
@@ -94,9 +94,9 @@ namespace UKHO.Search.Pipelines.Nodes
                 {
                     // If cancellation races with a faulted upstream completion, prefer propagating the
                     // upstream exception so downstream reliably faults rather than completing cleanly.
-                    if (input.Completion.IsCompleted)
+                    if (_input.Completion.IsCompleted)
                     {
-                        await input.Completion.ConfigureAwait(false);
+                        await _input.Completion.ConfigureAwait(false);
                     }
                 }
 
@@ -104,8 +104,8 @@ namespace UKHO.Search.Pipelines.Nodes
             }
             catch (Exception ex)
             {
-                logger?.LogError(ex, "Node '{NodeName}' failed.", Name);
-                fatalErrorReporter?.ReportFatal(Name, ex);
+                _logger?.LogError(ex, "Node '{NodeName}' failed.", Name);
+                _fatalErrorReporter?.ReportFatal(Name, ex);
                 CompleteOutputs(ex);
                 throw;
             }
@@ -135,7 +135,7 @@ namespace UKHO.Search.Pipelines.Nodes
 
         private async ValueTask DrainAvailableAsync()
         {
-            while (input.TryRead(out var item))
+            while (_input.TryRead(out var item))
             {
                 await ProcessItemAsync(item, CancellationToken.None)
                     .ConfigureAwait(false);

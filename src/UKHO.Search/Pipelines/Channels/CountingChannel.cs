@@ -4,38 +4,38 @@ namespace UKHO.Search.Pipelines.Channels
 {
     public sealed class CountingChannel<T>
     {
-        private readonly Channel<T> inner;
-        private readonly CountingChannelReader<T> reader;
-        private readonly CountingChannelWriter<T> writer;
-        private long depth;
+        private readonly Channel<T> _inner;
+        private readonly CountingChannelReader<T> _reader;
+        private readonly CountingChannelWriter<T> _writer;
+        private long _depth;
 
         public CountingChannel(Channel<T> inner)
         {
-            this.inner = inner;
-            reader = new CountingChannelReader<T>(inner.Reader, GetDepth, Decrement);
-            writer = new CountingChannelWriter<T>(inner.Writer, Increment);
+            this._inner = inner;
+            _reader = new CountingChannelReader<T>(inner.Reader, GetDepth, Decrement);
+            _writer = new CountingChannelWriter<T>(inner.Writer, Increment);
         }
 
-        public ChannelReader<T> Reader => reader;
+        public ChannelReader<T> Reader => _reader;
 
-        public ChannelWriter<T> Writer => writer;
+        public ChannelWriter<T> Writer => _writer;
 
         private long GetDepth()
         {
-            return Volatile.Read(ref depth);
+            return Volatile.Read(ref _depth);
         }
 
         private void Increment()
         {
-            Interlocked.Increment(ref depth);
+            Interlocked.Increment(ref _depth);
         }
 
         private void Decrement()
         {
-            var newValue = Interlocked.Decrement(ref depth);
+            var newValue = Interlocked.Decrement(ref _depth);
             if (newValue < 0)
             {
-                Interlocked.Exchange(ref depth, 0);
+                Interlocked.Exchange(ref _depth, 0);
             }
         }
     }

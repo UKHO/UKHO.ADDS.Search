@@ -21,36 +21,36 @@ namespace UKHO.Search.Infrastructure.Ingestion.Pipeline
 {
     public sealed class IngestionPipelineBuilder
     {
-        private readonly BlobServiceClient? blobServiceClient;
-        private readonly IBulkIndexClient<IndexOperation>? bulkIndexClient;
-        private readonly IConfiguration configuration;
-        private readonly ILoggerFactory loggerFactory;
-        private readonly IIngestionProviderService? providerService;
-        private readonly IQueueClientFactory? queueClientFactory;
+        private readonly BlobServiceClient? _blobServiceClient;
+        private readonly IBulkIndexClient<IndexOperation>? _bulkIndexClient;
+        private readonly IConfiguration _configuration;
+        private readonly ILoggerFactory _loggerFactory;
+        private readonly IIngestionProviderService? _providerService;
+        private readonly IQueueClientFactory? _queueClientFactory;
 
         public IngestionPipelineBuilder(IConfiguration configuration, ILoggerFactory loggerFactory)
         {
-            this.configuration = configuration;
-            this.loggerFactory = loggerFactory;
+            this._configuration = configuration;
+            this._loggerFactory = loggerFactory;
         }
 
         public IngestionPipelineBuilder(IConfiguration configuration, ILoggerFactory loggerFactory, IIngestionProviderService providerService, IQueueClientFactory queueClientFactory, IBulkIndexClient<IndexOperation> bulkIndexClient, BlobServiceClient blobServiceClient) : this(configuration, loggerFactory)
         {
-            this.providerService = providerService;
-            this.queueClientFactory = queueClientFactory;
-            this.bulkIndexClient = bulkIndexClient;
-            this.blobServiceClient = blobServiceClient;
+            this._providerService = providerService;
+            this._queueClientFactory = queueClientFactory;
+            this._bulkIndexClient = bulkIndexClient;
+            this._blobServiceClient = blobServiceClient;
         }
 
         public IngestionPipelineGraph BuildSynthetic(CancellationToken cancellationToken)
         {
-            var laneCount = configuration.GetValue<int>("ingestion:laneCount");
-            var channelCapacityPrePartition = configuration.GetValue<int>("ingestion:channelCapacityPrePartition");
-            var channelCapacityPerLane = configuration.GetValue<int>("ingestion:channelCapacityPerLane");
-            var channelCapacityMicrobatchOut = configuration.GetValue<int>("ingestion:channelCapacityMicrobatchOut");
-            var microbatchMaxItems = configuration.GetValue<int>("ingestion:microbatchMaxItems");
-            var microbatchMaxDelayMs = configuration.GetValue<int>("ingestion:microbatchMaxDelayMilliseconds");
-            var documentTypePlaceholder = configuration.GetValue<string>("ingestion:documentTypePlaceholder");
+            var laneCount = _configuration.GetValue<int>("ingestion:laneCount");
+            var channelCapacityPrePartition = _configuration.GetValue<int>("ingestion:channelCapacityPrePartition");
+            var channelCapacityPerLane = _configuration.GetValue<int>("ingestion:channelCapacityPerLane");
+            var channelCapacityMicrobatchOut = _configuration.GetValue<int>("ingestion:channelCapacityMicrobatchOut");
+            var microbatchMaxItems = _configuration.GetValue<int>("ingestion:microbatchMaxItems");
+            var microbatchMaxDelayMs = _configuration.GetValue<int>("ingestion:microbatchMaxDelayMilliseconds");
+            var documentTypePlaceholder = _configuration.GetValue<string>("ingestion:documentTypePlaceholder");
 
             if (laneCount <= 0)
             {
@@ -66,11 +66,11 @@ namespace UKHO.Search.Infrastructure.Ingestion.Pipeline
             var deadLetterWriterCompletion = new RefCountedCompletion(1 + laneCount);
             var validateDeadLetterWriter = new RefCountedChannelWriter<Envelope<IngestionRequest>>(deadLetter.Writer, deadLetterWriterCompletion);
 
-            var source = new SyntheticSourceNode<IngestionRequest>("ingestion-source-synthetic", prePartition.Writer, 64, 8, i => CreateSyntheticRequest(i), i => $"doc-{i % 8}", loggerFactory.CreateLogger("ingestion-source-synthetic"), supervisor);
+            var source = new SyntheticSourceNode<IngestionRequest>("ingestion-source-synthetic", prePartition.Writer, 64, 8, i => CreateSyntheticRequest(i), i => $"doc-{i % 8}", _loggerFactory.CreateLogger("ingestion-source-synthetic"), supervisor);
 
-            var validate = new IngestionRequestValidateNode("ingestion-validate", prePartition.Reader, validated.Writer, validateDeadLetterWriter, loggerFactory.CreateLogger("ingestion-validate"), supervisor);
+            var validate = new IngestionRequestValidateNode("ingestion-validate", prePartition.Reader, validated.Writer, validateDeadLetterWriter, _loggerFactory.CreateLogger("ingestion-validate"), supervisor);
 
-            var deadLetterSink = new DeadLetterPersistAndAckSinkNode<IngestionRequest>("ingestion-deadletter-request", deadLetter.Reader, Path.Combine(AppContext.BaseDirectory, "deadletter", "ingestion-request.jsonl"), false, logger: loggerFactory.CreateLogger("ingestion-deadletter-request"), fatalErrorReporter: supervisor);
+            var deadLetterSink = new DeadLetterPersistAndAckSinkNode<IngestionRequest>("ingestion-deadletter-request", deadLetter.Reader, Path.Combine(AppContext.BaseDirectory, "deadletter", "ingestion-request.jsonl"), false, logger: _loggerFactory.CreateLogger("ingestion-deadletter-request"), fatalErrorReporter: supervisor);
 
             var laneDispatchChannels = new List<CountingChannel<Envelope<IngestionRequest>>>(laneCount);
             var laneDispatchWriters = new List<ChannelWriter<Envelope<IngestionRequest>>>(laneCount);
@@ -81,7 +81,7 @@ namespace UKHO.Search.Infrastructure.Ingestion.Pipeline
                 laneDispatchWriters.Add(laneDispatch.Writer);
             }
 
-            var partition = new KeyPartitionNode<IngestionRequest>("ingestion-partition", validated.Reader, laneDispatchWriters, loggerFactory.CreateLogger("ingestion-partition"), supervisor);
+            var partition = new KeyPartitionNode<IngestionRequest>("ingestion-partition", validated.Reader, laneDispatchWriters, _loggerFactory.CreateLogger("ingestion-partition"), supervisor);
 
             var canonicalBuilder = new CanonicalDocumentBuilder(documentTypePlaceholder ?? "unknown");
 
@@ -92,11 +92,11 @@ namespace UKHO.Search.Infrastructure.Ingestion.Pipeline
                 var laneOps = BoundedChannelFactory.Create<Envelope<IndexOperation>>(channelCapacityPerLane, true, true);
                 var laneBatches = BoundedChannelFactory.Create<BatchEnvelope<IndexOperation>>(channelCapacityMicrobatchOut, true, true);
 
-                var dispatch = new IngestionRequestDispatchNode($"ingestion-dispatch-{lane}", laneDispatchChannels[lane].Reader, laneOps.Writer, laneDeadLetterWriter, canonicalBuilder, loggerFactory.CreateLogger($"ingestion-dispatch-{lane}"), supervisor);
+                var dispatch = new IngestionRequestDispatchNode($"ingestion-dispatch-{lane}", laneDispatchChannels[lane].Reader, laneOps.Writer, laneDeadLetterWriter, canonicalBuilder, _loggerFactory.CreateLogger($"ingestion-dispatch-{lane}"), supervisor);
 
-                var microBatch = new MicroBatchNode<IndexOperation>($"ingestion-microbatch-{lane}", lane, laneOps.Reader, laneBatches.Writer, microbatchMaxItems, TimeSpan.FromMilliseconds(microbatchMaxDelayMs), logger: loggerFactory.CreateLogger($"ingestion-microbatch-{lane}"), fatalErrorReporter: supervisor, cancellationMode: CancellationMode.Drain);
+                var microBatch = new MicroBatchNode<IndexOperation>($"ingestion-microbatch-{lane}", lane, laneOps.Reader, laneBatches.Writer, microbatchMaxItems, TimeSpan.FromMilliseconds(microbatchMaxDelayMs), logger: _loggerFactory.CreateLogger($"ingestion-microbatch-{lane}"), fatalErrorReporter: supervisor, cancellationMode: CancellationMode.Drain);
 
-                var stubSink = new CollectingBatchSinkNode<IndexOperation>($"ingestion-stub-index-{lane}", laneBatches.Reader, loggerFactory.CreateLogger($"ingestion-stub-index-{lane}"), supervisor);
+                var stubSink = new CollectingBatchSinkNode<IndexOperation>($"ingestion-stub-index-{lane}", laneBatches.Reader, _loggerFactory.CreateLogger($"ingestion-stub-index-{lane}"), supervisor);
 
                 supervisor.AddNode(dispatch);
                 supervisor.AddNode(microBatch);

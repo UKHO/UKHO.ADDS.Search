@@ -10,25 +10,25 @@ namespace UKHO.Search.Pipelines.Nodes
 {
     public sealed class RouteNode<TIn> : INode
     {
-        private readonly ChannelWriter<Envelope<TIn>>? errorOutput;
-        private readonly IPipelineFatalErrorReporter? fatalErrorReporter;
-        private readonly Func<Envelope<TIn>, string> getRoute;
-        private readonly ChannelReader<Envelope<TIn>> input;
-        private readonly ILogger? logger;
-        private readonly IReadOnlyList<ChannelWriter<Envelope<TIn>>> outputs;
-        private readonly IReadOnlyDictionary<string, ChannelWriter<Envelope<TIn>>> routes;
-        private Task? completion;
+        private readonly ChannelWriter<Envelope<TIn>>? _errorOutput;
+        private readonly IPipelineFatalErrorReporter? _fatalErrorReporter;
+        private readonly Func<Envelope<TIn>, string> _getRoute;
+        private readonly ChannelReader<Envelope<TIn>> _input;
+        private readonly ILogger? _logger;
+        private readonly IReadOnlyList<ChannelWriter<Envelope<TIn>>> _outputs;
+        private readonly IReadOnlyDictionary<string, ChannelWriter<Envelope<TIn>>> _routes;
+        private Task? _completion;
 
         public RouteNode(string name, ChannelReader<Envelope<TIn>> input, IReadOnlyDictionary<string, ChannelWriter<Envelope<TIn>>> routes, Func<Envelope<TIn>, string> getRoute, ChannelWriter<Envelope<TIn>>? errorOutput = null, ILogger? logger = null, IPipelineFatalErrorReporter? fatalErrorReporter = null)
         {
             Name = name;
-            this.input = input;
-            this.routes = routes;
-            this.getRoute = getRoute;
-            this.errorOutput = errorOutput;
-            this.logger = logger;
-            this.fatalErrorReporter = fatalErrorReporter;
-            outputs = routes.Values.Distinct()
+            this._input = input;
+            this._routes = routes;
+            this._getRoute = getRoute;
+            this._errorOutput = errorOutput;
+            this._logger = logger;
+            this._fatalErrorReporter = fatalErrorReporter;
+            _outputs = routes.Values.Distinct()
                             .ToArray();
             Metrics = new NodeMetrics(name);
         }
@@ -37,11 +37,11 @@ namespace UKHO.Search.Pipelines.Nodes
 
         public string Name { get; }
 
-        public Task Completion => completion ?? Task.CompletedTask;
+        public Task Completion => _completion ?? Task.CompletedTask;
 
         public Task StartAsync(CancellationToken cancellationToken)
         {
-            completion ??= Task.Run(() => RunAsync(cancellationToken), CancellationToken.None);
+            _completion ??= Task.Run(() => RunAsync(cancellationToken), CancellationToken.None);
             return Task.CompletedTask;
         }
 
@@ -54,10 +54,10 @@ namespace UKHO.Search.Pipelines.Nodes
         {
             try
             {
-                while (await input.WaitToReadAsync(cancellationToken)
+                while (await _input.WaitToReadAsync(cancellationToken)
                                   .ConfigureAwait(false))
                 {
-                    while (input.TryRead(out var item))
+                    while (_input.TryRead(out var item))
                     {
                         Metrics.RecordIn(item);
                         Metrics.IncrementInFlight();
@@ -76,23 +76,23 @@ namespace UKHO.Search.Pipelines.Nodes
                     }
                 }
 
-                await input.Completion.ConfigureAwait(false);
+                await _input.Completion.ConfigureAwait(false);
                 CompleteOutputs();
             }
             catch (OperationCanceledException) when (cancellationToken.IsCancellationRequested)
             {
-                if (input.Completion.IsCompleted)
+                if (_input.Completion.IsCompleted)
                 {
-                    await input.Completion.ConfigureAwait(false);
+                    await _input.Completion.ConfigureAwait(false);
                 }
 
                 CompleteOutputs();
             }
             catch (Exception ex)
             {
-                logger?.LogError(ex, "Node '{NodeName}' failed.", Name);
+                _logger?.LogError(ex, "Node '{NodeName}' failed.", Name);
                 CompleteOutputs(ex);
-                fatalErrorReporter?.ReportFatal(Name, ex);
+                _fatalErrorReporter?.ReportFatal(Name, ex);
                 throw;
             }
             finally
@@ -105,8 +105,8 @@ namespace UKHO.Search.Pipelines.Nodes
         {
             item.Context.AddBreadcrumb(Name);
 
-            var routeKey = getRoute(item);
-            if (routes.TryGetValue(routeKey, out var output))
+            var routeKey = _getRoute(item);
+            if (_routes.TryGetValue(routeKey, out var output))
             {
                 await output.WriteAsync(item, cancellationToken)
                             .ConfigureAwait(false);
@@ -131,9 +131,9 @@ namespace UKHO.Search.Pipelines.Nodes
                 }
             });
 
-            if (errorOutput is not null)
+            if (_errorOutput is not null)
             {
-                await errorOutput.WriteAsync(item, cancellationToken)
+                await _errorOutput.WriteAsync(item, cancellationToken)
                                  .ConfigureAwait(false);
                 Metrics.RecordOut(item);
                 return;
@@ -144,12 +144,12 @@ namespace UKHO.Search.Pipelines.Nodes
 
         private void CompleteOutputs(Exception? error = null)
         {
-            foreach (var output in outputs)
+            foreach (var output in _outputs)
             {
                 output.TryComplete(error);
             }
 
-            errorOutput?.TryComplete(error);
+            _errorOutput?.TryComplete(error);
         }
     }
 }

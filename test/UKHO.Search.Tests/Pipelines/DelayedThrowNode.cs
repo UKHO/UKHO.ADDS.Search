@@ -5,26 +5,26 @@ namespace UKHO.Search.Tests.Pipelines
 {
     internal sealed class DelayedThrowNode : INode
     {
-        private readonly TimeSpan delay;
-        private readonly Exception exception;
-        private readonly IPipelineFatalErrorReporter? fatalErrorReporter;
-        private Task? completion;
+        private readonly TimeSpan _delay;
+        private readonly Exception _exception;
+        private readonly IPipelineFatalErrorReporter? _fatalErrorReporter;
+        private Task? _completion;
 
         public DelayedThrowNode(string name, TimeSpan delay, Exception exception, IPipelineFatalErrorReporter? fatalErrorReporter = null)
         {
             Name = name;
-            this.delay = delay;
-            this.exception = exception;
-            this.fatalErrorReporter = fatalErrorReporter;
+            this._delay = delay;
+            this._exception = exception;
+            this._fatalErrorReporter = fatalErrorReporter;
         }
 
         public string Name { get; }
 
-        public Task Completion => completion ?? Task.CompletedTask;
+        public Task Completion => _completion ?? Task.CompletedTask;
 
         public Task StartAsync(CancellationToken cancellationToken)
         {
-            completion ??= Task.Run(() => RunAsync(cancellationToken), CancellationToken.None);
+            _completion ??= Task.Run(() => RunAsync(cancellationToken), CancellationToken.None);
             return Task.CompletedTask;
         }
 
@@ -35,10 +35,10 @@ namespace UKHO.Search.Tests.Pipelines
 
         private async Task RunAsync(CancellationToken cancellationToken)
         {
-            await Task.Delay(delay, cancellationToken)
+            await Task.Delay(_delay, cancellationToken)
                       .ConfigureAwait(false);
-            fatalErrorReporter?.ReportFatal(Name, exception);
-            throw exception;
+            _fatalErrorReporter?.ReportFatal(Name, _exception);
+            throw _exception;
         }
     }
 }

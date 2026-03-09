@@ -8,7 +8,7 @@ namespace UKHO.Search.Ingestion.Tests
 {
     public sealed class IngestionModelJsonTests
     {
-        private static readonly JsonSerializerOptions Options = IngestionJsonSerializerOptions.Create();
+        private static readonly JsonSerializerOptions _options = IngestionJsonSerializerOptions.Create();
 
         [Fact]
         public void IngestionRequestEnvelope_RoundTrips_DeleteItem()
@@ -19,8 +19,8 @@ namespace UKHO.Search.Ingestion.Tests
                 DeleteItem = new DeleteItemRequest { Id = "ABC123" }
             };
 
-            var json = JsonSerializer.Serialize(envelope, Options);
-            var hydrated = JsonSerializer.Deserialize<IngestionRequest>(json, Options);
+            var json = JsonSerializer.Serialize(envelope, _options);
+            var hydrated = JsonSerializer.Deserialize<IngestionRequest>(json, _options);
             hydrated.ShouldNotBeNull();
             hydrated.RequestType.ShouldBe(IngestionRequestType.DeleteItem);
             hydrated.DeleteItem.ShouldNotBeNull();
@@ -41,8 +41,8 @@ namespace UKHO.Search.Ingestion.Tests
                 }
             };
 
-            var json = JsonSerializer.Serialize(envelope, Options);
-            var hydrated = JsonSerializer.Deserialize<IngestionRequest>(json, Options);
+            var json = JsonSerializer.Serialize(envelope, _options);
+            var hydrated = JsonSerializer.Deserialize<IngestionRequest>(json, _options);
             hydrated.ShouldNotBeNull();
             hydrated.RequestType.ShouldBe(IngestionRequestType.UpdateItem);
             hydrated.UpdateItem.ShouldNotBeNull();
@@ -63,8 +63,8 @@ namespace UKHO.Search.Ingestion.Tests
                 }
             };
 
-            var json = JsonSerializer.Serialize(envelope, Options);
-            var hydrated = JsonSerializer.Deserialize<IngestionRequest>(json, Options);
+            var json = JsonSerializer.Serialize(envelope, _options);
+            var hydrated = JsonSerializer.Deserialize<IngestionRequest>(json, _options);
             hydrated.ShouldNotBeNull();
             hydrated.RequestType.ShouldBe(IngestionRequestType.UpdateAcl);
             hydrated.UpdateAcl.ShouldNotBeNull();
@@ -76,42 +76,42 @@ namespace UKHO.Search.Ingestion.Tests
         public void AddItemRequest_Rejects_EmptySecurityTokens()
         {
             var json = "{" + "\"Id\":\"ABC123\"," + "\"Properties\":[]," + "\"SecurityTokens\":[]" + "}";
-            Should.Throw<JsonException>(() => JsonSerializer.Deserialize<AddItemRequest>(json, Options));
+            Should.Throw<JsonException>(() => JsonSerializer.Deserialize<AddItemRequest>(json, _options));
         }
 
         [Fact]
         public void UpdateItemRequest_Rejects_EmptySecurityTokens()
         {
             var json = "{" + "\"Id\":\"ABC123\"," + "\"Properties\":[]," + "\"SecurityTokens\":[]" + "}";
-            Should.Throw<JsonException>(() => JsonSerializer.Deserialize<UpdateItemRequest>(json, Options));
+            Should.Throw<JsonException>(() => JsonSerializer.Deserialize<UpdateItemRequest>(json, _options));
         }
 
         [Fact]
         public void UpdateAclRequest_Rejects_EmptySecurityTokens()
         {
             var json = "{" + "\"Id\":\"ABC123\"," + "\"SecurityTokens\":[]" + "}";
-            Should.Throw<JsonException>(() => JsonSerializer.Deserialize<UpdateAclRequest>(json, Options));
+            Should.Throw<JsonException>(() => JsonSerializer.Deserialize<UpdateAclRequest>(json, _options));
         }
 
         [Fact]
         public void IngestionRequestEnvelope_Rejects_MissingPayload()
         {
             var json = "{\"RequestType\":\"AddItem\"}";
-            Should.Throw<JsonException>(() => JsonSerializer.Deserialize<IngestionRequest>(json, Options));
+            Should.Throw<JsonException>(() => JsonSerializer.Deserialize<IngestionRequest>(json, _options));
         }
 
         [Fact]
         public void IngestionRequestEnvelope_Rejects_MultiplePayloads()
         {
             var json = "{" + "\"RequestType\":\"DeleteItem\"," + "\"DeleteItem\":{\"Id\":\"ABC123\"}," + "\"UpdateAcl\":{\"Id\":\"ABC123\",\"SecurityTokens\":[\"t\"]}" + "}";
-            Should.Throw<JsonException>(() => JsonSerializer.Deserialize<IngestionRequest>(json, Options));
+            Should.Throw<JsonException>(() => JsonSerializer.Deserialize<IngestionRequest>(json, _options));
         }
 
         [Fact]
         public void IngestionRequestEnvelope_Rejects_MismatchedRequestTypeAndPayload()
         {
             var json = "{" + "\"RequestType\":\"AddItem\"," + "\"DeleteItem\":{\"Id\":\"ABC123\"}" + "}";
-            Should.Throw<JsonException>(() => JsonSerializer.Deserialize<IngestionRequest>(json, Options));
+            Should.Throw<JsonException>(() => JsonSerializer.Deserialize<IngestionRequest>(json, _options));
         }
 
         [Theory]
@@ -128,20 +128,20 @@ namespace UKHO.Search.Ingestion.Tests
         [InlineData(IngestionPropertyType.StringArray, "string-array")]
         public void IngestionPropertyType_Serializes_ToLowercaseTokens(IngestionPropertyType type, string expected)
         {
-            var json = JsonSerializer.Serialize(type, Options);
+            var json = JsonSerializer.Serialize(type, _options);
             json.ShouldBe($"\"{expected}\"");
         }
 
         [Fact]
         public void IngestionPropertyType_Deserialize_IsCaseSensitive()
         {
-            Should.Throw<JsonException>(() => JsonSerializer.Deserialize<IngestionPropertyType>("\"String\"", Options));
+            Should.Throw<JsonException>(() => JsonSerializer.Deserialize<IngestionPropertyType>("\"String\"", _options));
         }
 
         [Fact]
         public void IngestionPropertyType_Deserialize_Id_IsNotSupported()
         {
-            Should.Throw<JsonException>(() => JsonSerializer.Deserialize<IngestionPropertyType>("\"id\"", Options));
+            Should.Throw<JsonException>(() => JsonSerializer.Deserialize<IngestionPropertyType>("\"id\"", _options));
         }
 
         [Fact]
@@ -194,10 +194,10 @@ namespace UKHO.Search.Ingestion.Tests
                 AddItem = addItem
             };
 
-            var json = JsonSerializer.Serialize(envelope, Options);
+            var json = JsonSerializer.Serialize(envelope, _options);
             json.ShouldNotContain("null");
 
-            var hydratedEnvelope = JsonSerializer.Deserialize<IngestionRequest>(json, Options);
+            var hydratedEnvelope = JsonSerializer.Deserialize<IngestionRequest>(json, _options);
             hydratedEnvelope.ShouldNotBeNull();
 
             hydratedEnvelope.RequestType.ShouldBe(IngestionRequestType.AddItem);
@@ -267,21 +267,21 @@ namespace UKHO.Search.Ingestion.Tests
         public void IngestionProperty_Rejects_MissingName()
         {
             var json = "{\"Type\":\"string\",\"Value\":\"abc\"}";
-            Should.Throw<JsonException>(() => JsonSerializer.Deserialize<IngestionProperty>(json, Options));
+            Should.Throw<JsonException>(() => JsonSerializer.Deserialize<IngestionProperty>(json, _options));
         }
 
         [Fact]
         public void IngestionProperty_Rejects_MissingType()
         {
             var json = "{\"Name\":\"A\",\"Value\":\"abc\"}";
-            Should.Throw<JsonException>(() => JsonSerializer.Deserialize<IngestionProperty>(json, Options));
+            Should.Throw<JsonException>(() => JsonSerializer.Deserialize<IngestionProperty>(json, _options));
         }
 
         [Fact]
         public void IngestionProperty_Rejects_MissingValue()
         {
             var json = "{\"Name\":\"A\",\"Type\":\"string\"}";
-            Should.Throw<JsonException>(() => JsonSerializer.Deserialize<IngestionProperty>(json, Options));
+            Should.Throw<JsonException>(() => JsonSerializer.Deserialize<IngestionProperty>(json, _options));
         }
 
         [Theory]
@@ -297,35 +297,35 @@ namespace UKHO.Search.Ingestion.Tests
         public void IngestionProperty_Rejects_MismatchedTypeAndValue(string type, string jsonValue)
         {
             var json = $"{{\"Name\":\"A\",\"Type\":\"{type}\",\"Value\":{jsonValue}}}";
-            Should.Throw<JsonException>(() => JsonSerializer.Deserialize<IngestionProperty>(json, Options));
+            Should.Throw<JsonException>(() => JsonSerializer.Deserialize<IngestionProperty>(json, _options));
         }
 
         [Fact]
         public void Integer_Rejects_Fractional()
         {
             var json = "{\"Name\":\"A\",\"Type\":\"integer\",\"Value\":1.23}";
-            Should.Throw<JsonException>(() => JsonSerializer.Deserialize<IngestionProperty>(json, Options));
+            Should.Throw<JsonException>(() => JsonSerializer.Deserialize<IngestionProperty>(json, _options));
         }
 
         [Fact]
         public void Integer_Rejects_OutOfRange()
         {
             var json = "{\"Name\":\"A\",\"Type\":\"integer\",\"Value\":9223372036854775808}";
-            Should.Throw<JsonException>(() => JsonSerializer.Deserialize<IngestionProperty>(json, Options));
+            Should.Throw<JsonException>(() => JsonSerializer.Deserialize<IngestionProperty>(json, _options));
         }
 
         [Fact]
         public void Uri_Rejects_Relative()
         {
             var json = "{\"Name\":\"A\",\"Type\":\"uri\",\"Value\":\"/relative\"}";
-            Should.Throw<JsonException>(() => JsonSerializer.Deserialize<IngestionProperty>(json, Options));
+            Should.Throw<JsonException>(() => JsonSerializer.Deserialize<IngestionProperty>(json, _options));
         }
 
         [Fact]
         public void StringArray_Rejects_NullElements()
         {
             var json = "{\"Name\":\"A\",\"Type\":\"string-array\",\"Value\":[\"a\",null]}";
-            Should.Throw<JsonException>(() => JsonSerializer.Deserialize<IngestionProperty>(json, Options));
+            Should.Throw<JsonException>(() => JsonSerializer.Deserialize<IngestionProperty>(json, _options));
         }
     }
 }

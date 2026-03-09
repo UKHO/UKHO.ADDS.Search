@@ -11,18 +11,18 @@ namespace UKHO.Search.Pipelines.Nodes
 {
     public sealed class BulkIndexNode<TDocument> : INode
     {
-        private static readonly HashSet<int> DefaultTransientStatusCodes = new() { 429, 503 };
-        private readonly IBulkIndexClient<TDocument> client;
-        private readonly ChannelWriter<Envelope<TDocument>>? errorOutput;
-        private readonly IPipelineFatalErrorReporter? fatalErrorReporter;
+        private static readonly HashSet<int> _defaultTransientStatusCodes = new() { 429, 503 };
+        private readonly IBulkIndexClient<TDocument> _client;
+        private readonly ChannelWriter<Envelope<TDocument>>? _errorOutput;
+        private readonly IPipelineFatalErrorReporter? _fatalErrorReporter;
 
-        private readonly ChannelReader<BatchEnvelope<TDocument>> input;
-        private readonly ILogger? logger;
-        private readonly NodeMetrics metrics;
-        private readonly ChannelWriter<Envelope<TDocument>>? retryOutput;
-        private readonly ChannelWriter<Envelope<TDocument>> successOutput;
-        private readonly ISet<int> transientStatusCodes;
-        private Task? completion;
+        private readonly ChannelReader<BatchEnvelope<TDocument>> _input;
+        private readonly ILogger? _logger;
+        private readonly NodeMetrics _metrics;
+        private readonly ChannelWriter<Envelope<TDocument>>? _retryOutput;
+        private readonly ChannelWriter<Envelope<TDocument>> _successOutput;
+        private readonly ISet<int> _transientStatusCodes;
+        private Task? _completion;
 
         public BulkIndexNode(string name,
             ChannelReader<BatchEnvelope<TDocument>> input,
@@ -35,24 +35,24 @@ namespace UKHO.Search.Pipelines.Nodes
             IPipelineFatalErrorReporter? fatalErrorReporter = null)
         {
             Name = name;
-            this.input = input;
-            this.client = client;
-            this.successOutput = successOutput;
-            this.retryOutput = retryOutput;
-            this.errorOutput = errorOutput;
-            this.transientStatusCodes = transientStatusCodes ?? DefaultTransientStatusCodes;
-            this.logger = logger;
-            this.fatalErrorReporter = fatalErrorReporter;
-            metrics = new NodeMetrics(name);
+            this._input = input;
+            this._client = client;
+            this._successOutput = successOutput;
+            this._retryOutput = retryOutput;
+            this._errorOutput = errorOutput;
+            this._transientStatusCodes = transientStatusCodes ?? _defaultTransientStatusCodes;
+            this._logger = logger;
+            this._fatalErrorReporter = fatalErrorReporter;
+            _metrics = new NodeMetrics(name);
         }
 
         public string Name { get; }
 
-        public Task Completion => completion ?? Task.CompletedTask;
+        public Task Completion => _completion ?? Task.CompletedTask;
 
         public Task StartAsync(CancellationToken cancellationToken)
         {
-            completion ??= Task.Run(() => RunAsync(cancellationToken), CancellationToken.None);
+            _completion ??= Task.Run(() => RunAsync(cancellationToken), CancellationToken.None);
             return Task.CompletedTask;
         }
 
@@ -65,13 +65,13 @@ namespace UKHO.Search.Pipelines.Nodes
         {
             try
             {
-                while (await input.WaitToReadAsync(cancellationToken)
+                while (await _input.WaitToReadAsync(cancellationToken)
                                   .ConfigureAwait(false))
                 {
-                    while (input.TryRead(out var batch))
+                    while (_input.TryRead(out var batch))
                     {
-                        metrics.RecordIn(batch);
-                        metrics.IncrementInFlight();
+                        _metrics.RecordIn(batch);
+                        _metrics.IncrementInFlight();
                         var started = Stopwatch.GetTimestamp();
                         try
                         {
@@ -81,34 +81,34 @@ namespace UKHO.Search.Pipelines.Nodes
                         finally
                         {
                             var elapsed = Stopwatch.GetElapsedTime(started);
-                            metrics.RecordDuration(elapsed);
-                            metrics.DecrementInFlight();
+                            _metrics.RecordDuration(elapsed);
+                            _metrics.DecrementInFlight();
                         }
                     }
                 }
 
-                await input.Completion.ConfigureAwait(false);
+                await _input.Completion.ConfigureAwait(false);
                 CompleteOutputs();
             }
             catch (OperationCanceledException) when (cancellationToken.IsCancellationRequested)
             {
-                if (input.Completion.IsCompleted)
+                if (_input.Completion.IsCompleted)
                 {
-                    await input.Completion.ConfigureAwait(false);
+                    await _input.Completion.ConfigureAwait(false);
                 }
 
                 CompleteOutputs();
             }
             catch (Exception ex)
             {
-                logger?.LogError(ex, "Node '{NodeName}' failed.", Name);
+                _logger?.LogError(ex, "Node '{NodeName}' failed.", Name);
                 CompleteOutputs(ex);
-                fatalErrorReporter?.ReportFatal(Name, ex);
+                _fatalErrorReporter?.ReportFatal(Name, ex);
                 throw;
             }
             finally
             {
-                metrics.Dispose();
+                _metrics.Dispose();
             }
         }
 
@@ -121,7 +121,7 @@ namespace UKHO.Search.Pipelines.Nodes
                 Items = batch.Items
             };
 
-            var response = await client.BulkIndexAsync(request, cancellationToken)
+            var response = await _client.BulkIndexAsync(request, cancellationToken)
                                        .ConfigureAwait(false);
 
             var resultsByMessageId = new Dictionary<Guid, BulkIndexItemResult>();
@@ -146,7 +146,7 @@ namespace UKHO.Search.Pipelines.Nodes
                     continue;
                 }
 
-                var isTransient = transientStatusCodes.Contains(result.StatusCode);
+                var isTransient = _transientStatusCodes.Contains(result.StatusCode);
                 var error = new PipelineError
                 {
                     Category = PipelineErrorCategory.BulkIndex,
@@ -181,18 +181,18 @@ namespace UKHO.Search.Pipelines.Nodes
 
         private async ValueTask WriteSuccessAsync(Envelope<TDocument> envelope, CancellationToken cancellationToken)
         {
-            await successOutput.WriteAsync(envelope, cancellationToken)
+            await _successOutput.WriteAsync(envelope, cancellationToken)
                                .ConfigureAwait(false);
-            metrics.RecordOut(envelope);
+            _metrics.RecordOut(envelope);
         }
 
         private async ValueTask WriteRetryAsync(Envelope<TDocument> envelope, CancellationToken cancellationToken)
         {
-            if (retryOutput is not null)
+            if (_retryOutput is not null)
             {
-                await retryOutput.WriteAsync(envelope, cancellationToken)
+                await _retryOutput.WriteAsync(envelope, cancellationToken)
                                  .ConfigureAwait(false);
-                metrics.RecordOut(envelope);
+                _metrics.RecordOut(envelope);
                 return;
             }
 
@@ -202,24 +202,24 @@ namespace UKHO.Search.Pipelines.Nodes
 
         private async ValueTask WriteErrorAsync(Envelope<TDocument> envelope, CancellationToken cancellationToken)
         {
-            if (errorOutput is not null)
+            if (_errorOutput is not null)
             {
-                await errorOutput.WriteAsync(envelope, cancellationToken)
+                await _errorOutput.WriteAsync(envelope, cancellationToken)
                                  .ConfigureAwait(false);
-                metrics.RecordOut(envelope);
+                _metrics.RecordOut(envelope);
                 return;
             }
 
-            await successOutput.WriteAsync(envelope, cancellationToken)
+            await _successOutput.WriteAsync(envelope, cancellationToken)
                                .ConfigureAwait(false);
-            metrics.RecordOut(envelope);
+            _metrics.RecordOut(envelope);
         }
 
         private void CompleteOutputs(Exception? error = null)
         {
-            successOutput.TryComplete(error);
-            retryOutput?.TryComplete(error);
-            errorOutput?.TryComplete(error);
+            _successOutput.TryComplete(error);
+            _retryOutput?.TryComplete(error);
+            _errorOutput?.TryComplete(error);
         }
     }
 }

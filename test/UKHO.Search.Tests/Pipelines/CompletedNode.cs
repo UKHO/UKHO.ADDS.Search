@@ -4,7 +4,7 @@ namespace UKHO.Search.Tests.Pipelines
 {
     internal sealed class CompletedNode : INode
     {
-        private Task? completion;
+        private Task? _completion;
 
         public CompletedNode(string name)
         {
@@ -13,11 +13,11 @@ namespace UKHO.Search.Tests.Pipelines
 
         public string Name { get; }
 
-        public Task Completion => completion ?? Task.CompletedTask;
+        public Task Completion => _completion ?? Task.CompletedTask;
 
         public Task StartAsync(CancellationToken cancellationToken)
         {
-            completion ??= Task.CompletedTask;
+            _completion ??= Task.CompletedTask;
             return Task.CompletedTask;
         }
 

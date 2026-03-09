@@ -5,22 +5,22 @@ namespace UKHO.Search.Infrastructure.Ingestion.Queue
 {
     public sealed class AzureQueueClient : IQueueClient
     {
-        private readonly QueueClient inner;
+        private readonly QueueClient _inner;
 
         public AzureQueueClient(QueueClient inner)
         {
-            this.inner = inner;
+            this._inner = inner;
         }
 
         public async ValueTask CreateIfNotExistsAsync(CancellationToken cancellationToken)
         {
-            _ = await inner.CreateIfNotExistsAsync(cancellationToken: cancellationToken)
+            _ = await _inner.CreateIfNotExistsAsync(cancellationToken: cancellationToken)
                            .ConfigureAwait(false);
         }
 
         public async ValueTask<IReadOnlyList<QueueReceivedMessage>> ReceiveMessagesAsync(int maxMessages, TimeSpan visibilityTimeout, CancellationToken cancellationToken)
         {
-            var response = await inner.ReceiveMessagesAsync(maxMessages, visibilityTimeout, cancellationToken)
+            var response = await _inner.ReceiveMessagesAsync(maxMessages, visibilityTimeout, cancellationToken)
                                       .ConfigureAwait(false);
 
             return response.Value.Select(Map)
@@ -29,19 +29,19 @@ namespace UKHO.Search.Infrastructure.Ingestion.Queue
 
         public async ValueTask SendMessageAsync(string messageText, CancellationToken cancellationToken)
         {
-            await inner.SendMessageAsync(messageText, cancellationToken)
+            await _inner.SendMessageAsync(messageText, cancellationToken)
                        .ConfigureAwait(false);
         }
 
         public async ValueTask DeleteMessageAsync(string messageId, string popReceipt, CancellationToken cancellationToken)
         {
-            await inner.DeleteMessageAsync(messageId, popReceipt, cancellationToken)
+            await _inner.DeleteMessageAsync(messageId, popReceipt, cancellationToken)
                        .ConfigureAwait(false);
         }
 
         public async ValueTask<QueueUpdateReceipt> UpdateMessageAsync(string messageId, string popReceipt, string messageText, TimeSpan visibilityTimeout, CancellationToken cancellationToken)
         {
-            var response = await inner.UpdateMessageAsync(messageId, popReceipt, messageText, visibilityTimeout, cancellationToken)
+            var response = await _inner.UpdateMessageAsync(messageId, popReceipt, messageText, visibilityTimeout, cancellationToken)
                                       .ConfigureAwait(false);
 
             return new QueueUpdateReceipt

@@ -7,22 +7,22 @@ namespace UKHO.Search.Pipelines.Nodes
 {
     public sealed class CollectingSinkNode<TPayload> : SinkNodeBase<Envelope<TPayload>>
     {
-        private readonly object gate = new();
-        private readonly List<Envelope<TPayload>> items = new();
-        private readonly TimeSpan perMessageDelay;
+        private readonly object _gate = new();
+        private readonly List<Envelope<TPayload>> _items = new();
+        private readonly TimeSpan _perMessageDelay;
 
         public CollectingSinkNode(string name, ChannelReader<Envelope<TPayload>> input, TimeSpan? perMessageDelay = null, ILogger? logger = null, IPipelineFatalErrorReporter? fatalErrorReporter = null) : base(name, input, logger, fatalErrorReporter)
         {
-            this.perMessageDelay = perMessageDelay ?? TimeSpan.Zero;
+            this._perMessageDelay = perMessageDelay ?? TimeSpan.Zero;
         }
 
         public IReadOnlyList<Envelope<TPayload>> Items
         {
             get
             {
-                lock (gate)
+                lock (_gate)
                 {
-                    return items.ToArray();
+                    return _items.ToArray();
                 }
             }
         }
@@ -32,15 +32,15 @@ namespace UKHO.Search.Pipelines.Nodes
             item.Context.AddBreadcrumb(Name);
             item.Context.MarkTimeUtc($"received:{Name}", DateTimeOffset.UtcNow);
 
-            if (perMessageDelay > TimeSpan.Zero)
+            if (_perMessageDelay > TimeSpan.Zero)
             {
-                await Task.Delay(perMessageDelay, cancellationToken)
+                await Task.Delay(_perMessageDelay, cancellationToken)
                           .ConfigureAwait(false);
             }
 
-            lock (gate)
+            lock (_gate)
             {
-                items.Add(item);
+                _items.Add(item);
             }
         }
     }

@@ -4,8 +4,8 @@ namespace UKHO.Search.Infrastructure.Ingestion.Pipeline.Channels
 {
     public sealed class RefCountedCompletion
     {
-        private Exception? error;
-        private int remaining;
+        private Exception? _error;
+        private int _remaining;
 
         public RefCountedCompletion(int writers)
         {
@@ -14,7 +14,7 @@ namespace UKHO.Search.Infrastructure.Ingestion.Pipeline.Channels
                 throw new ArgumentOutOfRangeException(nameof(writers));
             }
 
-            remaining = writers;
+            _remaining = writers;
         }
 
         public bool TryComplete<T>(ChannelWriter<T> inner, Exception? completeError = null)
@@ -23,12 +23,12 @@ namespace UKHO.Search.Infrastructure.Ingestion.Pipeline.Channels
 
             if (completeError is not null)
             {
-                Interlocked.CompareExchange(ref error, completeError, null);
+                Interlocked.CompareExchange(ref _error, completeError, null);
             }
 
-            if (Interlocked.Decrement(ref remaining) == 0)
+            if (Interlocked.Decrement(ref _remaining) == 0)
             {
-                return inner.TryComplete(error);
+                return inner.TryComplete(_error);
             }
 
             return true;

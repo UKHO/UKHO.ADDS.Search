@@ -4,7 +4,7 @@ namespace UKHO.Search.Ingestion.Tests.TestQueues
 {
     public sealed class FakeQueueClientFactory : IQueueClientFactory
     {
-        private readonly Dictionary<string, FakeQueueClient> queues = new(StringComparer.OrdinalIgnoreCase);
+        private readonly Dictionary<string, FakeQueueClient> _queues = new(StringComparer.OrdinalIgnoreCase);
 
         public List<string> RequestedQueueNames { get; } = new();
 
@@ -16,10 +16,10 @@ namespace UKHO.Search.Ingestion.Tests.TestQueues
 
         public FakeQueueClient GetOrAdd(string queueName)
         {
-            if (!queues.TryGetValue(queueName, out var queue))
+            if (!_queues.TryGetValue(queueName, out var queue))
             {
                 queue = new FakeQueueClient(queueName);
-                queues.Add(queueName, queue);
+                _queues.Add(queueName, queue);
             }
 
             return queue;

@@ -9,11 +9,11 @@ namespace UKHO.Search.Infrastructure.Ingestion.Pipeline.Terminal
 {
     public sealed class AckSinkNode<TPayload> : SinkNodeBase<Envelope<TPayload>>
     {
-        private readonly ILogger logger;
+        private readonly ILogger _logger;
 
         public AckSinkNode(string name, ChannelReader<Envelope<TPayload>> input, ILogger logger, IPipelineFatalErrorReporter? fatalErrorReporter = null) : base(name, input, logger, fatalErrorReporter)
         {
-            this.logger = logger;
+            this._logger = logger;
         }
 
         protected override async ValueTask HandleItemAsync(Envelope<TPayload> item, CancellationToken cancellationToken)
@@ -32,7 +32,7 @@ namespace UKHO.Search.Infrastructure.Ingestion.Pipeline.Terminal
             }
             catch (Exception ex)
             {
-                logger.LogError(ex, "Failed to delete queue message on terminal ack. NodeName={NodeName} Key={Key} MessageId={MessageId} Attempt={Attempt}", Name, item.Key, item.MessageId, item.Attempt);
+                _logger.LogError(ex, "Failed to delete queue message on terminal ack. NodeName={NodeName} Key={Key} MessageId={MessageId} Attempt={Attempt}", Name, item.Key, item.MessageId, item.Attempt);
             }
         }
     }

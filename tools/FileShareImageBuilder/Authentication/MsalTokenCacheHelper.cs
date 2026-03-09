@@ -5,7 +5,7 @@ namespace FileShareImageBuilder.Authentication
 {
     internal static class MsalTokenCacheHelper
     {
-        private static readonly object FileLock = new();
+        private static readonly object _fileLock = new();
 
         internal static string CacheFilePath { get; } = GetCacheFilePath();
 
@@ -29,7 +29,7 @@ namespace FileShareImageBuilder.Authentication
 
         private static void BeforeAccessNotification(TokenCacheNotificationArgs args)
         {
-            lock (FileLock)
+            lock (_fileLock)
             {
                 args.TokenCache.DeserializeMsalV3(File.Exists(CacheFilePath) ? ProtectedData.Unprotect(File.ReadAllBytes(CacheFilePath), null, DataProtectionScope.CurrentUser) : null);
             }
@@ -42,7 +42,7 @@ namespace FileShareImageBuilder.Authentication
                 return;
             }
 
-            lock (FileLock)
+            lock (_fileLock)
             {
                 File.WriteAllBytes(CacheFilePath, ProtectedData.Protect(args.TokenCache.SerializeMsalV3(), null, DataProtectionScope.CurrentUser));
             }

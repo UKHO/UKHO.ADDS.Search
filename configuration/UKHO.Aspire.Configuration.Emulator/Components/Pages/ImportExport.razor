@@ -9,7 +9,7 @@
 @implements IAsyncDisposable
 @inject IConfigurationSettingFactory ConfigurationSettingFactory
 @inject IConfigurationSettingRepository ConfigurationSettingRepository
-@inject IJSRuntime JS
+@inject IJSRuntime Js
 @inject IKeyValuePairJsonDecoder KeyValuePairJsonDecoder
 @inject IKeyValuePairJsonEncoder KeyValuePairJsonEncoder
 @page "/kvdata"
@@ -297,7 +297,7 @@
     {
         if (firstRender)
         {
-            Module = await JS.InvokeAsync<IJSObjectReference>("import", "./Components/Pages/ImportExport.razor.js");
+            Module = await Js.InvokeAsync<IJSObjectReference>("import", "./Components/Pages/ImportExport.razor.js");
         }
     }
 

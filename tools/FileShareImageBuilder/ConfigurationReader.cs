@@ -62,7 +62,7 @@ namespace FileShareImageBuilder
             return GetRequiredStringProperty(json.RootElement, "dataImagePath");
         }
 
-        internal static int GetDataImageBinSizeGB()
+        internal static int GetDataImageBinSizeGb()
         {
             using var json = ReadOverrideConfiguration();
 

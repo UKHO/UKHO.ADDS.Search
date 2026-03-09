@@ -8,28 +8,28 @@ namespace UKHO.Search.Pipelines.Nodes
 {
     public abstract class SourceNodeBase<TOut> : INode
     {
-        private readonly IPipelineFatalErrorReporter? fatalErrorReporter;
-        private readonly ILogger? logger;
-        private readonly NodeMetrics metrics;
-        private readonly ChannelWriter<TOut> output;
-        private Task? completion;
+        private readonly IPipelineFatalErrorReporter? _fatalErrorReporter;
+        private readonly ILogger? _logger;
+        private readonly NodeMetrics _metrics;
+        private readonly ChannelWriter<TOut> _output;
+        private Task? _completion;
 
         protected SourceNodeBase(string name, ChannelWriter<TOut> output, ILogger? logger = null, IPipelineFatalErrorReporter? fatalErrorReporter = null)
         {
             Name = name;
-            this.output = output;
-            this.logger = logger;
-            this.fatalErrorReporter = fatalErrorReporter;
-            metrics = new NodeMetrics(name);
+            this._output = output;
+            this._logger = logger;
+            this._fatalErrorReporter = fatalErrorReporter;
+            _metrics = new NodeMetrics(name);
         }
 
         public string Name { get; }
 
-        public Task Completion => completion ?? Task.CompletedTask;
+        public Task Completion => _completion ?? Task.CompletedTask;
 
         public Task StartAsync(CancellationToken cancellationToken)
         {
-            completion ??= Task.Run(() => RunAsync(cancellationToken), CancellationToken.None);
+            _completion ??= Task.Run(() => RunAsync(cancellationToken), CancellationToken.None);
             return Task.CompletedTask;
         }
 
@@ -47,7 +47,7 @@ namespace UKHO.Search.Pipelines.Nodes
         {
             await output.WriteAsync(item, cancellationToken)
                         .ConfigureAwait(false);
-            metrics.RecordOut(item);
+            _metrics.RecordOut(item);
         }
 
         protected abstract ValueTask ProduceAsync(ChannelWriter<TOut> output, CancellationToken cancellationToken);
@@ -56,36 +56,36 @@ namespace UKHO.Search.Pipelines.Nodes
         {
             try
             {
-                metrics.IncrementInFlight();
+                _metrics.IncrementInFlight();
                 var started = Stopwatch.GetTimestamp();
                 try
                 {
-                    await ProduceAsync(output, cancellationToken)
+                    await ProduceAsync(_output, cancellationToken)
                         .ConfigureAwait(false);
                 }
                 finally
                 {
                     var elapsed = Stopwatch.GetElapsedTime(started);
-                    metrics.RecordDuration(elapsed);
-                    metrics.DecrementInFlight();
+                    _metrics.RecordDuration(elapsed);
+                    _metrics.DecrementInFlight();
                 }
 
-                output.TryComplete();
+                _output.TryComplete();
             }
             catch (OperationCanceledException) when (cancellationToken.IsCancellationRequested)
             {
-                output.TryComplete();
+                _output.TryComplete();
             }
             catch (Exception ex)
             {
-                logger?.LogError(ex, "Node '{NodeName}' failed.", Name);
-                fatalErrorReporter?.ReportFatal(Name, ex);
-                output.TryComplete(ex);
+                _logger?.LogError(ex, "Node '{NodeName}' failed.", Name);
+                _fatalErrorReporter?.ReportFatal(Name, ex);
+                _output.TryComplete(ex);
                 throw;
             }
             finally
             {
-                metrics.Dispose();
+                _metrics.Dispose();
             }
         }
     }

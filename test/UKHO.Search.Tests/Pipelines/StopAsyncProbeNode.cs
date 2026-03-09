@@ -4,14 +4,14 @@ namespace UKHO.Search.Tests.Pipelines
 {
     public sealed class StopAsyncProbeNode : INode
     {
-        private int stopCalls;
+        private int _stopCalls;
 
         public StopAsyncProbeNode(string name)
         {
             Name = name;
         }
 
-        public int StopCalls => Volatile.Read(ref stopCalls);
+        public int StopCalls => Volatile.Read(ref _stopCalls);
 
         public string Name { get; }
 
@@ -24,7 +24,7 @@ namespace UKHO.Search.Tests.Pipelines
 
         public ValueTask StopAsync(CancellationToken cancellationToken)
         {
-            Interlocked.Increment(ref stopCalls);
+            Interlocked.Increment(ref _stopCalls);
             return ValueTask.CompletedTask;
         }
     }

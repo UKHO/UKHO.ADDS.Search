@@ -9,28 +9,33 @@ namespace UKHO.Search.Ingestion.Tests.TestNodes
 {
     public sealed class PassthroughBulkIndexNode : INode
     {
-        private readonly ChannelWriter<Envelope<IndexOperation>> deadLetterOutput;
-        private readonly IPipelineFatalErrorReporter? fatalErrorReporter;
-        private readonly ChannelReader<BatchEnvelope<IndexOperation>> input;
-        private readonly ChannelWriter<Envelope<IndexOperation>> successOutput;
-        private Task? completion;
+        private readonly ChannelWriter<Envelope<IndexOperation>> _deadLetterOutput;
+        private readonly IPipelineFatalErrorReporter? _fatalErrorReporter;
+        private readonly ChannelReader<BatchEnvelope<IndexOperation>> _input;
+        private readonly ChannelWriter<Envelope<IndexOperation>> _successOutput;
+        private Task? _completion;
 
-        public PassthroughBulkIndexNode(string name, ChannelReader<BatchEnvelope<IndexOperation>> input, ChannelWriter<Envelope<IndexOperation>> successOutput, ChannelWriter<Envelope<IndexOperation>> deadLetterOutput, IPipelineFatalErrorReporter? fatalErrorReporter = null)
+        public PassthroughBulkIndexNode(
+            string name,
+            ChannelReader<BatchEnvelope<IndexOperation>> input,
+            ChannelWriter<Envelope<IndexOperation>> successOutput,
+            ChannelWriter<Envelope<IndexOperation>> deadLetterOutput,
+            IPipelineFatalErrorReporter? fatalErrorReporter = null)
         {
             Name = name;
-            this.input = input;
-            this.successOutput = successOutput;
-            this.deadLetterOutput = deadLetterOutput;
-            this.fatalErrorReporter = fatalErrorReporter;
+            _input = input;
+            _successOutput = successOutput;
+            _deadLetterOutput = deadLetterOutput;
+            _fatalErrorReporter = fatalErrorReporter;
         }
 
         public string Name { get; }
 
-        public Task Completion => completion ?? Task.CompletedTask;
+        public Task Completion => _completion ?? Task.CompletedTask;
 
         public Task StartAsync(CancellationToken cancellationToken)
         {
-            completion ??= Task.Run(() => RunAsync(cancellationToken), CancellationToken.None);
+            _completion ??= Task.Run(() => RunAsync(cancellationToken), CancellationToken.None);
             return Task.CompletedTask;
         }
 
@@ -43,32 +48,32 @@ namespace UKHO.Search.Ingestion.Tests.TestNodes
         {
             try
             {
-                while (await input.WaitToReadAsync(cancellationToken)
+                while (await _input.WaitToReadAsync(cancellationToken)
                                   .ConfigureAwait(false))
                 {
-                    while (input.TryRead(out var batch))
+                    while (_input.TryRead(out var batch))
                     {
                         foreach (var envelope in batch.Items)
                         {
-                            await successOutput.WriteAsync(envelope, cancellationToken)
+                            await _successOutput.WriteAsync(envelope, cancellationToken)
                                                .ConfigureAwait(false);
                         }
                     }
                 }
 
-                successOutput.TryComplete();
-                deadLetterOutput.TryComplete();
+                _successOutput.TryComplete();
+                _deadLetterOutput.TryComplete();
             }
             catch (OperationCanceledException) when (cancellationToken.IsCancellationRequested)
             {
-                successOutput.TryComplete();
-                deadLetterOutput.TryComplete();
+                _successOutput.TryComplete();
+                _deadLetterOutput.TryComplete();
             }
             catch (Exception ex)
             {
-                successOutput.TryComplete(ex);
-                deadLetterOutput.TryComplete(ex);
-                fatalErrorReporter?.ReportFatal(Name, ex);
+                _successOutput.TryComplete(ex);
+                _deadLetterOutput.TryComplete(ex);
+                _fatalErrorReporter?.ReportFatal(Name, ex);
                 throw;
             }
         }
