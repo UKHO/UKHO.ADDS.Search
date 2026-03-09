@@ -94,10 +94,8 @@ namespace UKHO.Search.Pipelines.Nodes
                 {
                     // If cancellation races with a faulted upstream completion, prefer propagating the
                     // upstream exception so downstream reliably faults rather than completing cleanly.
-                    if (_input.Completion.IsCompleted)
-                    {
-                        await _input.Completion.ConfigureAwait(false);
-                    }
+                    await TryPropagateUpstreamCompletionAsync(_input.Completion)
+                        .ConfigureAwait(false);
                 }
 
                 CompleteOutputs();
@@ -139,6 +137,23 @@ namespace UKHO.Search.Pipelines.Nodes
             {
                 await ProcessItemAsync(item, CancellationToken.None)
                     .ConfigureAwait(false);
+            }
+        }
+
+        private static async Task TryPropagateUpstreamCompletionAsync(Task completion)
+        {
+            if (completion.IsCompleted)
+            {
+                await completion.ConfigureAwait(false);
+                return;
+            }
+
+            var finished = await Task.WhenAny(completion, Task.Delay(TimeSpan.FromSeconds(1)))
+                                     .ConfigureAwait(false);
+
+            if (finished == completion)
+            {
+                await completion.ConfigureAwait(false);
             }
         }
     }

@@ -5,25 +5,26 @@ namespace FileShareEmulator.Services
 {
     public sealed class BatchSecurityTokenService
     {
+        private readonly string _connectionString;
         private readonly ILogger<BatchSecurityTokenService> _logger;
-        private readonly SqlConnection _sqlConnection;
 
         public BatchSecurityTokenService(SqlConnection sqlConnection, ILogger<BatchSecurityTokenService> logger)
         {
-            _sqlConnection = sqlConnection;
+            _connectionString = sqlConnection.ConnectionString;
             _logger = logger;
         }
 
         public async Task<(string[] SecurityTokens, string? BusinessUnitName)> GetSecurityTokensAsync(Guid batchId, CancellationToken cancellationToken = default)
         {
-            await EnsureOpenAsync(cancellationToken)
-                .ConfigureAwait(false);
+            await using var connection = new SqlConnection(_connectionString);
+            await connection.OpenAsync(cancellationToken)
+                            .ConfigureAwait(false);
 
-            var groupIdentifiers = await GetGroupIdentifiersAsync(batchId, cancellationToken)
+            var groupIdentifiers = await GetGroupIdentifiersAsync(connection, batchId, cancellationToken)
                 .ConfigureAwait(false);
-            var userIdentifiers = await GetUserIdentifiersAsync(batchId, cancellationToken)
+            var userIdentifiers = await GetUserIdentifiersAsync(connection, batchId, cancellationToken)
                 .ConfigureAwait(false);
-            var businessUnitName = await GetActiveBusinessUnitNameAsync(batchId, cancellationToken)
+            var businessUnitName = await GetActiveBusinessUnitNameAsync(connection, batchId, cancellationToken)
                 .ConfigureAwait(false);
 
             if (string.IsNullOrWhiteSpace(businessUnitName))
@@ -38,9 +39,9 @@ namespace FileShareEmulator.Services
             return (tokens, businessUnitName);
         }
 
-        private async Task<List<string>> GetGroupIdentifiersAsync(Guid batchId, CancellationToken cancellationToken)
+        private static async Task<List<string>> GetGroupIdentifiersAsync(SqlConnection connection, Guid batchId, CancellationToken cancellationToken)
         {
-            await using var cmd = _sqlConnection.CreateCommand();
+            await using var cmd = connection.CreateCommand();
             cmd.CommandType = CommandType.Text;
             cmd.CommandTimeout = 30;
             cmd.CommandText = @"SELECT [GroupIdentifier] FROM [BatchReadGroup] WHERE [BatchId] = @batchId;";
@@ -64,9 +65,9 @@ namespace FileShareEmulator.Services
             return results;
         }
 
-        private async Task<List<string>> GetUserIdentifiersAsync(Guid batchId, CancellationToken cancellationToken)
+        private static async Task<List<string>> GetUserIdentifiersAsync(SqlConnection connection, Guid batchId, CancellationToken cancellationToken)
         {
-            await using var cmd = _sqlConnection.CreateCommand();
+            await using var cmd = connection.CreateCommand();
             cmd.CommandType = CommandType.Text;
             cmd.CommandTimeout = 30;
             cmd.CommandText = @"SELECT [UserIdentifier] FROM [BatchReadUser] WHERE [BatchId] = @batchId;";
@@ -90,9 +91,9 @@ namespace FileShareEmulator.Services
             return results;
         }
 
-        private async Task<string?> GetActiveBusinessUnitNameAsync(Guid batchId, CancellationToken cancellationToken)
+        private static async Task<string?> GetActiveBusinessUnitNameAsync(SqlConnection connection, Guid batchId, CancellationToken cancellationToken)
         {
-            await using var cmd = _sqlConnection.CreateCommand();
+            await using var cmd = connection.CreateCommand();
             cmd.CommandType = CommandType.Text;
             cmd.CommandTimeout = 30;
             cmd.CommandText = @"SELECT bu.[Name]
@@ -104,17 +105,6 @@ WHERE b.[Id] = @batchId AND bu.[IsActive] = 1;";
             var result = await cmd.ExecuteScalarAsync(cancellationToken)
                                   .ConfigureAwait(false);
             return result is DBNull or null ? null : (string)result;
-        }
-
-        private async Task EnsureOpenAsync(CancellationToken cancellationToken)
-        {
-            if (_sqlConnection.State == ConnectionState.Open)
-            {
-                return;
-            }
-
-            await _sqlConnection.OpenAsync(cancellationToken)
-                                .ConfigureAwait(false);
         }
     }
 }

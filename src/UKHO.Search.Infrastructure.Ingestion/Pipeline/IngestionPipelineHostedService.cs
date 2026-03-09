@@ -1,40 +1,40 @@
+using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.Hosting;
 using Microsoft.Extensions.Logging;
-using UKHO.Search.Ingestion.Providers.FileShare.Pipeline;
+using UKHO.Search.Infrastructure.Ingestion.Queue;
+using UKHO.Search.Services.Ingestion.Providers;
 
 namespace UKHO.Search.Infrastructure.Ingestion.Pipeline
 {
     public sealed class IngestionPipelineHostedService : IHostedService
     {
-        private readonly FileShareIngestionPipelineAdapter _adapter;
+        private readonly IConfiguration _configuration;
         private readonly IHostApplicationLifetime _hostApplicationLifetime;
         private readonly ILogger<IngestionPipelineHostedService> _logger;
-        private FileShareIngestionGraphHandle? _graph;
+        private readonly IIngestionProviderService _providerService;
+        private readonly IQueueClientFactory _queueClientFactory;
+        private CancellationTokenSource? _runCts;
         private Task? _runTask;
 
-        public IngestionPipelineHostedService(FileShareIngestionPipelineAdapter adapter, IHostApplicationLifetime hostApplicationLifetime, ILogger<IngestionPipelineHostedService> logger)
+        public IngestionPipelineHostedService(IConfiguration configuration, IIngestionProviderService providerService, IQueueClientFactory queueClientFactory, IHostApplicationLifetime hostApplicationLifetime, ILogger<IngestionPipelineHostedService> logger)
         {
-            _adapter = adapter;
+            _configuration = configuration;
+            _providerService = providerService;
+            _queueClientFactory = queueClientFactory;
             _hostApplicationLifetime = hostApplicationLifetime;
             _logger = logger;
         }
 
         public Task StartAsync(CancellationToken cancellationToken)
         {
-            _graph = _adapter.BuildAzureQueueBacked(_hostApplicationLifetime.ApplicationStopping);
-            _runTask = RunAsync();
+            _runCts = CancellationTokenSource.CreateLinkedTokenSource(_hostApplicationLifetime.ApplicationStopping, cancellationToken);
+            _runTask = RunAsync(_runCts.Token);
             return Task.CompletedTask;
         }
 
         public async Task StopAsync(CancellationToken cancellationToken)
         {
-            if (_graph is null)
-            {
-                return;
-            }
-
-            await _graph.Supervisor.StopAsync(cancellationToken)
-                        .ConfigureAwait(false);
+            _runCts?.Cancel();
 
             if (_runTask is not null)
             {
@@ -43,34 +43,22 @@ namespace UKHO.Search.Infrastructure.Ingestion.Pipeline
             }
         }
 
-        private async Task RunAsync()
+        private async Task RunAsync(CancellationToken cancellationToken)
         {
-            if (_graph is null)
-            {
-                return;
-            }
-
             try
             {
-                _logger.LogInformation("Ingestion pipeline starting.");
+                _logger.LogInformation("Ingestion queue host starting.");
 
-                await _graph.Supervisor.StartAsync()
-                            .ConfigureAwait(false);
+                var node = new IngestionSourceNode("ingestion-source-queue", _configuration, _providerService, _queueClientFactory, _logger);
 
-                await _graph.Supervisor.Completion.ConfigureAwait(false);
+                await node.StartAsync(cancellationToken)
+                          .ConfigureAwait(false);
 
-                if (_graph.Supervisor.FatalException is not null)
-                {
-                    _logger.LogError(_graph.Supervisor.FatalException, "Ingestion pipeline stopped due to fatal node failure. FatalNodeName={FatalNodeName}", _graph.Supervisor.FatalNodeName);
-                }
-                else
-                {
-                    _logger.LogInformation("Ingestion pipeline completed.");
-                }
+                await node.Completion.ConfigureAwait(false);
             }
             catch (Exception ex)
             {
-                _logger.LogError(ex, "Ingestion pipeline runner failed.");
+                _logger.LogError(ex, "Ingestion queue host runner failed.");
                 throw;
             }
         }

@@ -14,13 +14,13 @@ namespace UKHO.Search.Ingestion.Tests.Pipeline
 {
     public sealed class ApplyEnrichmentNodeTests
     {
-        private static ServiceProvider CreateProvider(params UKHO.Search.Ingestion.IIngestionEnricher[] enrichers)
+        private static ServiceProvider CreateProvider(params IIngestionEnricher[] enrichers)
         {
             var services = new ServiceCollection();
 
             foreach (var enricher in enrichers)
             {
-                services.AddScoped<UKHO.Search.Ingestion.IIngestionEnricher>(_ => enricher);
+                services.AddScoped<IIngestionEnricher>(_ => enricher);
             }
 
             return services.BuildServiceProvider();
@@ -34,10 +34,10 @@ namespace UKHO.Search.Ingestion.Tests.Pipeline
             var deadLetter = BoundedChannelFactory.Create<Envelope<IndexOperation>>(1, true, true);
 
             var calls = new List<string>();
-            var enrichers = new UKHO.Search.Ingestion.IIngestionEnricher[]
+            var enrichers = new IIngestionEnricher[]
             {
-                new RecordingEnricherB(calls, ordinal: 10),
-                new RecordingEnricherA(calls, ordinal: 10)
+                new RecordingEnricherB(calls, 10),
+                new RecordingEnricherA(calls, 10)
             };
 
             await using var provider = CreateProvider(enrichers);
@@ -77,9 +77,9 @@ namespace UKHO.Search.Ingestion.Tests.Pipeline
             var deadLetter = BoundedChannelFactory.Create<Envelope<IndexOperation>>(1, true, true);
 
             var calls = new List<string>();
-            var enrichers = new UKHO.Search.Ingestion.IIngestionEnricher[]
+            var enrichers = new IIngestionEnricher[]
             {
-                new RecordingEnricherA(calls, ordinal: 10)
+                new RecordingEnricherA(calls, 10)
             };
 
             await using var provider = CreateProvider(enrichers);
@@ -135,8 +135,10 @@ namespace UKHO.Search.Ingestion.Tests.Pipeline
                   .ShouldBeTrue();
 
             var upsert = outEnvelope.Payload.ShouldBeOfType<UpsertOperation>();
-            upsert.Document.Source["enrichment_requestType"]!.GetValue<string>().ShouldBe("AddItem");
-            upsert.Document.Source["enrichment_documentId"]!.GetValue<string>().ShouldBe("doc-1");
+            upsert.Document.Source["enrichment_requestType"]!.GetValue<string>()
+                  .ShouldBe("AddItem");
+            upsert.Document.Source["enrichment_documentId"]!.GetValue<string>()
+                  .ShouldBe("doc-1");
         }
 
         [Fact]
@@ -198,22 +200,18 @@ namespace UKHO.Search.Ingestion.Tests.Pipeline
             var deadLetter = BoundedChannelFactory.Create<Envelope<IndexOperation>>(1, true, true);
 
             var delays = new List<TimeSpan>();
+
             Task Delay(TimeSpan delay, CancellationToken ct)
             {
                 delays.Add(delay);
                 return Task.CompletedTask;
             }
 
-            var enricher = new FailingEnricher(ordinal: 10, failuresBeforeSuccess: 2, _ => new TimeoutException("timeout"));
+            var enricher = new FailingEnricher(10, 2, _ => new TimeoutException("timeout"));
 
             await using var provider = CreateProvider(enricher);
 
-            var node = new ApplyEnrichmentNode("enrich", input.Reader, output.Writer, deadLetter.Writer, provider.GetRequiredService<IServiceScopeFactory>(),
-                retryMaxAttempts: 5,
-                retryBaseDelay: TimeSpan.FromMilliseconds(200),
-                retryMaxDelay: TimeSpan.FromMilliseconds(5000),
-                retryJitter: TimeSpan.Zero,
-                delay: Delay);
+            var node = new ApplyEnrichmentNode("enrich", input.Reader, output.Writer, deadLetter.Writer, provider.GetRequiredService<IServiceScopeFactory>(), retryMaxAttempts: 5, retryBaseDelay: TimeSpan.FromMilliseconds(200), retryMaxDelay: TimeSpan.FromMilliseconds(5000), retryJitter: TimeSpan.Zero, delay: Delay);
 
             await node.StartAsync(CancellationToken.None);
 
@@ -245,14 +243,11 @@ namespace UKHO.Search.Ingestion.Tests.Pipeline
             var output = BoundedChannelFactory.Create<Envelope<IndexOperation>>(1, true, true);
             var deadLetter = BoundedChannelFactory.Create<Envelope<IndexOperation>>(1, true, true);
 
-            var enricher = new FailingEnricher(ordinal: 10, failuresBeforeSuccess: 1, _ => new InvalidOperationException("boom"));
+            var enricher = new FailingEnricher(10, 1, _ => new InvalidOperationException("boom"));
 
             await using var provider = CreateProvider(enricher);
 
-            var node = new ApplyEnrichmentNode("enrich", input.Reader, output.Writer, deadLetter.Writer, provider.GetRequiredService<IServiceScopeFactory>(),
-                retryMaxAttempts: 5,
-                retryJitter: TimeSpan.Zero,
-                delay: (_, _) => Task.CompletedTask);
+            var node = new ApplyEnrichmentNode("enrich", input.Reader, output.Writer, deadLetter.Writer, provider.GetRequiredService<IServiceScopeFactory>(), retryMaxAttempts: 5, retryJitter: TimeSpan.Zero, delay: (_, _) => Task.CompletedTask);
 
             await node.StartAsync(CancellationToken.None);
 
@@ -286,22 +281,18 @@ namespace UKHO.Search.Ingestion.Tests.Pipeline
             var deadLetter = BoundedChannelFactory.Create<Envelope<IndexOperation>>(1, true, true);
 
             var delays = new List<TimeSpan>();
+
             Task Delay(TimeSpan delay, CancellationToken ct)
             {
                 delays.Add(delay);
                 return Task.CompletedTask;
             }
 
-            var enricher = new FailingEnricher(ordinal: 10, failuresBeforeSuccess: int.MaxValue, _ => new TimeoutException("timeout"));
+            var enricher = new FailingEnricher(10, int.MaxValue, _ => new TimeoutException("timeout"));
 
             await using var provider = CreateProvider(enricher);
 
-            var node = new ApplyEnrichmentNode("enrich", input.Reader, output.Writer, deadLetter.Writer, provider.GetRequiredService<IServiceScopeFactory>(),
-                retryMaxAttempts: 5,
-                retryBaseDelay: TimeSpan.FromMilliseconds(200),
-                retryMaxDelay: TimeSpan.FromMilliseconds(5000),
-                retryJitter: TimeSpan.Zero,
-                delay: Delay);
+            var node = new ApplyEnrichmentNode("enrich", input.Reader, output.Writer, deadLetter.Writer, provider.GetRequiredService<IServiceScopeFactory>(), retryMaxAttempts: 5, retryBaseDelay: TimeSpan.FromMilliseconds(200), retryMaxDelay: TimeSpan.FromMilliseconds(5000), retryJitter: TimeSpan.Zero, delay: Delay);
 
             await node.StartAsync(CancellationToken.None);
 
@@ -337,15 +328,11 @@ namespace UKHO.Search.Ingestion.Tests.Pipeline
             var output = BoundedChannelFactory.Create<Envelope<IndexOperation>>(1, true, true);
             var deadLetter = BoundedChannelFactory.Create<Envelope<IndexOperation>>(1, true, true);
 
-            var enricher = new FailingEnricher(ordinal: 10, failuresBeforeSuccess: 1, _ => new TaskCanceledException("tce"));
+            var enricher = new FailingEnricher(10, 1, _ => new TaskCanceledException("tce"));
 
             await using var provider = CreateProvider(enricher);
 
-            var node = new ApplyEnrichmentNode("enrich", input.Reader, output.Writer, deadLetter.Writer, provider.GetRequiredService<IServiceScopeFactory>(),
-                retryMaxAttempts: 5,
-                retryBaseDelay: TimeSpan.FromMilliseconds(200),
-                retryJitter: TimeSpan.Zero,
-                delay: (_, _) => Task.CompletedTask);
+            var node = new ApplyEnrichmentNode("enrich", input.Reader, output.Writer, deadLetter.Writer, provider.GetRequiredService<IServiceScopeFactory>(), retryMaxAttempts: 5, retryBaseDelay: TimeSpan.FromMilliseconds(200), retryJitter: TimeSpan.Zero, delay: (_, _) => Task.CompletedTask);
 
             await node.StartAsync(CancellationToken.None);
 
@@ -375,7 +362,7 @@ namespace UKHO.Search.Ingestion.Tests.Pipeline
             cts.Cancel();
 
             ApplyEnrichmentNode.IsTransientException(new OperationCanceledException(), cts.Token)
-                              .ShouldBeFalse();
+                               .ShouldBeFalse();
         }
     }
 }

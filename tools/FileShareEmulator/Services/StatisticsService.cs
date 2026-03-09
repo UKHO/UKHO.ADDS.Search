@@ -18,19 +18,20 @@ namespace FileShareEmulator.Services
             [nameof(StatisticsSnapshot.BatchReadGroupCount)] = HumanizeLabel(nameof(StatisticsSnapshot.BatchReadGroupCount))
         };
 
-        private readonly SqlConnection _sqlConnection;
+        private readonly string _connectionString;
 
         public StatisticsService(SqlConnection sqlConnection)
         {
-            _sqlConnection = sqlConnection;
+            _connectionString = sqlConnection.ConnectionString;
         }
 
         public async Task<IndexingStatus> GetIndexingStatusAsync(CancellationToken cancellationToken = default)
         {
-            await EnsureConnectionOpenAsync(cancellationToken)
-                .ConfigureAwait(false);
+            await using var connection = new SqlConnection(_connectionString);
+            await connection.OpenAsync(cancellationToken)
+                            .ConfigureAwait(false);
 
-            await using var cmd = _sqlConnection.CreateCommand();
+            await using var cmd = connection.CreateCommand();
             cmd.CommandType = CommandType.Text;
             cmd.CommandTimeout = 30;
             cmd.CommandText = @"
@@ -52,7 +53,11 @@ SELECT
 
         public async Task<StatisticsSnapshot> GetAsync(CancellationToken cancellationToken = default)
         {
-            await using var cmd = _sqlConnection.CreateCommand();
+            await using var connection = new SqlConnection(_connectionString);
+            await connection.OpenAsync(cancellationToken)
+                            .ConfigureAwait(false);
+
+            await using var cmd = connection.CreateCommand();
             cmd.CommandType = CommandType.Text;
             cmd.CommandTimeout = 30;
 
@@ -64,9 +69,6 @@ SELECT
     (SELECT COUNT_BIG(1) FROM [FileAttribute]) AS FileAttributeCount,
     (SELECT COUNT_BIG(1) FROM [BatchReadUser]) AS BatchReadUserCount,
     (SELECT COUNT_BIG(1) FROM [BatchReadGroup]) AS BatchReadGroupCount;";
-
-            await EnsureConnectionOpenAsync(cancellationToken)
-                .ConfigureAwait(false);
 
             await using var reader = await cmd.ExecuteReaderAsync(CommandBehavior.SingleRow, cancellationToken)
                                               .ConfigureAwait(false);
@@ -87,19 +89,10 @@ SELECT
             await reader.DisposeAsync()
                         .ConfigureAwait(false);
 
-            var localMetadata = await GetLocalMetadataAsync(_sqlConnection, cancellationToken)
+            var localMetadata = await GetLocalMetadataAsync(connection, cancellationToken)
                 .ConfigureAwait(false);
 
             return new StatisticsSnapshot(batchCount, fileCount, batchAttributeCount, fileAttributeCount, batchReadUserCount, batchReadGroupCount, _labels, localMetadata);
-        }
-
-        private async Task EnsureConnectionOpenAsync(CancellationToken cancellationToken)
-        {
-            if (_sqlConnection.State != ConnectionState.Open)
-            {
-                await _sqlConnection.OpenAsync(cancellationToken)
-                                    .ConfigureAwait(false);
-            }
         }
 
         private static async Task<IReadOnlyDictionary<string, string?>> GetLocalMetadataAsync(SqlConnection connection, CancellationToken cancellationToken)

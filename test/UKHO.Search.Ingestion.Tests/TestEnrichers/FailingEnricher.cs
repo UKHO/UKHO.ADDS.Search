@@ -1,4 +1,3 @@
-using UKHO.Search.Ingestion;
 using UKHO.Search.Ingestion.Pipeline.Documents;
 using UKHO.Search.Ingestion.Requests;
 
@@ -8,7 +7,6 @@ namespace UKHO.Search.Ingestion.Tests.TestEnrichers
     {
         private readonly Func<int, Exception> _exceptionFactory;
         private readonly int _failuresBeforeSuccess;
-        private int _callCount;
         private readonly int _ordinal;
 
         public FailingEnricher(int ordinal, int failuresBeforeSuccess, Func<int, Exception> exceptionFactory)
@@ -23,20 +21,20 @@ namespace UKHO.Search.Ingestion.Tests.TestEnrichers
             _exceptionFactory = exceptionFactory;
         }
 
-        public int Ordinal => _ordinal;
+        public int CallCount { get; private set; }
 
-        public int CallCount => _callCount;
+        public int Ordinal => _ordinal;
 
         public Task TryBuildEnrichmentAsync(IngestionRequest request, CanonicalDocument document, CancellationToken cancellationToken = default)
         {
             ArgumentNullException.ThrowIfNull(request);
             ArgumentNullException.ThrowIfNull(document);
 
-            _callCount++;
+            CallCount++;
 
-            if (_callCount <= _failuresBeforeSuccess)
+            if (CallCount <= _failuresBeforeSuccess)
             {
-                throw _exceptionFactory(_callCount);
+                throw _exceptionFactory(CallCount);
             }
 
             return Task.CompletedTask;

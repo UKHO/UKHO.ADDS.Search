@@ -25,8 +25,7 @@ namespace UKHO.Search.Ingestion.Pipeline.Nodes
         private readonly TimeSpan _retryBaseDelay;
         private readonly IServiceScopeFactory _scopeFactory;
 
-        public ApplyEnrichmentNode(
-            string name,
+        public ApplyEnrichmentNode(string name,
             ChannelReader<Envelope<IngestionPipelineContext>> input,
             ChannelWriter<Envelope<IndexOperation>> output,
             ChannelWriter<Envelope<IndexOperation>> deadLetterOutput,
@@ -38,8 +37,7 @@ namespace UKHO.Search.Ingestion.Pipeline.Nodes
             TimeSpan? retryMaxDelay = null,
             TimeSpan? retryJitter = null,
             Func<TimeSpan, CancellationToken, Task>? delay = null,
-            Random? random = null)
-            : base(name, input, output, logger, fatalErrorReporter)
+            Random? random = null) : base(name, input, output, logger, fatalErrorReporter)
         {
             ArgumentNullException.ThrowIfNull(scopeFactory);
 
@@ -103,7 +101,8 @@ namespace UKHO.Search.Ingestion.Pipeline.Nodes
 
             var enrichers = scope.ServiceProvider.GetServices<IIngestionEnricher>()
                                  .OrderBy(x => x.Ordinal)
-                                 .ThenBy(x => x.GetType().FullName, StringComparer.Ordinal)
+                                 .ThenBy(x => x.GetType()
+                                               .FullName, StringComparer.Ordinal)
                                  .ToArray();
 
             if (enrichers.Length == 0)
@@ -127,12 +126,14 @@ namespace UKHO.Search.Ingestion.Pipeline.Nodes
 
                     try
                     {
-                        _logger?.LogDebug("Enricher starting. NodeName={NodeName} Enricher={EnricherType} Key={Key} MessageId={MessageId} Attempt={Attempt}/{MaxAttempts}", Name, enricher.GetType().FullName, item.Key, item.MessageId, attempt, _maxAttempts);
+                        _logger?.LogDebug("Enricher starting. NodeName={NodeName} Enricher={EnricherType} Key={Key} MessageId={MessageId} Attempt={Attempt}/{MaxAttempts}", Name, enricher.GetType()
+                                                                                                                                                                                          .FullName, item.Key, item.MessageId, attempt, _maxAttempts);
 
                         await enricher.TryBuildEnrichmentAsync(context.Request, upsert.Document, cancellationToken)
                                       .ConfigureAwait(false);
 
-                        _logger?.LogDebug("Enricher finished. NodeName={NodeName} Enricher={EnricherType} Key={Key} MessageId={MessageId} Attempt={Attempt}/{MaxAttempts}", Name, enricher.GetType().FullName, item.Key, item.MessageId, attempt, _maxAttempts);
+                        _logger?.LogDebug("Enricher finished. NodeName={NodeName} Enricher={EnricherType} Key={Key} MessageId={MessageId} Attempt={Attempt}/{MaxAttempts}", Name, enricher.GetType()
+                                                                                                                                                                                          .FullName, item.Key, item.MessageId, attempt, _maxAttempts);
                         break;
                     }
                     catch (OperationCanceledException) when (cancellationToken.IsCancellationRequested)
@@ -143,7 +144,8 @@ namespace UKHO.Search.Ingestion.Pipeline.Nodes
                     {
                         var delayForNextAttempt = GetRetryDelay(attempt + 1);
 
-                        _logger?.LogWarning(ex, "Enricher transient failure; retrying. NodeName={NodeName} Enricher={EnricherType} Key={Key} MessageId={MessageId} Attempt={Attempt}/{MaxAttempts} DelayMs={DelayMs}", Name, enricher.GetType().FullName, item.Key, item.MessageId, attempt, _maxAttempts, delayForNextAttempt.TotalMilliseconds);
+                        _logger?.LogWarning(ex, "Enricher transient failure; retrying. NodeName={NodeName} Enricher={EnricherType} Key={Key} MessageId={MessageId} Attempt={Attempt}/{MaxAttempts} DelayMs={DelayMs}", Name, enricher.GetType()
+                                                                                                                                                                                                                                     .FullName, item.Key, item.MessageId, attempt, _maxAttempts, delayForNextAttempt.TotalMilliseconds);
 
                         attempt++;
 
@@ -157,7 +159,8 @@ namespace UKHO.Search.Ingestion.Pipeline.Nodes
                             Category = PipelineErrorCategory.Transform,
                             Code = "ENRICHMENT_RETRIES_EXHAUSTED",
                             Message = "Failed to apply ingestion enrichment after exhausting retries.",
-                            ExceptionType = ex.GetType().FullName,
+                            ExceptionType = ex.GetType()
+                                              .FullName,
                             ExceptionMessage = ex.Message,
                             StackTrace = ex.StackTrace,
                             IsTransient = false,
@@ -166,7 +169,8 @@ namespace UKHO.Search.Ingestion.Pipeline.Nodes
                             Details = new Dictionary<string, string>()
                         });
 
-                        _logger?.LogWarning(ex, "Enrichment retries exhausted. NodeName={NodeName} Enricher={EnricherType} Key={Key} MessageId={MessageId} Attempts={Attempts}", Name, enricher.GetType().FullName, item.Key, item.MessageId, attempt);
+                        _logger?.LogWarning(ex, "Enrichment retries exhausted. NodeName={NodeName} Enricher={EnricherType} Key={Key} MessageId={MessageId} Attempts={Attempts}", Name, enricher.GetType()
+                                                                                                                                                                                               .FullName, item.Key, item.MessageId, attempt);
 
                         var failedEnvelope = item.MapPayload(context.Operation);
 
@@ -182,7 +186,8 @@ namespace UKHO.Search.Ingestion.Pipeline.Nodes
                             Category = PipelineErrorCategory.Transform,
                             Code = "ENRICHMENT_ERROR",
                             Message = "Failed to apply ingestion enrichment.",
-                            ExceptionType = ex.GetType().FullName,
+                            ExceptionType = ex.GetType()
+                                              .FullName,
                             ExceptionMessage = ex.Message,
                             StackTrace = ex.StackTrace,
                             IsTransient = false,
@@ -191,7 +196,8 @@ namespace UKHO.Search.Ingestion.Pipeline.Nodes
                             Details = new Dictionary<string, string>()
                         });
 
-                        _logger?.LogWarning(ex, "Enrichment failed. NodeName={NodeName} Enricher={EnricherType} Key={Key} MessageId={MessageId} Attempt={Attempt}", Name, enricher.GetType().FullName, item.Key, item.MessageId, item.Attempt);
+                        _logger?.LogWarning(ex, "Enrichment failed. NodeName={NodeName} Enricher={EnricherType} Key={Key} MessageId={MessageId} Attempt={Attempt}", Name, enricher.GetType()
+                                                                                                                                                                                  .FullName, item.Key, item.MessageId, item.Attempt);
 
                         var failedEnvelope = item.MapPayload(context.Operation);
 

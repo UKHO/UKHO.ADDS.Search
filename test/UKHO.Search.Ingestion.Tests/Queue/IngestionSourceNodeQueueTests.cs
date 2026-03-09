@@ -2,15 +2,12 @@ using System.Text.Json;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.Logging.Abstractions;
 using Shouldly;
-using UKHO.Search.Infrastructure.Ingestion.Pipeline.Terminal;
 using UKHO.Search.Infrastructure.Ingestion.Queue;
 using UKHO.Search.Ingestion.Providers.FileShare;
 using UKHO.Search.Ingestion.Requests;
 using UKHO.Search.Ingestion.Requests.Serialization;
 using UKHO.Search.Ingestion.Tests.TestProviders;
 using UKHO.Search.Ingestion.Tests.TestQueues;
-using UKHO.Search.Pipelines.Channels;
-using UKHO.Search.Pipelines.Messaging;
 using Xunit;
 
 namespace UKHO.Search.Ingestion.Tests.Queue
@@ -38,11 +35,9 @@ namespace UKHO.Search.Ingestion.Tests.Queue
             var providerFactory = new FileShareIngestionDataProviderFactory("q");
             var providerService = new SingleProviderService(providerFactory);
 
-            var output = BoundedChannelFactory.Create<Envelope<IngestionRequest>>(10, true, true);
-
             using var cts = new CancellationTokenSource(TimeSpan.FromSeconds(2));
 
-            var node = new IngestionSourceNode("source", output.Writer, configuration, providerService, queueFactory, NullLogger.Instance);
+            var node = new IngestionSourceNode("source", configuration, providerService, queueFactory, NullLogger.Instance);
 
             await node.StartAsync(cts.Token);
 
@@ -84,11 +79,9 @@ namespace UKHO.Search.Ingestion.Tests.Queue
             var providerFactory = new FileShareIngestionDataProviderFactory("q");
             var providerService = new SingleProviderService(providerFactory);
 
-            var output = BoundedChannelFactory.Create<Envelope<IngestionRequest>>(10, true, true);
-
             using var cts = new CancellationTokenSource(TimeSpan.FromSeconds(2));
 
-            var node = new IngestionSourceNode("source", output.Writer, configuration, providerService, queueFactory, NullLogger.Instance);
+            var node = new IngestionSourceNode("source", configuration, providerService, queueFactory, NullLogger.Instance);
 
             await node.StartAsync(cts.Token);
 
@@ -138,19 +131,14 @@ namespace UKHO.Search.Ingestion.Tests.Queue
             var providerFactory = new FileShareIngestionDataProviderFactory("q");
             var providerService = new SingleProviderService(providerFactory);
 
-            var output = BoundedChannelFactory.Create<Envelope<IngestionRequest>>(10, true, true);
-
             using var cts = new CancellationTokenSource(TimeSpan.FromSeconds(2));
 
-            var node = new IngestionSourceNode("source", output.Writer, configuration, providerService, queueFactory, NullLogger.Instance);
+            var node = new IngestionSourceNode("source", configuration, providerService, queueFactory, NullLogger.Instance);
 
             await node.StartAsync(cts.Token);
 
             await poison.SendCalled.Task.WaitAsync(TimeSpan.FromSeconds(2));
             await queue.DeleteCalled.Task.WaitAsync(TimeSpan.FromSeconds(2));
-
-            output.Reader.TryRead(out var _)
-                  .ShouldBeFalse();
 
             poison.SentMessages.Count.ShouldBe(1);
             queue.DeletedMessages.Count.ShouldBe(1);
@@ -195,22 +183,21 @@ namespace UKHO.Search.Ingestion.Tests.Queue
                 MessageText = messageBody
             });
 
-            var providerFactory = new FileShareIngestionDataProviderFactory("q");
-            var providerService = new SingleProviderService(providerFactory);
+            var provider = new RecordingIngestionDataProvider
+            {
+                Name = "test-provider"
+            };
 
-            var output = BoundedChannelFactory.Create<Envelope<IngestionRequest>>(10, true, true);
+            var providerFactory = new RecordingIngestionDataProviderFactory("test-provider", "q", provider);
+            var providerService = new SingleProviderService(providerFactory);
 
             using var cts = new CancellationTokenSource(TimeSpan.FromSeconds(2));
 
-            var node = new IngestionSourceNode("source", output.Writer, configuration, providerService, queueFactory, NullLogger.Instance);
+            var node = new IngestionSourceNode("source", configuration, providerService, queueFactory, NullLogger.Instance);
 
             await node.StartAsync(cts.Token);
 
-            var hasItem = await output.Reader.WaitToReadAsync(cts.Token);
-            hasItem.ShouldBeTrue();
-
-            output.Reader.TryRead(out var envelope)
-                  .ShouldBeTrue();
+            var envelope = await provider.EnvelopeReceived.Task.WaitAsync(TimeSpan.FromSeconds(2));
             envelope.Key.ShouldBe("doc-1");
 
             envelope.Headers["queueName"]
@@ -218,20 +205,18 @@ namespace UKHO.Search.Ingestion.Tests.Queue
             envelope.Headers["queueMessageId"]
                     .ShouldBe("m1");
 
+            envelope.Headers["providerName"]
+                    .ShouldBe("test-provider");
+
             envelope.Context.TryGetItem<IQueueMessageAcker>(QueueEnvelopeContextKeys.MessageAcker, out var acker)
                     .ShouldBeTrue();
             acker.ShouldNotBeNull();
 
             queue.DeletedMessages.Count.ShouldBe(0);
 
-            var ackChannel = BoundedChannelFactory.Create<Envelope<IngestionRequest>>(1, true, true);
-            var ack = new AckSinkNode<IngestionRequest>("ack", ackChannel.Reader, NullLogger.Instance);
-            await ack.StartAsync(CancellationToken.None);
+            provider.ReleaseAck();
 
-            await ackChannel.Writer.WriteAsync(envelope);
-            ackChannel.Writer.TryComplete();
-
-            await ack.Completion.WaitAsync(TimeSpan.FromSeconds(2));
+            await queue.DeleteCalled.Task.WaitAsync(TimeSpan.FromSeconds(2));
 
             queue.DeletedMessages.Count.ShouldBe(1);
 

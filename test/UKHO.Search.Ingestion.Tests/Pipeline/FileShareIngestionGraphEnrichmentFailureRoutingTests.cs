@@ -7,7 +7,8 @@ using UKHO.Search.Ingestion.Providers.FileShare.Pipeline;
 using UKHO.Search.Ingestion.Requests;
 using UKHO.Search.Ingestion.Tests.TestEnrichers;
 using UKHO.Search.Ingestion.Tests.TestNodes;
-using UKHO.Search.Pipelines.Nodes;
+using UKHO.Search.Pipelines.Channels;
+using UKHO.Search.Pipelines.Messaging;
 using Xunit;
 
 namespace UKHO.Search.Ingestion.Tests.Pipeline
@@ -40,14 +41,10 @@ namespace UKHO.Search.Ingestion.Tests.Pipeline
             BlockingEnvelopeSinkNode<IndexOperation>? indexDeadLetterSink = null;
             RecordingBulkIndexNode? bulkIndexNode = null;
 
-            var factories = new FileShareIngestionGraphFactories
-            {
-                CreateSourceNode = (name, output, supervisor) => new SyntheticSourceNode<IngestionRequest>(name, output, 1, 1,
-                    _ => new IngestionRequest(IngestionRequestType.AddItem, new AddItemRequest("doc-1", Array.Empty<IngestionProperty>(), new[] { "t1" }), null, null, null),
-                    _ => "doc-1",
-                    loggerFactory.CreateLogger(name),
-                    supervisor),
+            var ingress = BoundedChannelFactory.Create<Envelope<IngestionRequest>>(16, false, true);
 
+            var factories = new FileShareIngestionProcessingGraphFactories
+            {
                 CreateRequestDeadLetterSinkNode = (name, input, supervisor) => new BlockingEnvelopeSinkNode<IngestionRequest>(name, input, 0),
 
                 CreateIndexDeadLetterSinkNode = (name, input, supervisor) => indexDeadLetterSink = new BlockingEnvelopeSinkNode<IndexOperation>(name, input, 0),
@@ -60,10 +57,10 @@ namespace UKHO.Search.Ingestion.Tests.Pipeline
             };
 
             var services = new ServiceCollection();
-            services.AddScoped<UKHO.Search.Ingestion.IIngestionEnricher>(_ => new AlwaysThrowingEnricher(ordinal: 10, () => new InvalidOperationException("boom")));
+            services.AddScoped<IIngestionEnricher>(_ => new AlwaysThrowingEnricher(10, () => new InvalidOperationException("boom")));
             await using var provider = services.BuildServiceProvider();
 
-            var graph = FileShareIngestionGraph.BuildAzureQueueBacked(new FileShareIngestionGraphDependencies
+            var graph = FileShareIngestionProcessingGraph.Build(ingress.Reader, new FileShareIngestionProcessingGraphDependencies
             {
                 Configuration = configuration,
                 LoggerFactory = loggerFactory,
@@ -72,6 +69,11 @@ namespace UKHO.Search.Ingestion.Tests.Pipeline
             }, cts.Token);
 
             await graph.Supervisor.StartAsync();
+
+            var request = new IngestionRequest(IngestionRequestType.AddItem, new AddItemRequest("doc-1", Array.Empty<IngestionProperty>(), new[] { "t1" }), null, null, null);
+            await ingress.Writer.WriteAsync(new Envelope<IngestionRequest>("doc-1", request), cts.Token);
+            ingress.Writer.TryComplete();
+
             await graph.Supervisor.Completion.WaitAsync(TimeSpan.FromSeconds(5));
 
             bulkIndexNode.ShouldNotBeNull();
@@ -80,7 +82,8 @@ namespace UKHO.Search.Ingestion.Tests.Pipeline
             indexDeadLetterSink.ShouldNotBeNull();
             await indexDeadLetterSink!.WaitForCountAsync(1, TimeSpan.FromSeconds(2));
 
-            indexDeadLetterSink.Items.Single().Error!.Code.ShouldBe("ENRICHMENT_ERROR");
+            indexDeadLetterSink.Items.Single()
+                               .Error!.Code.ShouldBe("ENRICHMENT_ERROR");
         }
 
         [Fact]
@@ -109,14 +112,10 @@ namespace UKHO.Search.Ingestion.Tests.Pipeline
             BlockingEnvelopeSinkNode<IndexOperation>? indexDeadLetterSink = null;
             RecordingBulkIndexNode? bulkIndexNode = null;
 
-            var factories = new FileShareIngestionGraphFactories
-            {
-                CreateSourceNode = (name, output, supervisor) => new SyntheticSourceNode<IngestionRequest>(name, output, 1, 1,
-                    _ => new IngestionRequest(IngestionRequestType.AddItem, new AddItemRequest("doc-1", Array.Empty<IngestionProperty>(), new[] { "t1" }), null, null, null),
-                    _ => "doc-1",
-                    loggerFactory.CreateLogger(name),
-                    supervisor),
+            var ingress = BoundedChannelFactory.Create<Envelope<IngestionRequest>>(16, false, true);
 
+            var factories = new FileShareIngestionProcessingGraphFactories
+            {
                 CreateRequestDeadLetterSinkNode = (name, input, supervisor) => new BlockingEnvelopeSinkNode<IngestionRequest>(name, input, 0),
 
                 CreateIndexDeadLetterSinkNode = (name, input, supervisor) => indexDeadLetterSink = new BlockingEnvelopeSinkNode<IndexOperation>(name, input, 0),
@@ -129,10 +128,10 @@ namespace UKHO.Search.Ingestion.Tests.Pipeline
             };
 
             var services = new ServiceCollection();
-            services.AddScoped<UKHO.Search.Ingestion.IIngestionEnricher>(_ => new AlwaysThrowingEnricher(ordinal: 10, () => new TimeoutException("timeout")));
+            services.AddScoped<IIngestionEnricher>(_ => new AlwaysThrowingEnricher(10, () => new TimeoutException("timeout")));
             await using var provider = services.BuildServiceProvider();
 
-            var graph = FileShareIngestionGraph.BuildAzureQueueBacked(new FileShareIngestionGraphDependencies
+            var graph = FileShareIngestionProcessingGraph.Build(ingress.Reader, new FileShareIngestionProcessingGraphDependencies
             {
                 Configuration = configuration,
                 LoggerFactory = loggerFactory,
@@ -141,6 +140,10 @@ namespace UKHO.Search.Ingestion.Tests.Pipeline
             }, cts.Token);
 
             await graph.Supervisor.StartAsync();
+
+            var request = new IngestionRequest(IngestionRequestType.AddItem, new AddItemRequest("doc-1", Array.Empty<IngestionProperty>(), new[] { "t1" }), null, null, null);
+            await ingress.Writer.WriteAsync(new Envelope<IngestionRequest>("doc-1", request), cts.Token);
+            ingress.Writer.TryComplete();
             await graph.Supervisor.Completion.WaitAsync(TimeSpan.FromSeconds(5));
 
             bulkIndexNode.ShouldNotBeNull();
@@ -149,7 +152,8 @@ namespace UKHO.Search.Ingestion.Tests.Pipeline
             indexDeadLetterSink.ShouldNotBeNull();
             await indexDeadLetterSink!.WaitForCountAsync(1, TimeSpan.FromSeconds(2));
 
-            indexDeadLetterSink.Items.Single().Error!.Code.ShouldBe("ENRICHMENT_RETRIES_EXHAUSTED");
+            indexDeadLetterSink.Items.Single()
+                               .Error!.Code.ShouldBe("ENRICHMENT_RETRIES_EXHAUSTED");
         }
     }
 }

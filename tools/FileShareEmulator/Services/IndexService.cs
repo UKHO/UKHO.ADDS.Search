@@ -11,15 +11,15 @@ namespace FileShareEmulator.Services
         private const string QueueName = "file-share-queue";
 
         private readonly BatchSecurityTokenService _batchSecurityTokenService;
+
+        private readonly string _connectionString;
         private readonly JsonSerializerOptions _jsonOptions;
         private readonly ILogger<IndexService> _logger;
         private readonly QueueServiceClient _queueServiceClient;
 
-        private readonly SqlConnection _sqlConnection;
-
         public IndexService(SqlConnection sqlConnection, QueueServiceClient queueServiceClient, BatchSecurityTokenService batchSecurityTokenService, ILogger<IndexService> logger)
         {
-            _sqlConnection = sqlConnection;
+            _connectionString = sqlConnection.ConnectionString;
             _queueServiceClient = queueServiceClient;
             _batchSecurityTokenService = batchSecurityTokenService;
             _logger = logger;
@@ -45,10 +45,11 @@ namespace FileShareEmulator.Services
 
         public async Task<int> ResetAllToPendingAsync(CancellationToken cancellationToken = default)
         {
-            await EnsureOpenAsync(cancellationToken)
-                .ConfigureAwait(false);
+            await using var connection = new SqlConnection(_connectionString);
+            await connection.OpenAsync(cancellationToken)
+                            .ConfigureAwait(false);
 
-            await using var cmd = _sqlConnection.CreateCommand();
+            await using var cmd = connection.CreateCommand();
             cmd.CommandType = CommandType.Text;
             cmd.CommandTimeout = 30;
             cmd.CommandText = @"UPDATE [Batch] SET [IndexStatus] = 0;";
@@ -59,10 +60,11 @@ namespace FileShareEmulator.Services
 
         private async Task<int> IndexNextPendingAsync(int? count, CancellationToken cancellationToken)
         {
-            await EnsureOpenAsync(cancellationToken)
-                .ConfigureAwait(false);
+            await using var connection = new SqlConnection(_connectionString);
+            await connection.OpenAsync(cancellationToken)
+                            .ConfigureAwait(false);
 
-            var batchIds = await GetPendingBatchIdsAsync(count, cancellationToken)
+            var batchIds = await GetPendingBatchIdsAsync(connection, count, cancellationToken)
                 .ConfigureAwait(false);
             if (batchIds.Count == 0)
             {
@@ -79,13 +81,13 @@ namespace FileShareEmulator.Services
             {
                 cancellationToken.ThrowIfCancellationRequested();
 
-                var request = await CreateRequestAsync(batchId, cancellationToken)
+                var request = await CreateRequestAsync(connection, batchId, cancellationToken)
                     .ConfigureAwait(false);
                 var json = JsonSerializer.Serialize(request, _jsonOptions);
 
                 await queueClient.SendMessageAsync(json, cancellationToken)
                                  .ConfigureAwait(false);
-                await MarkBatchIndexedAsync(batchId, cancellationToken)
+                await MarkBatchIndexedAsync(connection, batchId, cancellationToken)
                     .ConfigureAwait(false);
 
                 indexed++;
@@ -94,12 +96,12 @@ namespace FileShareEmulator.Services
             return indexed;
         }
 
-        private async Task<IngestionRequest> CreateRequestAsync(Guid batchId, CancellationToken cancellationToken)
+        private async Task<IngestionRequest> CreateRequestAsync(SqlConnection connection, Guid batchId, CancellationToken cancellationToken)
         {
-            var attributes = await GetBatchAttributesAsync(batchId, cancellationToken)
+            var attributes = await GetBatchAttributesAsync(connection, batchId, cancellationToken)
                 .ConfigureAwait(false);
             var securityTokenResult = await _batchSecurityTokenService.GetSecurityTokensAsync(batchId, cancellationToken)
-                                                                       .ConfigureAwait(false);
+                                                                      .ConfigureAwait(false);
 
             var properties = new List<IngestionProperty>(attributes.Count + 2);
 
@@ -141,9 +143,9 @@ namespace FileShareEmulator.Services
             };
         }
 
-        private async Task<List<Guid>> GetPendingBatchIdsAsync(int? count, CancellationToken cancellationToken)
+        private static async Task<List<Guid>> GetPendingBatchIdsAsync(SqlConnection connection, int? count, CancellationToken cancellationToken)
         {
-            await using var cmd = _sqlConnection.CreateCommand();
+            await using var cmd = connection.CreateCommand();
             cmd.CommandType = CommandType.Text;
             cmd.CommandTimeout = 30;
 
@@ -167,9 +169,9 @@ namespace FileShareEmulator.Services
             return results;
         }
 
-        private async Task<List<(string AttributeKey, string AttributeValue)>> GetBatchAttributesAsync(Guid batchId, CancellationToken cancellationToken)
+        private static async Task<List<(string AttributeKey, string AttributeValue)>> GetBatchAttributesAsync(SqlConnection connection, Guid batchId, CancellationToken cancellationToken)
         {
-            await using var cmd = _sqlConnection.CreateCommand();
+            await using var cmd = connection.CreateCommand();
             cmd.CommandType = CommandType.Text;
             cmd.CommandTimeout = 30;
             cmd.CommandText = @"SELECT [AttributeKey], [AttributeValue] FROM [BatchAttribute] WHERE [BatchId] = @batchId;";
@@ -190,9 +192,9 @@ namespace FileShareEmulator.Services
             return results;
         }
 
-        private async Task MarkBatchIndexedAsync(Guid batchId, CancellationToken cancellationToken)
+        private static async Task MarkBatchIndexedAsync(SqlConnection connection, Guid batchId, CancellationToken cancellationToken)
         {
-            await using var cmd = _sqlConnection.CreateCommand();
+            await using var cmd = connection.CreateCommand();
             cmd.CommandType = CommandType.Text;
             cmd.CommandTimeout = 30;
             cmd.CommandText = @"UPDATE [Batch] SET [IndexStatus] = 1 WHERE [Id] = @id;";
@@ -200,17 +202,6 @@ namespace FileShareEmulator.Services
 
             _ = await cmd.ExecuteNonQueryAsync(cancellationToken)
                          .ConfigureAwait(false);
-        }
-
-        private async Task EnsureOpenAsync(CancellationToken cancellationToken)
-        {
-            if (_sqlConnection.State == ConnectionState.Open)
-            {
-                return;
-            }
-
-            await _sqlConnection.OpenAsync(cancellationToken)
-                                .ConfigureAwait(false);
         }
     }
 }

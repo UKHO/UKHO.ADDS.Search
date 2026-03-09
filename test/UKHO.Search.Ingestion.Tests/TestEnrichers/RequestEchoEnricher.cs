@@ -1,5 +1,3 @@
-using System.Text.Json.Nodes;
-using UKHO.Search.Ingestion;
 using UKHO.Search.Ingestion.Pipeline.Documents;
 using UKHO.Search.Ingestion.Requests;
 

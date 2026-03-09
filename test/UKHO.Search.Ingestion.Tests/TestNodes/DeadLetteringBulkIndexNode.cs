@@ -1,13 +1,14 @@
 using System.Threading.Channels;
 using UKHO.Search.Ingestion.Pipeline.Operations;
 using UKHO.Search.Pipelines.Batching;
+using UKHO.Search.Pipelines.Errors;
 using UKHO.Search.Pipelines.Messaging;
 using UKHO.Search.Pipelines.Nodes;
 using UKHO.Search.Pipelines.Supervision;
 
 namespace UKHO.Search.Ingestion.Tests.TestNodes
 {
-    public sealed class RecordingBulkIndexNode : INode
+    public sealed class DeadLetteringBulkIndexNode : INode
     {
         private readonly ChannelWriter<Envelope<IndexOperation>> _deadLetterOutput;
         private readonly IPipelineFatalErrorReporter? _fatalErrorReporter;
@@ -15,7 +16,7 @@ namespace UKHO.Search.Ingestion.Tests.TestNodes
         private readonly ChannelWriter<Envelope<IndexOperation>> _successOutput;
         private Task? _completion;
 
-        public RecordingBulkIndexNode(string name, ChannelReader<BatchEnvelope<IndexOperation>> input, ChannelWriter<Envelope<IndexOperation>> successOutput, ChannelWriter<Envelope<IndexOperation>> deadLetterOutput, IPipelineFatalErrorReporter? fatalErrorReporter = null)
+        public DeadLetteringBulkIndexNode(string name, ChannelReader<BatchEnvelope<IndexOperation>> input, ChannelWriter<Envelope<IndexOperation>> successOutput, ChannelWriter<Envelope<IndexOperation>> deadLetterOutput, IPipelineFatalErrorReporter? fatalErrorReporter = null)
         {
             Name = name;
             _input = input;
@@ -23,8 +24,6 @@ namespace UKHO.Search.Ingestion.Tests.TestNodes
             _deadLetterOutput = deadLetterOutput;
             _fatalErrorReporter = fatalErrorReporter;
         }
-
-        public List<Envelope<IndexOperation>> Received { get; } = new();
 
         public string Name { get; }
 
@@ -52,9 +51,22 @@ namespace UKHO.Search.Ingestion.Tests.TestNodes
                     {
                         foreach (var envelope in batch.Items)
                         {
-                            Received.Add(envelope);
-                            await _successOutput.WriteAsync(envelope, cancellationToken)
-                                                .ConfigureAwait(false);
+                            envelope.MarkFailed(new PipelineError
+                            {
+                                Category = PipelineErrorCategory.BulkIndex,
+                                Code = "BULK_INDEX_ERROR",
+                                Message = "Bulk index failed.",
+                                ExceptionType = null,
+                                ExceptionMessage = null,
+                                StackTrace = null,
+                                IsTransient = false,
+                                OccurredAtUtc = DateTimeOffset.UtcNow,
+                                NodeName = Name,
+                                Details = new Dictionary<string, string>()
+                            });
+
+                            await _deadLetterOutput.WriteAsync(envelope, cancellationToken)
+                                                   .ConfigureAwait(false);
                         }
                     }
                 }

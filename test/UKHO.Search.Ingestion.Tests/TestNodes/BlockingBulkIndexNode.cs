@@ -7,15 +7,17 @@ using UKHO.Search.Pipelines.Supervision;
 
 namespace UKHO.Search.Ingestion.Tests.TestNodes
 {
-    public sealed class RecordingBulkIndexNode : INode
+    public sealed class BlockingBulkIndexNode : INode
     {
         private readonly ChannelWriter<Envelope<IndexOperation>> _deadLetterOutput;
         private readonly IPipelineFatalErrorReporter? _fatalErrorReporter;
         private readonly ChannelReader<BatchEnvelope<IndexOperation>> _input;
+        private readonly TaskCompletionSource _releaseGate = new(TaskCreationOptions.RunContinuationsAsynchronously);
         private readonly ChannelWriter<Envelope<IndexOperation>> _successOutput;
+        private int _blocked;
         private Task? _completion;
 
-        public RecordingBulkIndexNode(string name, ChannelReader<BatchEnvelope<IndexOperation>> input, ChannelWriter<Envelope<IndexOperation>> successOutput, ChannelWriter<Envelope<IndexOperation>> deadLetterOutput, IPipelineFatalErrorReporter? fatalErrorReporter = null)
+        public BlockingBulkIndexNode(string name, ChannelReader<BatchEnvelope<IndexOperation>> input, ChannelWriter<Envelope<IndexOperation>> successOutput, ChannelWriter<Envelope<IndexOperation>> deadLetterOutput, IPipelineFatalErrorReporter? fatalErrorReporter = null)
         {
             Name = name;
             _input = input;
@@ -24,7 +26,7 @@ namespace UKHO.Search.Ingestion.Tests.TestNodes
             _fatalErrorReporter = fatalErrorReporter;
         }
 
-        public List<Envelope<IndexOperation>> Received { get; } = new();
+        public TaskCompletionSource FirstBatchReceived { get; } = new(TaskCreationOptions.RunContinuationsAsynchronously);
 
         public string Name { get; }
 
@@ -41,6 +43,11 @@ namespace UKHO.Search.Ingestion.Tests.TestNodes
             return ValueTask.CompletedTask;
         }
 
+        public void Release()
+        {
+            _releaseGate.TrySetResult();
+        }
+
         private async Task RunAsync(CancellationToken cancellationToken)
         {
             try
@@ -50,9 +57,16 @@ namespace UKHO.Search.Ingestion.Tests.TestNodes
                 {
                     while (_input.TryRead(out var batch))
                     {
+                        FirstBatchReceived.TrySetResult();
+
+                        if (Interlocked.CompareExchange(ref _blocked, 1, 0) == 0)
+                        {
+                            await _releaseGate.Task.WaitAsync(cancellationToken)
+                                              .ConfigureAwait(false);
+                        }
+
                         foreach (var envelope in batch.Items)
                         {
-                            Received.Add(envelope);
                             await _successOutput.WriteAsync(envelope, cancellationToken)
                                                 .ConfigureAwait(false);
                         }

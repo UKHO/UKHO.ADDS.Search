@@ -1,4 +1,5 @@
 using UKHO.Search.Ingestion.Requests;
+using UKHO.Search.Pipelines.Messaging;
 
 namespace UKHO.Search.Ingestion.Providers
 {
@@ -7,5 +8,7 @@ namespace UKHO.Search.Ingestion.Providers
         string Name { get; }
 
         ValueTask<IngestionRequest> DeserializeIngestionRequestAsync(string messageText, CancellationToken cancellationToken = default);
+
+        ValueTask ProcessIngestionRequestAsync(Envelope<IngestionRequest> envelope, CancellationToken cancellationToken = default);
     }
 }

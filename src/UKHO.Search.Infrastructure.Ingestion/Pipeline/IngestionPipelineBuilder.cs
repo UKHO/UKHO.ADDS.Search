@@ -109,11 +109,8 @@ namespace UKHO.Search.Infrastructure.Ingestion.Pipeline
 
                 var dispatch = new IngestionRequestDispatchNode($"ingestion-dispatch-{lane}", laneDispatchChannels[lane].Reader, laneDispatchOut.Writer, laneDeadLetterWriter, canonicalBuilder, _loggerFactory.CreateLogger($"ingestion-dispatch-{lane}"), supervisor);
 
-                var enrich = new ApplyEnrichmentNode($"ingestion-enrich-{lane}", laneDispatchOut.Reader, laneOps.Writer, indexDeadLetter.Writer, scopeFactory, _loggerFactory.CreateLogger($"ingestion-enrich-{lane}"), supervisor,
-                    retryMaxAttempts: enrichmentRetryMaxAttempts,
-                    retryBaseDelay: TimeSpan.FromMilliseconds(enrichmentRetryBaseDelayMs),
-                    retryMaxDelay: TimeSpan.FromMilliseconds(enrichmentRetryMaxDelayMs),
-                    retryJitter: TimeSpan.FromMilliseconds(enrichmentRetryJitterMs));
+                var enrich = new ApplyEnrichmentNode($"ingestion-enrich-{lane}", laneDispatchOut.Reader, laneOps.Writer, indexDeadLetter.Writer, scopeFactory, _loggerFactory.CreateLogger($"ingestion-enrich-{lane}"), supervisor, enrichmentRetryMaxAttempts, TimeSpan.FromMilliseconds(enrichmentRetryBaseDelayMs), TimeSpan.FromMilliseconds(enrichmentRetryMaxDelayMs),
+                    TimeSpan.FromMilliseconds(enrichmentRetryJitterMs));
 
                 var microBatch = new MicroBatchNode<IndexOperation>($"ingestion-microbatch-{lane}", lane, laneOps.Reader, laneBatches.Writer, microbatchMaxItems, TimeSpan.FromMilliseconds(microbatchMaxDelayMs), logger: _loggerFactory.CreateLogger($"ingestion-microbatch-{lane}"), fatalErrorReporter: supervisor, cancellationMode: CancellationMode.Drain);
 

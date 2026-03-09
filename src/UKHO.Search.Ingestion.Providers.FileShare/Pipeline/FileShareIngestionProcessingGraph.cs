@@ -15,10 +15,11 @@ using UKHO.Search.Pipelines.Supervision;
 
 namespace UKHO.Search.Ingestion.Providers.FileShare.Pipeline
 {
-    public static class FileShareIngestionGraph
+    public static class FileShareIngestionProcessingGraph
     {
-        public static FileShareIngestionGraphHandle BuildAzureQueueBacked(FileShareIngestionGraphDependencies dependencies, CancellationToken cancellationToken)
+        public static FileShareIngestionProcessingGraphHandle Build(ChannelReader<Envelope<IngestionRequest>> ingress, FileShareIngestionProcessingGraphDependencies dependencies, CancellationToken cancellationToken)
         {
+            ArgumentNullException.ThrowIfNull(ingress);
             ArgumentNullException.ThrowIfNull(dependencies);
             ArgumentNullException.ThrowIfNull(dependencies.Configuration);
             ArgumentNullException.ThrowIfNull(dependencies.LoggerFactory);
@@ -48,14 +49,11 @@ namespace UKHO.Search.Ingestion.Providers.FileShare.Pipeline
 
             var supervisor = new PipelineSupervisor(cancellationToken);
 
-            var prePartition = BoundedChannelFactory.Create<Envelope<IngestionRequest>>(channelCapacityPrePartition, true, true);
             var validated = BoundedChannelFactory.Create<Envelope<IngestionRequest>>(channelCapacityPrePartition, true, true);
-
-            var source = factories.CreateSourceNode("ingestion-source-queue", prePartition.Writer, supervisor);
 
             var validateDeadLetter = BoundedChannelFactory.Create<Envelope<IngestionRequest>>(channelCapacityPrePartition, true, true);
 
-            var validate = new IngestionRequestValidateNode("ingestion-validate", prePartition.Reader, validated.Writer, validateDeadLetter.Writer, loggerFactory.CreateLogger("ingestion-validate"), supervisor);
+            var validate = new IngestionRequestValidateNode("ingestion-validate", ingress, validated.Writer, validateDeadLetter.Writer, loggerFactory.CreateLogger("ingestion-validate"), supervisor);
 
             var laneDispatchChannels = new List<CountingChannel<Envelope<IngestionRequest>>>(laneCount);
             var laneDispatchWriters = new List<ChannelWriter<Envelope<IngestionRequest>>>(laneCount);
@@ -74,7 +72,7 @@ namespace UKHO.Search.Ingestion.Providers.FileShare.Pipeline
                 validateDeadLetter.Reader
             };
 
-            var indexDeadLetterReaders = new List<ChannelReader<Envelope<IndexOperation>>>(laneCount);
+            var indexDeadLetterReaders = new List<ChannelReader<Envelope<IndexOperation>>>(laneCount * 2);
             var diagnosticsReaders = new List<ChannelReader<Envelope<IndexOperation>>>(laneCount);
 
             var canonicalBuilder = new CanonicalDocumentBuilder(documentTypePlaceholder ?? "unknown");
@@ -84,8 +82,10 @@ namespace UKHO.Search.Ingestion.Providers.FileShare.Pipeline
                 var laneRequestDeadLetter = BoundedChannelFactory.Create<Envelope<IngestionRequest>>(channelCapacityPrePartition, true, true);
                 requestDeadLetterReaders.Add(laneRequestDeadLetter.Reader);
 
-                var laneIndexDeadLetter = BoundedChannelFactory.Create<Envelope<IndexOperation>>(channelCapacityPrePartition, true, true);
-                indexDeadLetterReaders.Add(laneIndexDeadLetter.Reader);
+                var laneTransformDeadLetter = BoundedChannelFactory.Create<Envelope<IndexOperation>>(channelCapacityPrePartition, true, true);
+                var laneBulkIndexDeadLetter = BoundedChannelFactory.Create<Envelope<IndexOperation>>(channelCapacityPrePartition, true, true);
+                indexDeadLetterReaders.Add(laneTransformDeadLetter.Reader);
+                indexDeadLetterReaders.Add(laneBulkIndexDeadLetter.Reader);
 
                 var laneDispatchOut = BoundedChannelFactory.Create<Envelope<IngestionPipelineContext>>(channelCapacityPerLane, true, true);
                 var laneEnrichedOps = BoundedChannelFactory.Create<Envelope<IndexOperation>>(channelCapacityPerLane, true, true);
@@ -105,14 +105,14 @@ namespace UKHO.Search.Ingestion.Providers.FileShare.Pipeline
 
                 var dispatch = new IngestionRequestDispatchNode($"ingestion-dispatch-{lane}", laneDispatchChannels[lane].Reader, laneDispatchOut.Writer, laneRequestDeadLetter.Writer, canonicalBuilder, loggerFactory.CreateLogger($"ingestion-dispatch-{lane}"), supervisor);
 
-                var enrich = new ApplyEnrichmentNode($"ingestion-enrich-{lane}", laneDispatchOut.Reader, laneEnrichedOps.Writer, laneIndexDeadLetter.Writer, dependencies.ScopeFactory, loggerFactory.CreateLogger($"ingestion-enrich-{lane}"), supervisor, enrichmentRetryMaxAttempts, TimeSpan.FromMilliseconds(enrichmentRetryBaseDelayMs), TimeSpan.FromMilliseconds(enrichmentRetryMaxDelayMs),
+                var enrich = new ApplyEnrichmentNode($"ingestion-enrich-{lane}", laneDispatchOut.Reader, laneEnrichedOps.Writer, laneTransformDeadLetter.Writer, dependencies.ScopeFactory, loggerFactory.CreateLogger($"ingestion-enrich-{lane}"), supervisor, enrichmentRetryMaxAttempts, TimeSpan.FromMilliseconds(enrichmentRetryBaseDelayMs), TimeSpan.FromMilliseconds(enrichmentRetryMaxDelayMs),
                     TimeSpan.FromMilliseconds(enrichmentRetryJitterMs));
 
                 var dispatchBroadcast = new BroadcastNode<IndexOperation>($"ingestion-dispatch-diagtee-{lane}", laneEnrichedOps.Reader, new[] { laneOps.Writer }, new[] { laneDispatchDiagnostics.Writer }, BroadcastMode.BestEffort, loggerFactory.CreateLogger($"ingestion-dispatch-diagtee-{lane}"), supervisor);
 
                 var microBatch = new MicroBatchNode<IndexOperation>($"ingestion-microbatch-{lane}", lane, laneOps.Reader, laneBatches.Writer, microbatchMaxItems, TimeSpan.FromMilliseconds(microbatchMaxDelayMs), logger: loggerFactory.CreateLogger($"ingestion-microbatch-{lane}"), fatalErrorReporter: supervisor, cancellationMode: CancellationMode.Drain);
 
-                var bulkIndex = factories.CreateBulkIndexNode($"ingestion-bulk-index-{lane}", lane, laneBatches.Reader, laneIndexedOkFromBulk.Writer, laneIndexDeadLetter.Writer, supervisor);
+                var bulkIndex = factories.CreateBulkIndexNode($"ingestion-bulk-index-{lane}", lane, laneBatches.Reader, laneIndexedOkFromBulk.Writer, laneBulkIndexDeadLetter.Writer, supervisor);
 
                 var bulkIndexOkBroadcast = new BroadcastNode<IndexOperation>($"ingestion-bulk-index-diagtee-{lane}", laneIndexedOkFromBulk.Reader, new[] { laneIndexedOk.Writer }, new[] { laneBulkDiagnostics.Writer }, BroadcastMode.BestEffort, loggerFactory.CreateLogger($"ingestion-bulk-index-diagtee-{lane}"), supervisor);
 
@@ -140,14 +140,13 @@ namespace UKHO.Search.Ingestion.Providers.FileShare.Pipeline
 
             var diagnosticsSink = factories.CreateDiagnosticsSinkNode("ingestion-diagnostics", diagnosticsMerged, supervisor);
 
-            supervisor.AddNode(source);
             supervisor.AddNode(validate);
             supervisor.AddNode(partition);
             supervisor.AddNode(requestDeadLetterSink);
             supervisor.AddNode(indexDeadLetterSink);
             supervisor.AddNode(diagnosticsSink);
 
-            return new FileShareIngestionGraphHandle
+            return new FileShareIngestionProcessingGraphHandle
             {
                 Supervisor = supervisor
             };

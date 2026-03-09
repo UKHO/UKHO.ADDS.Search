@@ -17,7 +17,8 @@ namespace UKHO.Search.Ingestion.Providers.FileShare.Pipeline.Nodes
         private readonly ChannelWriter<Envelope<IngestionRequest>> _deadLetterOutput;
         private readonly ILogger? _logger;
 
-        public IngestionRequestDispatchNode(string name, ChannelReader<Envelope<IngestionRequest>> input, ChannelWriter<Envelope<IngestionPipelineContext>> output, ChannelWriter<Envelope<IngestionRequest>> deadLetterOutput, CanonicalDocumentBuilder canonicalBuilder, ILogger? logger = null, IPipelineFatalErrorReporter? fatalErrorReporter = null) : base(name, input, output, logger, fatalErrorReporter)
+        public IngestionRequestDispatchNode(string name, ChannelReader<Envelope<IngestionRequest>> input, ChannelWriter<Envelope<IngestionPipelineContext>> output, ChannelWriter<Envelope<IngestionRequest>> deadLetterOutput, CanonicalDocumentBuilder canonicalBuilder, ILogger? logger = null, IPipelineFatalErrorReporter? fatalErrorReporter = null) : base(name, input, output, logger,
+            fatalErrorReporter)
         {
             _deadLetterOutput = deadLetterOutput;
             _canonicalBuilder = canonicalBuilder;

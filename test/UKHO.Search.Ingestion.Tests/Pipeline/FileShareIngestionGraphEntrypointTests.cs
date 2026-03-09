@@ -6,7 +6,8 @@ using UKHO.Search.Ingestion.Pipeline.Operations;
 using UKHO.Search.Ingestion.Providers.FileShare.Pipeline;
 using UKHO.Search.Ingestion.Requests;
 using UKHO.Search.Ingestion.Tests.TestNodes;
-using UKHO.Search.Pipelines.Nodes;
+using UKHO.Search.Pipelines.Channels;
+using UKHO.Search.Pipelines.Messaging;
 using Xunit;
 
 namespace UKHO.Search.Ingestion.Tests.Pipeline
@@ -34,10 +35,10 @@ namespace UKHO.Search.Ingestion.Tests.Pipeline
 
             BlockingEnvelopeSinkNode<IndexOperation>? ackSink = null;
 
-            var factories = new FileShareIngestionGraphFactories
-            {
-                CreateSourceNode = (name, output, supervisor) => new SyntheticSourceNode<IngestionRequest>(name, output, 1, 1, _ => new IngestionRequest(IngestionRequestType.AddItem, new AddItemRequest("doc-1", Array.Empty<IngestionProperty>(), new[] { "t1" }), null, null, null), _ => "doc-1", loggerFactory.CreateLogger(name), supervisor),
+            var ingress = BoundedChannelFactory.Create<Envelope<IngestionRequest>>(16, false, true);
 
+            var factories = new FileShareIngestionProcessingGraphFactories
+            {
                 CreateRequestDeadLetterSinkNode = (name, input, supervisor) => new BlockingEnvelopeSinkNode<IngestionRequest>(name, input, 0),
 
                 CreateIndexDeadLetterSinkNode = (name, input, supervisor) => new BlockingEnvelopeSinkNode<IndexOperation>(name, input, 0),
@@ -51,7 +52,7 @@ namespace UKHO.Search.Ingestion.Tests.Pipeline
 
             using var provider = new ServiceCollection().BuildServiceProvider();
 
-            var graph = FileShareIngestionGraph.BuildAzureQueueBacked(new FileShareIngestionGraphDependencies
+            var graph = FileShareIngestionProcessingGraph.Build(ingress.Reader, new FileShareIngestionProcessingGraphDependencies
             {
                 Configuration = configuration,
                 LoggerFactory = loggerFactory,
@@ -60,6 +61,10 @@ namespace UKHO.Search.Ingestion.Tests.Pipeline
             }, cts.Token);
 
             await graph.Supervisor.StartAsync();
+
+            var request = new IngestionRequest(IngestionRequestType.AddItem, new AddItemRequest("doc-1", Array.Empty<IngestionProperty>(), new[] { "t1" }), null, null, null);
+            await ingress.Writer.WriteAsync(new Envelope<IngestionRequest>("doc-1", request), cts.Token);
+            ingress.Writer.TryComplete();
 
             await graph.Supervisor.Completion.WaitAsync(TimeSpan.FromSeconds(5));
 
