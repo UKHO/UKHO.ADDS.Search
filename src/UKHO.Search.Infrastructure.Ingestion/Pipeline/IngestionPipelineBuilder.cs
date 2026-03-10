@@ -149,7 +149,7 @@ namespace UKHO.Search.Infrastructure.Ingestion.Pipeline
                 }
             };
 
-            var updateItem = new UpdateItemRequest($"doc-{sequence % 8}", properties, tokens);
+            var updateItem = new UpdateItemRequest($"doc-{sequence % 8}", properties, tokens, DateTimeOffset.UnixEpoch, new IngestionFileList());
 
             return new IngestionRequest(IngestionRequestType.UpdateItem, null, updateItem, null, null);
         }

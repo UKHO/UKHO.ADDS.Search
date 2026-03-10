@@ -37,6 +37,8 @@ namespace UKHO.Search.Ingestion.Tests
                 {
                     Id = "ABC123",
                     SecurityTokens = ["token-a"],
+                    Timestamp = new DateTimeOffset(2026, 3, 5, 10, 15, 30, TimeSpan.Zero),
+                    Files = new IngestionFileList(),
                     Properties = [new IngestionProperty { Name = "Title", Type = IngestionPropertyType.String, Value = "Updated" }]
                 }
             };
@@ -75,15 +77,196 @@ namespace UKHO.Search.Ingestion.Tests
         [Fact]
         public void AddItemRequest_Rejects_EmptySecurityTokens()
         {
-            var json = "{" + "\"Id\":\"ABC123\"," + "\"Properties\":[]," + "\"SecurityTokens\":[]" + "}";
+            var json = "{" + "\"Id\":\"ABC123\"," + "\"Timestamp\":\"2026-03-05T10:15:30+00:00\"," + "\"Files\":[]," + "\"Properties\":[]," + "\"SecurityTokens\":[]" + "}";
             Should.Throw<JsonException>(() => JsonSerializer.Deserialize<AddItemRequest>(json, _options));
         }
 
         [Fact]
         public void UpdateItemRequest_Rejects_EmptySecurityTokens()
         {
-            var json = "{" + "\"Id\":\"ABC123\"," + "\"Properties\":[]," + "\"SecurityTokens\":[]" + "}";
+            var json = "{" + "\"Id\":\"ABC123\"," + "\"Timestamp\":\"2026-03-05T10:15:30+00:00\"," + "\"Files\":[]," + "\"Properties\":[]," + "\"SecurityTokens\":[]" + "}";
             Should.Throw<JsonException>(() => JsonSerializer.Deserialize<UpdateItemRequest>(json, _options));
+        }
+
+        [Fact]
+        public void AddItemRequest_Accepts_EmptyFiles()
+        {
+            var json = "{" + "\"Id\":\"ABC123\"," + "\"Timestamp\":\"2026-03-05T10:15:30+00:00\"," + "\"Files\":[]," + "\"Properties\":[]," + "\"SecurityTokens\":[\"t\"]" + "}";
+            var hydrated = JsonSerializer.Deserialize<AddItemRequest>(json, _options);
+            hydrated.ShouldNotBeNull();
+            hydrated!.Timestamp.ShouldBe(new DateTimeOffset(2026, 3, 5, 10, 15, 30, TimeSpan.Zero));
+            hydrated.Files.Count.ShouldBe(0);
+        }
+
+        [Fact]
+        public void AddItemRequest_Rejects_MissingFiles()
+        {
+            var json = "{" + "\"Id\":\"ABC123\"," + "\"Timestamp\":\"2026-03-05T10:15:30+00:00\"," + "\"Properties\":[]," + "\"SecurityTokens\":[\"t\"]" + "}";
+            Should.Throw<JsonException>(() => JsonSerializer.Deserialize<AddItemRequest>(json, _options));
+        }
+
+        [Fact]
+        public void AddItemRequest_Rejects_NullFiles()
+        {
+            var json = "{" + "\"Id\":\"ABC123\"," + "\"Timestamp\":\"2026-03-05T10:15:30+00:00\"," + "\"Files\":null," + "\"Properties\":[]," + "\"SecurityTokens\":[\"t\"]" + "}";
+            Should.Throw<JsonException>(() => JsonSerializer.Deserialize<AddItemRequest>(json, _options));
+        }
+
+        [Fact]
+        public void AddItemRequest_Rejects_MissingTimestamp()
+        {
+            var json = "{" + "\"Id\":\"ABC123\"," + "\"Files\":[]," + "\"Properties\":[]," + "\"SecurityTokens\":[\"t\"]" + "}";
+            Should.Throw<JsonException>(() => JsonSerializer.Deserialize<AddItemRequest>(json, _options));
+        }
+
+        [Fact]
+        public void UpdateItemRequest_Accepts_EmptyFiles()
+        {
+            var json = "{" + "\"Id\":\"ABC123\"," + "\"Timestamp\":\"2026-03-05T10:15:30+00:00\"," + "\"Files\":[]," + "\"Properties\":[]," + "\"SecurityTokens\":[\"t\"]" + "}";
+            var hydrated = JsonSerializer.Deserialize<UpdateItemRequest>(json, _options);
+            hydrated.ShouldNotBeNull();
+            hydrated!.Timestamp.ShouldBe(new DateTimeOffset(2026, 3, 5, 10, 15, 30, TimeSpan.Zero));
+            hydrated.Files.Count.ShouldBe(0);
+        }
+
+        [Fact]
+        public void UpdateItemRequest_Rejects_MissingFiles()
+        {
+            var json = "{" + "\"Id\":\"ABC123\"," + "\"Timestamp\":\"2026-03-05T10:15:30+00:00\"," + "\"Properties\":[]," + "\"SecurityTokens\":[\"t\"]" + "}";
+            Should.Throw<JsonException>(() => JsonSerializer.Deserialize<UpdateItemRequest>(json, _options));
+        }
+
+        [Fact]
+        public void UpdateItemRequest_Rejects_NullFiles()
+        {
+            var json = "{" + "\"Id\":\"ABC123\"," + "\"Timestamp\":\"2026-03-05T10:15:30+00:00\"," + "\"Files\":null," + "\"Properties\":[]," + "\"SecurityTokens\":[\"t\"]" + "}";
+            Should.Throw<JsonException>(() => JsonSerializer.Deserialize<UpdateItemRequest>(json, _options));
+        }
+
+        [Fact]
+        public void UpdateItemRequest_Rejects_MissingTimestamp()
+        {
+            var json = "{" + "\"Id\":\"ABC123\"," + "\"Files\":[]," + "\"Properties\":[]," + "\"SecurityTokens\":[\"t\"]" + "}";
+            Should.Throw<JsonException>(() => JsonSerializer.Deserialize<UpdateItemRequest>(json, _options));
+        }
+
+        [Fact]
+        public void IngestionRequestEnvelope_GoldenJson_AddItem_Deserializes()
+        {
+            var json = "{" +
+                       "\"RequestType\":\"AddItem\"," +
+                       "\"AddItem\":{" +
+                       "\"Id\":\"ABC123\"," +
+                       "\"Timestamp\":\"2026-03-05T10:15:30+00:00\"," +
+                       "\"Files\":[{" +
+                       "\"Filename\":\"a.txt\"," +
+                       "\"Size\":123," +
+                       "\"Timestamp\":\"2026-03-05T10:15:31+00:00\"," +
+                       "\"MimeType\":\"text/plain\"" +
+                       "}]," +
+                       "\"Properties\":[{" +
+                       "\"Name\":\"Title\"," +
+                       "\"Type\":\"string\"," +
+                       "\"Value\":\"Hello\"" +
+                       "}]," +
+                       "\"SecurityTokens\":[\"t\"]" +
+                       "}" +
+                       "}";
+
+            var hydrated = JsonSerializer.Deserialize<IngestionRequest>(json, _options);
+            hydrated.ShouldNotBeNull();
+            hydrated!.RequestType.ShouldBe(IngestionRequestType.AddItem);
+            hydrated.AddItem.ShouldNotBeNull();
+
+            hydrated.AddItem!.Timestamp.ShouldBe(new DateTimeOffset(2026, 3, 5, 10, 15, 30, TimeSpan.Zero));
+            hydrated.AddItem.Files.Count.ShouldBe(1);
+            hydrated.AddItem.Files[0].Filename.ShouldBe("a.txt");
+            hydrated.AddItem.Files[0].Size.ShouldBe(123);
+            hydrated.AddItem.Files[0].Timestamp.ShouldBe(new DateTimeOffset(2026, 3, 5, 10, 15, 31, TimeSpan.Zero));
+            hydrated.AddItem.Files[0].MimeType.ShouldBe("text/plain");
+        }
+
+        [Fact]
+        public void IngestionRequestEnvelope_Serializes_Files_AsJsonArray()
+        {
+            var envelope = new IngestionRequest
+            {
+                RequestType = IngestionRequestType.AddItem,
+                AddItem = new AddItemRequest
+                {
+                    Id = "ABC123",
+                    Timestamp = new DateTimeOffset(2026, 3, 5, 10, 15, 30, TimeSpan.Zero),
+                    Files = new IngestionFileList
+                    {
+                        new IngestionFile
+                        {
+                            Filename = "a.txt",
+                            Size = 123,
+                            Timestamp = new DateTimeOffset(2026, 3, 5, 10, 15, 31, TimeSpan.Zero),
+                            MimeType = "text/plain"
+                        }
+                    },
+                    Properties = Array.Empty<IngestionProperty>(),
+                    SecurityTokens = ["t"]
+                }
+            };
+
+            var json = JsonSerializer.Serialize(envelope, _options);
+            json.ShouldContain("\"Files\":[");
+            json.ShouldNotContain("\"Files\":{");
+        }
+
+        [Fact]
+        public void IngestionFile_RoundTrips()
+        {
+            var file = new IngestionFile
+            {
+                Filename = "a.txt",
+                Size = 123,
+                Timestamp = new DateTimeOffset(2026, 3, 5, 10, 15, 30, TimeSpan.Zero),
+                MimeType = "text/plain"
+            };
+
+            var json = JsonSerializer.Serialize(file, _options);
+            var hydrated = JsonSerializer.Deserialize<IngestionFile>(json, _options);
+            hydrated.ShouldNotBeNull();
+            hydrated!.Filename.ShouldBe("a.txt");
+            hydrated.Size.ShouldBe(123);
+            hydrated.Timestamp.ShouldBe(new DateTimeOffset(2026, 3, 5, 10, 15, 30, TimeSpan.Zero));
+            hydrated.MimeType.ShouldBe("text/plain");
+        }
+
+        [Fact]
+        public void IngestionFileList_Serializes_AsJsonArray()
+        {
+            var list = new IngestionFileList
+            {
+                new IngestionFile
+                {
+                    Filename = "a.txt",
+                    Size = 123,
+                    Timestamp = new DateTimeOffset(2026, 3, 5, 10, 15, 30, TimeSpan.Zero),
+                    MimeType = "text/plain"
+                }
+            };
+
+            var json = JsonSerializer.Serialize(list, _options);
+            json.TrimStart().ShouldStartWith("[");
+
+            var hydrated = JsonSerializer.Deserialize<IngestionFileList>(json, _options);
+            hydrated.ShouldNotBeNull();
+            hydrated!.Count.ShouldBe(1);
+        }
+
+        [Theory]
+        [InlineData("{\"Size\":1,\"Timestamp\":\"2026-03-05T10:15:30+00:00\",\"MimeType\":\"text/plain\"}")]
+        [InlineData("{\"Filename\":\"a.txt\",\"Timestamp\":\"2026-03-05T10:15:30+00:00\",\"MimeType\":\"text/plain\"}")]
+        [InlineData("{\"Filename\":\"a.txt\",\"Size\":1,\"MimeType\":\"text/plain\"}")]
+        [InlineData("{\"Filename\":\"a.txt\",\"Size\":1,\"Timestamp\":\"2026-03-05T10:15:30+00:00\"}")]
+        [InlineData("{\"Filename\":\"a.txt\",\"Size\":-1,\"Timestamp\":\"2026-03-05T10:15:30+00:00\",\"MimeType\":\"text/plain\"}")]
+        public void IngestionFile_Rejects_InvalidOrMissingFields(string json)
+        {
+            Should.Throw<JsonException>(() => JsonSerializer.Deserialize<IngestionFile>(json, _options));
         }
 
         [Fact]
@@ -151,6 +334,8 @@ namespace UKHO.Search.Ingestion.Tests
             {
                 Id = "123456ID",
                 SecurityTokens = ["token-a"],
+                Timestamp = new DateTimeOffset(2026, 3, 5, 10, 15, 30, TimeSpan.Zero),
+                Files = new IngestionFileList(),
                 Properties =
                 [
                     new IngestionProperty { Name = "String", Type = IngestionPropertyType.String, Value = "hello" },

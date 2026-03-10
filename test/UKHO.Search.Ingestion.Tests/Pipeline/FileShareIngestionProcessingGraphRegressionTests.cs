@@ -68,7 +68,7 @@ namespace UKHO.Search.Ingestion.Tests.Pipeline
 
             await graph.Supervisor.StartAsync();
 
-            var request = new IngestionRequest(IngestionRequestType.AddItem, new AddItemRequest("doc-1", Array.Empty<IngestionProperty>(), new[] { "t1" }), null, null, null);
+            var request = new IngestionRequest(IngestionRequestType.AddItem, new AddItemRequest("doc-1", Array.Empty<IngestionProperty>(), new[] { "t1" }, DateTimeOffset.UnixEpoch, new IngestionFileList()), null, null, null);
             var envelope = new Envelope<IngestionRequest>("doc-1", request);
             envelope.Context.SetItem("test:context", 123);
 
@@ -143,7 +143,7 @@ namespace UKHO.Search.Ingestion.Tests.Pipeline
 
             await graph.Supervisor.StartAsync();
 
-            var request = new IngestionRequest(IngestionRequestType.AddItem, new AddItemRequest("doc-1", Array.Empty<IngestionProperty>(), new[] { "t1" }), null, null, null);
+            var request = new IngestionRequest(IngestionRequestType.AddItem, new AddItemRequest("doc-1", Array.Empty<IngestionProperty>(), new[] { "t1" }, DateTimeOffset.UnixEpoch, new IngestionFileList()), null, null, null);
             await ingress.Writer.WriteAsync(new Envelope<IngestionRequest>("doc-2", request), cts.Token);
             ingress.Writer.TryComplete();
 
@@ -211,7 +211,7 @@ namespace UKHO.Search.Ingestion.Tests.Pipeline
 
             await graph.Supervisor.StartAsync();
 
-            var request = new IngestionRequest(IngestionRequestType.AddItem, new AddItemRequest("doc-1", Array.Empty<IngestionProperty>(), new[] { "t1" }), null, null, null);
+            var request = new IngestionRequest(IngestionRequestType.AddItem, new AddItemRequest("doc-1", Array.Empty<IngestionProperty>(), new[] { "t1" }, DateTimeOffset.UnixEpoch, new IngestionFileList()), null, null, null);
             await ingress.Writer.WriteAsync(new Envelope<IngestionRequest>("doc-1", request), cts.Token);
             ingress.Writer.TryComplete();
 
@@ -273,7 +273,7 @@ namespace UKHO.Search.Ingestion.Tests.Pipeline
 
             await using var provider = new FileShareIngestionDataProvider(dependencies, 16, loggerFactory.CreateLogger<FileShareIngestionDataProvider>());
 
-            var request = new IngestionRequest(IngestionRequestType.AddItem, new AddItemRequest("doc-1", Array.Empty<IngestionProperty>(), new[] { "t1" }), null, null, null);
+            var request = new IngestionRequest(IngestionRequestType.AddItem, new AddItemRequest("doc-1", Array.Empty<IngestionProperty>(), new[] { "t1" }, DateTimeOffset.UnixEpoch, new IngestionFileList()), null, null, null);
             await provider.ProcessIngestionRequestAsync(new Envelope<IngestionRequest>("doc-1", request), cts.Token);
 
             bulkIndexNode.ShouldNotBeNull();

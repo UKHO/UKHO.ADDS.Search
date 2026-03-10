@@ -70,7 +70,7 @@ namespace UKHO.Search.Ingestion.Tests.Pipeline
 
             await graph.Supervisor.StartAsync();
 
-            var request = new IngestionRequest(IngestionRequestType.AddItem, new AddItemRequest("doc-1", Array.Empty<IngestionProperty>(), new[] { "t1" }), null, null, null);
+            var request = new IngestionRequest(IngestionRequestType.AddItem, new AddItemRequest("doc-1", Array.Empty<IngestionProperty>(), new[] { "t1" }, DateTimeOffset.UnixEpoch, new IngestionFileList()), null, null, null);
             await ingress.Writer.WriteAsync(new Envelope<IngestionRequest>("doc-1", request), cts.Token);
             ingress.Writer.TryComplete();
 
@@ -141,7 +141,7 @@ namespace UKHO.Search.Ingestion.Tests.Pipeline
 
             await graph.Supervisor.StartAsync();
 
-            var request = new IngestionRequest(IngestionRequestType.AddItem, new AddItemRequest("doc-1", Array.Empty<IngestionProperty>(), new[] { "t1" }), null, null, null);
+            var request = new IngestionRequest(IngestionRequestType.AddItem, new AddItemRequest("doc-1", Array.Empty<IngestionProperty>(), new[] { "t1" }, DateTimeOffset.UnixEpoch, new IngestionFileList()), null, null, null);
             await ingress.Writer.WriteAsync(new Envelope<IngestionRequest>("doc-1", request), cts.Token);
             ingress.Writer.TryComplete();
             await graph.Supervisor.Completion.WaitAsync(TimeSpan.FromSeconds(5));

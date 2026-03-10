@@ -48,6 +48,8 @@ namespace UKHO.Search.Ingestion.Providers.FileShare.Pipeline.Documents
                     : new JsonObject
                     {
                         ["Id"] = request.AddItem.Id,
+                        ["Timestamp"] = request.AddItem.Timestamp.ToString("O"),
+                        ["Files"] = BuildFilesSnapshot(request.AddItem.Files),
                         ["Properties"] = BuildPropertiesSnapshot(request.AddItem.Properties),
                         ["SecurityTokens"] = BuildStringArraySnapshot(request.AddItem.SecurityTokens)
                     },
@@ -56,6 +58,8 @@ namespace UKHO.Search.Ingestion.Providers.FileShare.Pipeline.Documents
                     : new JsonObject
                     {
                         ["Id"] = request.UpdateItem.Id,
+                        ["Timestamp"] = request.UpdateItem.Timestamp.ToString("O"),
+                        ["Files"] = BuildFilesSnapshot(request.UpdateItem.Files),
                         ["Properties"] = BuildPropertiesSnapshot(request.UpdateItem.Properties),
                         ["SecurityTokens"] = BuildStringArraySnapshot(request.UpdateItem.SecurityTokens)
                     },
@@ -85,6 +89,25 @@ namespace UKHO.Search.Ingestion.Providers.FileShare.Pipeline.Documents
                     ["Name"] = property.Name,
                     ["Value"] = BuildPropertyValueSnapshot(property),
                     ["Type"] = ToPropertyTypeToken(property.Type)
+                };
+
+                arr.Add(snapshot);
+            }
+
+            return arr;
+        }
+
+        private static JsonArray BuildFilesSnapshot(IReadOnlyList<IngestionFile> files)
+        {
+            var arr = new JsonArray();
+            foreach (var file in files)
+            {
+                var snapshot = new JsonObject
+                {
+                    ["Filename"] = file.Filename,
+                    ["Size"] = file.Size,
+                    ["Timestamp"] = file.Timestamp.ToString("O"),
+                    ["MimeType"] = file.MimeType
                 };
 
                 arr.Add(snapshot);

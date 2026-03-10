@@ -26,7 +26,7 @@ namespace UKHO.Search.Ingestion.Tests.Pipeline
 
             await node.StartAsync(CancellationToken.None);
 
-            var add = new AddItemRequest("doc-1", Array.Empty<IngestionProperty>(), new[] { "t1" });
+            var add = new AddItemRequest("doc-1", Array.Empty<IngestionProperty>(), new[] { "t1" }, DateTimeOffset.UnixEpoch, new IngestionFileList());
             var request = new IngestionRequest(IngestionRequestType.AddItem, add, null, null, null);
 
             await input.Writer.WriteAsync(new Envelope<IngestionRequest>("doc-1", request));

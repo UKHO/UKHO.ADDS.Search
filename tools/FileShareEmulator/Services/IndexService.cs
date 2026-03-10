@@ -3,6 +3,7 @@ using System.Text.Json;
 using Azure.Storage.Queues;
 using Microsoft.Data.SqlClient;
 using UKHO.Search.Ingestion.Requests;
+using UKHO.Search.Ingestion.Requests.Serialization;
 
 namespace FileShareEmulator.Services
 {
@@ -24,7 +25,7 @@ namespace FileShareEmulator.Services
             _batchSecurityTokenService = batchSecurityTokenService;
             _logger = logger;
 
-            _jsonOptions = new JsonSerializerOptions(JsonSerializerDefaults.Web);
+            _jsonOptions = IngestionJsonSerializerOptions.Create();
         }
 
         public Task<int> IndexAllPendingAsync(CancellationToken cancellationToken = default)
@@ -100,6 +101,13 @@ namespace FileShareEmulator.Services
         {
             var attributes = await GetBatchAttributesAsync(connection, batchId, cancellationToken)
                 .ConfigureAwait(false);
+
+            var batchCreatedOn = await GetBatchCreatedOnAsync(connection, batchId, cancellationToken)
+                .ConfigureAwait(false);
+
+            var files = await GetBatchFilesAsync(connection, batchId, cancellationToken)
+                .ConfigureAwait(false);
+
             var securityTokenResult = await _batchSecurityTokenService.GetSecurityTokensAsync(batchId, cancellationToken)
                                                                       .ConfigureAwait(false);
 
@@ -127,14 +135,9 @@ namespace FileShareEmulator.Services
                 Value = securityTokenResult.BusinessUnitName ?? string.Empty
             });
 
-            var addItem = new AddItemRequest
-            {
-                Id = batchId.ToString("D"),
-                Properties = properties,
-                SecurityTokens = securityTokenResult.SecurityTokens
-            };
+            var addItem = new AddItemRequest(batchId.ToString("D"), properties, securityTokenResult.SecurityTokens, batchCreatedOn, files);
 
-            _logger.LogDebug("Created ingestion request for batch {BatchId} with {SecurityTokenCount} security tokens.", batchId, securityTokenResult.SecurityTokens.Length);
+            _logger.LogDebug("Created ingestion request for batch {BatchId} with {SecurityTokenCount} security tokens and {FileCount} files.", batchId, securityTokenResult.SecurityTokens.Length, files.Count);
 
             return new IngestionRequest
             {
@@ -164,6 +167,77 @@ namespace FileShareEmulator.Services
                                .ConfigureAwait(false))
             {
                 results.Add(reader.GetGuid(0));
+            }
+
+            return results;
+        }
+
+        private static async Task<DateTimeOffset> GetBatchCreatedOnAsync(SqlConnection connection, Guid batchId, CancellationToken cancellationToken)
+        {
+            await using var cmd = connection.CreateCommand();
+            cmd.CommandType = CommandType.Text;
+            cmd.CommandTimeout = 30;
+            cmd.CommandText = @"SELECT [CreatedOn] FROM [Batch] WHERE [Id] = @batchId;";
+            cmd.Parameters.Add(new SqlParameter("@batchId", SqlDbType.UniqueIdentifier) { Value = batchId });
+
+            var value = await cmd.ExecuteScalarAsync(cancellationToken)
+                                 .ConfigureAwait(false);
+
+            if (value is null || value == DBNull.Value)
+            {
+                throw new InvalidOperationException($"Batch {batchId:D} does not have a CreatedOn value.");
+            }
+
+            return value switch
+            {
+                DateTimeOffset dto => dto,
+                DateTime dt => new DateTimeOffset(dt),
+                var v => throw new InvalidOperationException($"Batch {batchId:D} CreatedOn has unexpected type '{v.GetType().FullName}'.")
+            };
+        }
+
+        private static async Task<IngestionFileList> GetBatchFilesAsync(SqlConnection connection, Guid batchId, CancellationToken cancellationToken)
+        {
+            await using var cmd = connection.CreateCommand();
+            cmd.CommandType = CommandType.Text;
+            cmd.CommandTimeout = 30;
+            cmd.CommandText = @"SELECT [FileName], [FileByteSize], [CreatedOn], [MIMEType] FROM [File] WHERE [BatchId] = @batchId;";
+            cmd.Parameters.Add(new SqlParameter("@batchId", SqlDbType.UniqueIdentifier) { Value = batchId });
+
+            var results = new IngestionFileList();
+
+            await using var reader = await cmd.ExecuteReaderAsync(cancellationToken)
+                                              .ConfigureAwait(false);
+
+            while (await reader.ReadAsync(cancellationToken)
+                               .ConfigureAwait(false))
+            {
+                if (reader.IsDBNull(0) || reader.IsDBNull(1) || reader.IsDBNull(2) || reader.IsDBNull(3))
+                {
+                    throw new InvalidOperationException($"File rows for batch {batchId:D} contained null values in required columns.");
+                }
+
+                var filename = reader.GetString(0);
+                var size = Convert.ToInt64(reader.GetValue(1));
+
+                var createdOnValue = reader.GetValue(2);
+                var timestamp = createdOnValue switch
+                {
+                    DateTimeOffset dto => dto,
+                    DateTime dt => new DateTimeOffset(dt),
+                    var v => throw new InvalidOperationException($"File.CreatedOn for batch {batchId:D} has unexpected type '{v.GetType().FullName}'.")
+                };
+
+                var mimeType = reader.GetString(3);
+
+                try
+                {
+                    results.Add(new IngestionFile(filename, size, timestamp, mimeType));
+                }
+                catch (JsonException ex)
+                {
+                    throw new InvalidOperationException($"Invalid file metadata encountered for batch {batchId:D}.", ex);
+                }
             }
 
             return results;
