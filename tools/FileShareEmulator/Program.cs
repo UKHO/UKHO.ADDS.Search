@@ -27,7 +27,9 @@ namespace FileShareEmulator
 
             builder.Services.AddScoped<StatisticsService>();
             builder.Services.AddScoped<BatchSecurityTokenService>();
+            builder.Services.AddScoped<BatchDownloadService>();
             builder.Services.AddScoped<IndexService>();
+            builder.Services.AddScoped<IngestionQueueService>();
 
             builder.Services.AddRadzenComponents();
             builder.Services.AddRadzenQueryStringThemeService();

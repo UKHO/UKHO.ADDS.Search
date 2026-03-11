@@ -1,0 +1,75 @@
+@page "/downloads"
+@using FileShareEmulator.Services
+@inject BatchDownloadService BatchDownloadService
+
+<PageTitle>Downloads</PageTitle>
+
+<RadzenCard Style="max-width: 900px;">
+    <h1 style="margin: 0;">Downloads</h1>
+
+    <RadzenText TextStyle="TextStyle.Body1" Style="margin-top: 0.75rem;">
+        Download a batch zip from blob storage to the configured <code>DownloadPath</code> folder.
+    </RadzenText>
+
+    <RadzenStack Orientation="Orientation.Vertical" Gap="1rem" Style="margin-top: 1.25rem;">
+        <RadzenStack Orientation="Orientation.Vertical" Gap="0.25rem">
+            <RadzenLabel Text="Batch Id" Component="batchId"/>
+            <RadzenTextBox id="batchId" Style="width: 100%;" @bind-Value="_batchId" Disabled="@_isDownloading"/>
+        </RadzenStack>
+
+        <RadzenButton Text="Download" Icon="download" ButtonStyle="ButtonStyle.Primary" Disabled="@_isDownloading" Click="@DownloadAsync"/>
+
+        @if (!string.IsNullOrWhiteSpace(_message))
+        {
+            <RadzenAlert Variant="@_messageVariant" Style="margin-top: 0.25rem;">
+                @_message
+            </RadzenAlert>
+        }
+    </RadzenStack>
+</RadzenCard>
+
+@code
+{
+    private string? _batchId;
+
+    private bool _isDownloading;
+
+    private Variant _messageVariant;
+    private string? _message;
+
+    private async Task DownloadAsync()
+    {
+        if (_isDownloading) return;
+
+        _message = null;
+
+        if (string.IsNullOrWhiteSpace(_batchId))
+        {
+            _messageVariant = Variant.Outlined;
+            _message = "Batch Id is required.";
+            return;
+        }
+
+        _isDownloading = true;
+
+        try
+        {
+            var result = await BatchDownloadService.DownloadBatchAsync(_batchId, CancellationToken.None)
+                                                   .ConfigureAwait(false);
+
+            if (result.Success)
+            {
+                _messageVariant = Variant.Filled;
+                _message = $"Saved to: {result.SavedFilePath}";
+                return;
+            }
+
+            _messageVariant = Variant.Outlined;
+            _message = result.ErrorMessage ?? "Batch download failed.";
+        }
+        finally
+        {
+            _isDownloading = false;
+        }
+    }
+}

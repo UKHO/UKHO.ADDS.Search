@@ -28,4 +28,8 @@
     <ProjectReference Include="..\..\src\UKHO.Search\UKHO.Search.csproj" />
   </ItemGroup>
 
+	<ItemGroup>
+	  <Folder Include="Emulator\" />
+	</ItemGroup>
+
 </Project>

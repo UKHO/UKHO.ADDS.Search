@@ -3,6 +3,7 @@
 @using FileShareEmulator.Services
 @inject StatisticsService StatisticsService
 @inject IndexService IndexService
+@inject IngestionQueueService IngestionQueueService
 @inject ElasticsearchClient ElasticsearchClient
 
 <PageTitle>Indexing</PageTitle>
@@ -39,23 +40,44 @@
         <RadzenStack Orientation="Orientation.Vertical" Gap="0.25rem">
             <RadzenText TextStyle="TextStyle.H6">Index all pending batches</RadzenText>
             <RadzenText TextStyle="TextStyle.Body2">Indexes everything currently marked as pending, continuing until there are no pending batches left.</RadzenText>
-            <RadzenButton Text="Index All" ButtonStyle="ButtonStyle.Primary" Disabled="@(_isIndexing || _isDeletingIndexes)" Click="@IndexAllAsync"/>
+            <RadzenButton Text="Index All" ButtonStyle="ButtonStyle.Primary" Disabled="@(_isIndexing || _isDeletingIndexes || _isClearingQueue)" Click="@IndexAllAsync"/>
         </RadzenStack>
 
         <RadzenStack Orientation="Orientation.Vertical" Gap="0.25rem">
             <RadzenText TextStyle="TextStyle.H6">Reset all batches to pending</RadzenText>
             <RadzenText TextStyle="TextStyle.Body2">Marks all batches as pending so they can be re-indexed from scratch (does not delete Elasticsearch indexes).</RadzenText>
-            <RadzenButton Text="Reset All" ButtonStyle="ButtonStyle.Light" Disabled="@(_isIndexing || _isDeletingIndexes)" Click="@ResetAllAsync"/>
+            <RadzenButton Text="Reset All" ButtonStyle="ButtonStyle.Light" Disabled="@(_isIndexing || _isDeletingIndexes || _isClearingQueue)" Click="@ResetAllAsync"/>
+        </RadzenStack>
+
+        <RadzenStack Orientation="Orientation.Vertical" Gap="0.25rem">
+            <RadzenText TextStyle="TextStyle.H6">Clear ingestion queue</RadzenText>
+            <RadzenText TextStyle="TextStyle.Body2">Clears <b>all</b> items from the ingestion queue and verifies it is empty before reporting success.</RadzenText>
+            <RadzenButton Text="Clear Queue" ButtonStyle="ButtonStyle.Danger" Disabled="@(_isIndexing || _isDeletingIndexes || _isClearingQueue)" Click="@ClearQueueAsync" />
+
+            @if (_clearQueueMessage is not null)
+            {
+                <RadzenText TextStyle="TextStyle.Body1" Style="@ClearQueueMessageStyle">@_clearQueueMessage</RadzenText>
+            }
+
+            @if (_isClearingQueue && !string.IsNullOrWhiteSpace(_clearQueueStage))
+            {
+                <RadzenText TextStyle="TextStyle.Body2" Style="margin-top: 0.5rem;">@_clearQueueStage</RadzenText>
+            }
         </RadzenStack>
 
         <RadzenStack Orientation="Orientation.Vertical" Gap="0.25rem">
             <RadzenText TextStyle="TextStyle.H6">Delete Elasticsearch indexes</RadzenText>
             <RadzenText TextStyle="TextStyle.Body2">Deletes <b>all</b> indexes in the connected Elasticsearch instance (using <code>*</code>). Use with caution.</RadzenText>
-            <RadzenButton Text="Delete Indexes" ButtonStyle="ButtonStyle.Danger" Disabled="@(_isIndexing || _isDeletingIndexes)" Click="@DeleteIndexesAsync"/>
+            <RadzenButton Text="Delete Indexes" ButtonStyle="ButtonStyle.Danger" Disabled="@(_isIndexing || _isDeletingIndexes || _isClearingQueue)" Click="@DeleteIndexesAsync"/>
+
+            @if (_isDeletingIndexes && !string.IsNullOrWhiteSpace(_deleteIndexesStage))
+            {
+                <RadzenText TextStyle="TextStyle.Body2" Style="margin-top: 0.5rem;">@_deleteIndexesStage</RadzenText>
+            }
 
             @if (_deleteIndexesMessage is not null)
             {
-                <RadzenText TextStyle="TextStyle.Body1" Style="@($"margin-top: 0.75rem; white-space: pre-wrap; color: {(_deleteIndexesFailed ? "var(--rz-danger)" : "var(--rz-success)")}")">@_deleteIndexesMessage</RadzenText>
+                <RadzenText TextStyle="TextStyle.Body1" Style="@DeleteIndexesMessageStyle">@_deleteIndexesMessage</RadzenText>
             }
         </RadzenStack>
     </RadzenStack>
@@ -65,6 +87,7 @@
 {
     private StatisticsService.IndexingStatus? _status;
     private PeriodicTimer? _timer;
+    private readonly CancellationTokenSource _disposeCts = new();
 
     private int? _count = 1;
     private bool _canIndex;
@@ -73,6 +96,16 @@
     private bool _isDeletingIndexes;
     private bool _deleteIndexesFailed;
     private string? _deleteIndexesMessage;
+    private string? _deleteIndexesStage;
+
+    private bool _isClearingQueue;
+    private bool _clearQueueFailed;
+    private string? _clearQueueMessage;
+    private string? _clearQueueStage;
+
+    private string ClearQueueMessageStyle => "margin-top: 0.75rem; white-space: pre-wrap; color: " + (_clearQueueFailed ? "var(--rz-danger)" : "var(--rz-success)");
+
+    private string DeleteIndexesMessageStyle => "margin-top: 0.75rem; white-space: pre-wrap; color: " + (_deleteIndexesFailed ? "var(--rz-danger)" : "var(--rz-success)");
 
     protected override async Task OnInitializedAsync()
     {
@@ -106,14 +139,17 @@
 
     private async Task DeleteIndexesAsync()
     {
-        if (_isIndexing || _isDeletingIndexes) return;
+        if (_isIndexing || _isDeletingIndexes || _isClearingQueue) return;
 
         _isDeletingIndexes = true;
         _deleteIndexesFailed = false;
         _deleteIndexesMessage = null;
+        _deleteIndexesStage = "Querying indexes";
 
         try
         {
+            await InvokeAsync(StateHasChanged);
+
             var getResponse = await ElasticsearchClient.Indices.GetAsync("*", CancellationToken.None)
                                                        .ConfigureAwait(false);
 
@@ -135,11 +171,19 @@
                 return;
             }
 
+            _deleteIndexesStage = $"Deleting indexes (0 of {indexNames.Length:N0})";
+            await InvokeAsync(StateHasChanged);
+
             var deleted = 0;
             var failed = new List<string>();
+            var attempted = 0;
 
             foreach (var indexName in indexNames)
             {
+                attempted++;
+                _deleteIndexesStage = $"Deleting indexes ({attempted:N0} of {indexNames.Length:N0})";
+                await InvokeAsync(StateHasChanged);
+
                 var deleteResponse = await ElasticsearchClient.Indices.DeleteAsync(indexName, CancellationToken.None)
                                                               .ConfigureAwait(false);
 
@@ -156,11 +200,11 @@
             if (failed.Count > 0)
             {
                 _deleteIndexesFailed = true;
-                _deleteIndexesMessage = $"Deleted {deleted:N0} index(es). Failed to delete {failed.Count:N0}: {string.Join(", ", failed)}";
+                _deleteIndexesMessage = $"Found {indexNames.Length:N0} index(es). Deleted {deleted:N0}. Failed {failed.Count:N0}: {string.Join(", ", failed)}";
                 return;
             }
 
-            _deleteIndexesMessage = $"Deleted {deleted:N0} index(es).";
+            _deleteIndexesMessage = $"Found {indexNames.Length:N0} index(es). Deleted {deleted:N0}.";
         }
         catch (Exception ex)
         {
@@ -170,6 +214,49 @@
         finally
         {
             _isDeletingIndexes = false;
+            _deleteIndexesStage = null;
+        }
+    }
+
+    private async Task ClearQueueAsync()
+    {
+        if (_isIndexing || _isDeletingIndexes || _isClearingQueue) return;
+
+        _isClearingQueue = true;
+        _clearQueueFailed = false;
+        _clearQueueMessage = null;
+        _clearQueueStage = "Clearing ingestion queue";
+
+        try
+        {
+            await InvokeAsync(StateHasChanged);
+
+            var result = await IngestionQueueService.ClearAllAsync(_disposeCts.Token)
+                                                    .ConfigureAwait(false);
+
+            _clearQueueStage = "Verifying queue is empty";
+            await InvokeAsync(StateHasChanged);
+
+            if (!result.Succeeded)
+            {
+                _clearQueueFailed = true;
+                _clearQueueMessage = $"Failed to clear queue: {result.FailureReason}";
+                return;
+            }
+
+            _clearQueueMessage = result.ItemsRemoved is null
+                ? $"Queue cleared and verified empty. Attempts: {result.Attempts:N0}. Duration: {result.Duration:g}"
+                : $"Queue cleared and verified empty. Removed {result.ItemsRemoved.Value:N0} item(s). Attempts: {result.Attempts:N0}. Duration: {result.Duration:g}";
+        }
+        catch (Exception ex)
+        {
+            _clearQueueFailed = true;
+            _clearQueueMessage = $"Failed to clear queue: {ex.Message}";
+        }
+        finally
+        {
+            _isClearingQueue = false;
+            _clearQueueStage = null;
         }
     }
 
@@ -241,6 +328,8 @@
     public ValueTask DisposeAsync()
     {
         _timer?.Dispose();
+        _disposeCts.Cancel();
+        _disposeCts.Dispose();
         return ValueTask.CompletedTask;
     }
 }
