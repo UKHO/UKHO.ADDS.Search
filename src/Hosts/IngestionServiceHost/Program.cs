@@ -1,4 +1,5 @@
 using IngestionServiceHost.Components;
+using Microsoft.Extensions.Logging;
 using Radzen;
 using UKHO.ADDS.Clients.FileShareService.ReadOnly;
 using UKHO.Aspire.Configuration;
@@ -16,6 +17,12 @@ namespace IngestionServiceHost
         {
             var builder = WebApplication.CreateBuilder(args);
             builder.AddServiceDefaults();
+
+            // Reduce noisy Azure SDK client logs (e.g. Azure Storage Queue polling).
+            builder.Logging.AddFilter("Azure", LogLevel.Warning);
+            builder.Logging.AddFilter("Azure.Core", LogLevel.Warning);
+            builder.Logging.AddFilter("Azure.Storage", LogLevel.Warning);
+            builder.Logging.AddFilter("Azure.Storage.Queues", LogLevel.Warning);
 
             builder.AddConfiguration(ServiceConfiguration.ServiceGroupName, ServiceNames.Configuration);
 
