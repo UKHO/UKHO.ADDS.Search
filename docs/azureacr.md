@@ -4,6 +4,8 @@
 az login
 az acr login --name searchacr
 
+# When `az login` lists available subscriptions, select `AbzuUTL`. Ensure you are PIM'ed on the subscription.
+
 docker tag fss-data-vnext-e2e:latest searchacr.azurecr.io/fss-data-vnext-e2e:latest
 docker push searchacr.azurecr.io/fss-data-vnext-e2e:latest
 ```

@@ -51,7 +51,7 @@ For the default environment (`vnext-e2e`), pull and retag the image as follows:
 
 ```bash
 az login
-# When `az login` lists available subscriptions, select `AbzuUTL`.
+# When `az login` lists available subscriptions, select `AbzuUTL`. 
 az acr login --name searchacr
 
 docker pull searchacr.azurecr.io/fss-data-vnext-e2e:latest
