@@ -36,23 +36,17 @@
             </RadzenStack>
         </RadzenStack>
 
-        <RadzenDivider/>
-
         <RadzenStack Orientation="Orientation.Vertical" Gap="0.25rem">
             <RadzenText TextStyle="TextStyle.H6">Index all pending batches</RadzenText>
             <RadzenText TextStyle="TextStyle.Body2">Indexes everything currently marked as pending, continuing until there are no pending batches left.</RadzenText>
             <RadzenButton Text="Index All" ButtonStyle="ButtonStyle.Primary" Disabled="@(_isIndexing || _isDeletingIndexes)" Click="@IndexAllAsync"/>
         </RadzenStack>
 
-        <RadzenDivider/>
-
         <RadzenStack Orientation="Orientation.Vertical" Gap="0.25rem">
             <RadzenText TextStyle="TextStyle.H6">Reset all batches to pending</RadzenText>
             <RadzenText TextStyle="TextStyle.Body2">Marks all batches as pending so they can be re-indexed from scratch (does not delete Elasticsearch indexes).</RadzenText>
             <RadzenButton Text="Reset All" ButtonStyle="ButtonStyle.Light" Disabled="@(_isIndexing || _isDeletingIndexes)" Click="@ResetAllAsync"/>
         </RadzenStack>
-
-        <RadzenDivider/>
 
         <RadzenStack Orientation="Orientation.Vertical" Gap="0.25rem">
             <RadzenText TextStyle="TextStyle.H6">Delete Elasticsearch indexes</RadzenText>

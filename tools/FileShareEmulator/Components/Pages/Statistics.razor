@@ -1,0 +1,118 @@
+@page "/statistics"
+@attribute [StreamRendering]
+@using FileShareEmulator.Services
+@inject StatisticsService StatisticsService
+@inject ILogger<Statistics> Logger
+
+<PageTitle>Statistics</PageTitle>
+
+<RadzenCard Style="max-width: 1100px;">
+    <h2 style="margin: 0;">Business unit statistics</h2>
+
+    <RadzenText TextStyle="TextStyle.Body1" Style="margin-top: 0.75rem;">
+        This page provides per-business-unit visibility of batch attribute names and file MIME types.
+    </RadzenText>
+
+    @if (!string.IsNullOrWhiteSpace(_error))
+    {
+        <RadzenAlert Severity="AlertSeverity.Danger" Style="margin-top: 1rem;">
+            @_error
+        </RadzenAlert>
+
+        <RadzenButton Icon="refresh" Text="Retry" Click="ReloadAsync" Style="margin-top: 0.75rem;"/>
+    }
+    else if (_statistics is null)
+    {
+        <RadzenText TextStyle="TextStyle.Body1" Style="margin-top: 1rem;">Loading...</RadzenText>
+    }
+    else if (_statistics.Count == 0)
+    {
+        <RadzenText TextStyle="TextStyle.Body1" Style="margin-top: 1rem;">No business unit statistics found.</RadzenText>
+    }
+    else
+    {
+        @foreach (var bu in _statistics)
+        {
+            <RadzenCard Style="margin-top: 1rem;">
+                <h3 style="margin: 0;">@bu.BusinessUnitName</h3>
+                <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 1rem; margin-top: 0.75rem;">
+                    <RadzenCard>
+                        <h4 style="margin: 0;">Batch attribute names</h4>
+                        <RadzenText TextStyle="TextStyle.Body2" Style="margin-top: 0.35rem;">Count = distinct batches using the attribute name.</RadzenText>
+
+                        @if (bu.BatchAttributeNames.Count == 0)
+                        {
+                            <RadzenText TextStyle="TextStyle.Body2" Style="margin-top: 0.5rem;">No batch attributes found.</RadzenText>
+                        }
+                        else
+                        {
+                            <RadzenDataGrid Data="@bu.BatchAttributeNames" TItem="NamedCount" AllowPaging="false" AllowSorting="false" AllowFiltering="false"
+                                            AllowColumnResize="true" ShowPagingSummary="false" Style="margin-top: 0.75rem;">
+                                <Columns>
+                                    <RadzenDataGridColumn TItem="NamedCount" Property="Name" Title="Attribute name"/>
+                                    <RadzenDataGridColumn TItem="NamedCount" Title="Batches" TextAlign="TextAlign.Right" Width="8rem">
+                                        <Template Context="row">
+                                            @row.Count.ToString("N0")
+                                        </Template>
+                                    </RadzenDataGridColumn>
+                                </Columns>
+                            </RadzenDataGrid>
+                        }
+                    </RadzenCard>
+                    <RadzenCard>
+                        <h4 style="margin: 0;">MIME types</h4>
+                        <RadzenText TextStyle="TextStyle.Body2" Style="margin-top: 0.35rem;">Count = files with the MIME type.</RadzenText>
+
+                        @if (bu.MimeTypes.Count == 0)
+                        {
+                            <RadzenText TextStyle="TextStyle.Body2" Style="margin-top: 0.5rem;">No MIME types found.</RadzenText>
+                        }
+                        else
+                        {
+                            <RadzenDataGrid Data="@bu.MimeTypes" TItem="NamedCount" AllowPaging="false" AllowSorting="false" AllowFiltering="false"
+                                            AllowColumnResize="true" ShowPagingSummary="false" Style="margin-top: 0.75rem;">
+                                <Columns>
+                                    <RadzenDataGridColumn TItem="NamedCount" Property="Name" Title="MIME type"/>
+                                    <RadzenDataGridColumn TItem="NamedCount" Title="Files" TextAlign="TextAlign.Right" Width="8rem">
+                                        <Template Context="row">
+                                            @row.Count.ToString("N0")
+                                        </Template>
+                                    </RadzenDataGridColumn>
+                                </Columns>
+                            </RadzenDataGrid>
+                        }
+                    </RadzenCard>
+                </div>
+            </RadzenCard>
+        }
+    }
+</RadzenCard>
+
+@code
+{
+    private IReadOnlyList<BusinessUnitStatistics>? _statistics;
+    private string? _error;
+
+    protected override async Task OnInitializedAsync()
+    {
+        await ReloadAsync()
+            .ConfigureAwait(false);
+    }
+
+    private async Task ReloadAsync()
+    {
+        _error = null;
+        _statistics = null;
+
+        try
+        {
+            _statistics = await StatisticsService.GetBusinessUnitStatisticsAsync()
+                                                 .ConfigureAwait(false);
+        }
+        catch (Exception ex)
+        {
+            Logger.LogError(ex, "Failed to load business unit statistics.");
+            _error = "Failed to load business unit statistics.";
+        }
+    }
+}

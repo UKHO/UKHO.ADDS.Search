@@ -27,6 +27,12 @@ namespace FileShareImageLoader
                 builder.Services.AddSingleton<SchemaMigration>();
                 builder.Services.AddSingleton<ContentImporter>();
 
+                // Reduce noisy Azure SDK client logs (e.g. Azure Storage Queue polling).
+                builder.Logging.AddFilter("Azure", LogLevel.Warning);
+                builder.Logging.AddFilter("Azure.Core", LogLevel.Warning);
+                builder.Logging.AddFilter("Azure.Storage", LogLevel.Warning);
+                builder.Logging.AddFilter("Azure.Storage.Queues", LogLevel.Warning);
+
                 await using var app = builder.Build();
 
                 var bacpacPath = $"/data/{environmentName}.bacpac";
