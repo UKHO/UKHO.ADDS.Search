@@ -16,6 +16,8 @@ docker push searchacr.azurecr.io/fss-data-vnext-e2e:latest
 az login
 az acr login --name searchacr
 
+# When `az login` lists available subscriptions, select `AbzuUTL`.
+
 docker pull searchacr.azurecr.io/fss-data-vnext-e2e:latest
 docker tag searchacr.azurecr.io/fss-data-vnext-e2e:latest fss-data-vnext-e2e:latest
 docker rmi searchacr.azurecr.io/fss-data-vnext-e2e:latest
