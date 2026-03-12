@@ -1,5 +1,6 @@
 using System.Text.Json;
 using Shouldly;
+using UKHO.Search.Geo;
 using UKHO.Search.Ingestion.Pipeline.Documents;
 using UKHO.Search.Ingestion.Requests;
 using Xunit;
@@ -21,10 +22,17 @@ namespace UKHO.Search.Ingestion.Tests.Documents
             doc.DocumentType = "type-x";
             doc.AddKeyword("Alpha");
             doc.AddKeyword("BETA");
-            doc.SetSearchText("Hello WORLD");
-            doc.SetContent("Hello BODY");
+            doc.AddSearchText("Hello WORLD");
+            doc.AddContent("Hello BODY");
             doc.AddFacetValue("Category", "A");
             doc.AddFacetValue("Category", "B");
+            doc.AddGeoPolygon(GeoPolygon.Create(new[]
+            {
+                GeoCoordinate.Create(0d, 0d),
+                GeoCoordinate.Create(1d, 0d),
+                GeoCoordinate.Create(1d, 1d),
+                GeoCoordinate.Create(0d, 0d)
+            }));
 
             var json = JsonSerializer.Serialize(doc);
 
@@ -43,6 +51,9 @@ namespace UKHO.Search.Ingestion.Tests.Documents
                   .ValueKind.ShouldBe(JsonValueKind.Object);
             parsed.RootElement.GetProperty("Facets")
                   .GetProperty("category")
+                  .ValueKind.ShouldBe(JsonValueKind.Array);
+
+            parsed.RootElement.GetProperty("GeoPolygons")
                   .ValueKind.ShouldBe(JsonValueKind.Array);
 
             var roundTripped = JsonSerializer.Deserialize<CanonicalDocument>(json);
@@ -64,6 +75,10 @@ namespace UKHO.Search.Ingestion.Tests.Documents
             roundTripped.Content.ShouldBe("hello body");
             roundTripped.Facets["category"]
                         .ShouldBe(new[] { "a", "b" });
+
+            roundTripped.GeoPolygons.Count.ShouldBe(1);
+            roundTripped.GeoPolygons[0].Rings.Count.ShouldBe(1);
+            roundTripped.GeoPolygons[0].Rings[0].Count.ShouldBe(4);
         }
     }
 }

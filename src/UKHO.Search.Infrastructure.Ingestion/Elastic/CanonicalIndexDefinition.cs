@@ -22,7 +22,8 @@ namespace UKHO.Search.Infrastructure.Ingestion.Elastic
                                                                .Keyword("keywords")
                                                                .Text("searchText", t => t.Analyzer("english"))
                                                                .Text("content", t => t.Analyzer("english"))
-                                                               .Object("facets", o => o.Dynamic(DynamicMapping.True))));
+                                                                .GeoShape("geoPolygons")
+                                                                .Object("facets", o => o.Dynamic(DynamicMapping.True))));
         }
     }
 }

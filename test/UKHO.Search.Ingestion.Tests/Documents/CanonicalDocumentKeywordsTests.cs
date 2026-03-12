@@ -42,11 +42,11 @@ namespace UKHO.Search.Ingestion.Tests.Documents
         }
 
         [Fact]
-        public void SetKeywordsFromTokens_splits_on_whitespace_normalizes_and_dedupes()
+        public void AddKeywordsFromTokens_splits_on_whitespace_normalizes_and_dedupes()
         {
             var doc = CreateDoc();
 
-            doc.SetKeywordsFromTokens("One  TWO\nThree\tTwo");
+            doc.AddKeywordsFromTokens("One  TWO\nThree\tTwo");
 
             doc.Keywords.ShouldBe(new[] { "one", "three", "two" });
         }

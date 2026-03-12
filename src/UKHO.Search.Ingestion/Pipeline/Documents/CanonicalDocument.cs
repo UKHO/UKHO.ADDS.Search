@@ -1,4 +1,5 @@
 using System.Text.Json.Serialization;
+using UKHO.Search.Geo;
 using UKHO.Search.Ingestion.Requests;
 
 namespace UKHO.Search.Ingestion.Pipeline.Documents
@@ -25,6 +26,9 @@ namespace UKHO.Search.Ingestion.Pipeline.Documents
         [JsonInclude]
         public SortedDictionary<string, SortedSet<string>> Facets { get; private set; } = new(StringComparer.Ordinal);
 
+        [JsonInclude]
+        public List<GeoPolygon> GeoPolygons { get; private set; } = new();
+
         public void AddKeyword(string? keyword)
         {
             var normalized = NormalizeToken(keyword);
@@ -37,6 +41,11 @@ namespace UKHO.Search.Ingestion.Pipeline.Documents
         }
 
         public void SetKeyword(string? keyword)
+        {
+            AddKeyword(keyword);
+        }
+
+        public void AddKeywordToken(string? keyword)
         {
             AddKeyword(keyword);
         }
@@ -54,10 +63,8 @@ namespace UKHO.Search.Ingestion.Pipeline.Documents
             }
         }
 
-        public void SetKeywordsFromTokens(string? tokens)
+        public void AddKeywordsFromTokens(string? tokens)
         {
-            Keywords.Clear();
-
             if (string.IsNullOrWhiteSpace(tokens))
             {
                 return;
@@ -67,7 +74,12 @@ namespace UKHO.Search.Ingestion.Pipeline.Documents
             AddKeywords(split);
         }
 
-        public void SetSearchText(string? text)
+        public void SetKeywordsFromTokens(string? tokens)
+        {
+            AddKeywordsFromTokens(tokens);
+        }
+
+        public void AddSearchText(string? text)
         {
             var normalized = NormalizeToken(text);
             if (normalized is null)
@@ -84,7 +96,12 @@ namespace UKHO.Search.Ingestion.Pipeline.Documents
             SearchText = string.Concat(SearchText, " ", normalized);
         }
 
-        public void SetContent(string? text)
+        public void SetSearchText(string? text)
+        {
+            AddSearchText(text);
+        }
+
+        public void AddContent(string? text)
         {
             var normalized = NormalizeToken(text);
             if (normalized is null)
@@ -99,6 +116,11 @@ namespace UKHO.Search.Ingestion.Pipeline.Documents
             }
 
             Content = string.Concat(Content, " ", normalized);
+        }
+
+        public void SetContent(string? text)
+        {
+            AddContent(text);
         }
 
         public void AddFacetValue(string? name, string? value)
@@ -150,6 +172,25 @@ namespace UKHO.Search.Ingestion.Pipeline.Documents
                 Source = source,
                 Timestamp = timestamp
             };
+        }
+
+        public void AddGeoPolygon(GeoPolygon polygon)
+        {
+            ArgumentNullException.ThrowIfNull(polygon);
+            GeoPolygons.Add(polygon);
+        }
+
+        public void AddGeoPolygons(IEnumerable<GeoPolygon>? polygons)
+        {
+            if (polygons is null)
+            {
+                return;
+            }
+
+            foreach (var polygon in polygons)
+            {
+                AddGeoPolygon(polygon);
+            }
         }
 
         private static string? NormalizeToken(string? value)

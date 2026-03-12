@@ -60,6 +60,11 @@ namespace UKHO.Search.Ingestion.Tests.Elastic
                    .GetString()
                    .ShouldBe("english");
 
+            properties.GetProperty("geoPolygons")
+                      .GetProperty("type")
+                      .GetString()
+                      .ShouldBe("geo_shape");
+
             // 'object' mappings don't always emit an explicit 'type' property, so just assert the field is present.
             properties.TryGetProperty("facets", out var _)
                       .ShouldBeTrue();

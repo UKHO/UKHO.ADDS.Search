@@ -8,36 +8,36 @@ namespace UKHO.Search.Ingestion.Tests.Documents
     public sealed class CanonicalDocumentSearchTextTests
     {
         [Fact]
-        public void SetSearchText_normalizes_to_lowercase_and_trims()
+        public void AddSearchText_normalizes_to_lowercase_and_trims()
         {
             var doc = CreateDoc();
 
-            doc.SetSearchText("  Hello WORLD  ");
+            doc.AddSearchText("  Hello WORLD  ");
 
             doc.SearchText.ShouldBe("hello world");
         }
 
         [Fact]
-        public void SetSearchText_appends_with_deterministic_separator_and_normalizes()
+        public void AddSearchText_appends_with_deterministic_separator_and_normalizes()
         {
             var doc = CreateDoc();
 
-            doc.SetSearchText("Hello");
-            doc.SetSearchText("WORLD");
-            doc.SetSearchText("  again  ");
+            doc.AddSearchText("Hello");
+            doc.AddSearchText("WORLD");
+            doc.AddSearchText("  again  ");
 
             doc.SearchText.ShouldBe("hello world again");
         }
 
         [Fact]
-        public void SetSearchText_ignores_null_or_whitespace()
+        public void AddSearchText_ignores_null_or_whitespace()
         {
             var doc = CreateDoc();
 
-            doc.SetSearchText("hello");
-            doc.SetSearchText(null);
-            doc.SetSearchText(string.Empty);
-            doc.SetSearchText("   ");
+            doc.AddSearchText("hello");
+            doc.AddSearchText(null);
+            doc.AddSearchText(string.Empty);
+            doc.AddSearchText("   ");
 
             doc.SearchText.ShouldBe("hello");
         }
