@@ -33,13 +33,18 @@
 
 	<ItemGroup>
 	  <Folder Include="Geo\" />
-	  <Folder Include="TestData\" />
 	</ItemGroup>
 
 	<ItemGroup>
 		<Content Include="TestData\s101-CATALOG.XML">
 			<CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
 		</Content>
+	</ItemGroup>
+
+	<ItemGroup>
+	  <None Update="TestData\sample.000">
+	    <CopyToOutputDirectory>Always</CopyToOutputDirectory>
+	  </None>
 	</ItemGroup>
 
 </Project>

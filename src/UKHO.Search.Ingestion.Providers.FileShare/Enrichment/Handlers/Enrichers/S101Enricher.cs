@@ -3,13 +3,13 @@ using Microsoft.Extensions.Logging;
 using UKHO.Search.Geo;
 using UKHO.Search.Ingestion.Pipeline.Documents;
 
-namespace UKHO.Search.Ingestion.Providers.FileShare.Enrichment.Handlers
+namespace UKHO.Search.Ingestion.Providers.FileShare.Enrichment.Handlers.Enrichers
 {
-    internal sealed class S101Parser : IS100Parser
+    internal sealed class S101Enricher : IS100Enricher
     {
-        private readonly ILogger<S101Parser> _logger;
+        private readonly ILogger<S101Enricher> _logger;
 
-        public S101Parser(ILogger<S101Parser> logger)
+        public S101Enricher(ILogger<S101Enricher> logger)
         {
             ArgumentNullException.ThrowIfNull(logger);
 

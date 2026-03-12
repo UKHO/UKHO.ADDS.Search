@@ -2,6 +2,7 @@ using System.Xml.Linq;
 using Microsoft.Extensions.Logging;
 using UKHO.Search.Ingestion.Pipeline.Documents;
 using UKHO.Search.Ingestion.Requests;
+using UKHO.Search.Ingestion.Providers.FileShare.Enrichment.Handlers.Enrichers;
 
 namespace UKHO.Search.Ingestion.Providers.FileShare.Enrichment.Handlers
 {
@@ -70,8 +71,8 @@ namespace UKHO.Search.Ingestion.Providers.FileShare.Enrichment.Handlers
                     return;
                 }
 
-                var parser = new S101Parser(new LoggerAdapter<S101Parser>(_logger));
-                parser.TryEnrichFromCatalogue(catalogXml, document);
+                var enricher = new S101Enricher(new LoggerAdapter<S101Enricher>(_logger));
+                enricher.TryEnrichFromCatalogue(catalogXml, document);
             }
             catch (Exception ex) when (ex is not OperationCanceledException)
             {
