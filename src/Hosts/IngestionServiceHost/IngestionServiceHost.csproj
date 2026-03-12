@@ -17,4 +17,14 @@
 		<ProjectReference Include="..\UKHO.Search.ServiceDefaults\UKHO.Search.ServiceDefaults.csproj" />
 	</ItemGroup>
 
+	<ItemGroup>
+	  <Content Update="ingestion-rules.json">
+	    <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+	  </Content>
+	</ItemGroup>
+
+	<ItemGroup>
+	  <Folder Include="Authentication\" />
+	</ItemGroup>
+
 </Project>

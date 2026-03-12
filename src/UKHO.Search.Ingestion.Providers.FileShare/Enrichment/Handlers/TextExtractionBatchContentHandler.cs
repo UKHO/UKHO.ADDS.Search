@@ -1,0 +1,78 @@
+using Kreuzberg;
+using Microsoft.Extensions.Logging;
+using UKHO.Search.Ingestion.Pipeline.Documents;
+using UKHO.Search.Ingestion.Requests;
+
+namespace UKHO.Search.Ingestion.Providers.FileShare.Enrichment.Handlers
+{
+    public sealed class TextExtractionBatchContentHandler : IBatchContentHandler
+    {
+        private readonly ILogger<TextExtractionBatchContentHandler> _logger;
+        private readonly HashSet<string> _allowedExtensions;
+
+        public TextExtractionBatchContentHandler(IEnumerable<string> allowedExtensions, ILogger<TextExtractionBatchContentHandler> logger)
+        {
+            ArgumentNullException.ThrowIfNull(allowedExtensions);
+            ArgumentNullException.ThrowIfNull(logger);
+
+            _allowedExtensions = new HashSet<string>(StringComparer.Ordinal);
+            foreach (var ext in allowedExtensions)
+            {
+                if (string.IsNullOrWhiteSpace(ext))
+                {
+                    continue;
+                }
+
+                var normalized = ext.StartsWith(".", StringComparison.Ordinal) ? ext : "." + ext;
+                _allowedExtensions.Add(normalized.ToLowerInvariant());
+            }
+
+            _logger = logger;
+        }
+
+        public async Task HandleFiles(IEnumerable<string> paths, IngestionRequest request, CanonicalDocument document, CancellationToken cancellationToken = default)
+        {
+            ArgumentNullException.ThrowIfNull(paths);
+            ArgumentNullException.ThrowIfNull(request);
+            ArgumentNullException.ThrowIfNull(document);
+
+            if (_allowedExtensions.Count == 0)
+            {
+                return;
+            }
+
+            var batchId = request.AddItem?.Id ?? request.UpdateItem?.Id;
+
+            foreach (var filePath in paths)
+            {
+                cancellationToken.ThrowIfCancellationRequested();
+
+                var extension = Path.GetExtension(filePath)
+                                    .ToLowerInvariant();
+                if (string.IsNullOrWhiteSpace(extension) || !_allowedExtensions.Contains(extension))
+                {
+                    continue;
+                }
+
+                try
+                {
+                    var result = await KreuzbergClient.ExtractFileAsync(filePath, null, cancellationToken)
+                                                      .ConfigureAwait(false);
+                    if (string.IsNullOrWhiteSpace(result.Content))
+                    {
+                        continue;
+                    }
+
+                    document.SetContent(result.Content);
+
+                    var keyword = Path.GetFileNameWithoutExtension(filePath);
+                    document.SetKeyword(keyword);
+                }
+                catch (Exception ex) when (ex is not OperationCanceledException)
+                {
+                    _logger.LogWarning(ex, "Failed to extract file content. BatchId={BatchId} FilePath={FilePath}", batchId, filePath);
+                }
+            }
+        }
+    }
+}

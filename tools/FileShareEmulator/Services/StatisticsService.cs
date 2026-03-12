@@ -1,4 +1,5 @@
 using System.Data;
+using System.Linq;
 using Humanizer;
 using Microsoft.Data.SqlClient;
 
@@ -95,6 +96,26 @@ SELECT
             return new StatisticsSnapshot(batchCount, fileCount, batchAttributeCount, fileAttributeCount, batchReadUserCount, batchReadGroupCount, _labels, localMetadata);
         }
 
+        public async Task<IReadOnlyList<BusinessUnitStatistics>> GetBusinessUnitStatisticsAsync(CancellationToken cancellationToken = default)
+        {
+            await using var connection = new SqlConnection(_connectionString);
+            await connection.OpenAsync(cancellationToken)
+                            .ConfigureAwait(false);
+
+            var results = new Dictionary<string, Builder>(StringComparer.OrdinalIgnoreCase);
+
+            await ReadBatchAttributeCountsAsync(connection, results, cancellationToken)
+                .ConfigureAwait(false);
+
+            await ReadMimeTypeCountsAsync(connection, results, cancellationToken)
+                .ConfigureAwait(false);
+
+            return results.Values
+                          .OrderBy(x => x.BusinessUnitName, StringComparer.OrdinalIgnoreCase)
+                          .Select(x => x.Build())
+                          .ToArray();
+        }
+
         private static async Task<IReadOnlyDictionary<string, string?>> GetLocalMetadataAsync(SqlConnection connection, CancellationToken cancellationToken)
         {
             await using var cmd = connection.CreateCommand();
@@ -123,6 +144,119 @@ ORDER BY [Name];";
         private static string HumanizeLabel(string value)
         {
             return value.Humanize(LetterCasing.Title);
+        }
+
+        private static async Task ReadBatchAttributeCountsAsync(SqlConnection connection, Dictionary<string, Builder> results, CancellationToken cancellationToken)
+        {
+            await using var cmd = connection.CreateCommand();
+            cmd.CommandType = CommandType.Text;
+            cmd.CommandTimeout = 30;
+            cmd.CommandText = @"
+SELECT bu.[Name] AS BusinessUnitName,
+       ba.[AttributeKey] AS AttributeName,
+       COUNT(DISTINCT b.[Id]) AS BatchCount
+FROM [BusinessUnit] bu
+INNER JOIN [Batch] b ON b.[BusinessUnitId] = bu.[Id]
+INNER JOIN [BatchAttribute] ba ON ba.[BatchId] = b.[Id]
+WHERE ba.[AttributeKey] IS NOT NULL
+  AND LTRIM(RTRIM(ba.[AttributeKey])) <> ''
+GROUP BY bu.[Name], ba.[AttributeKey]
+ORDER BY bu.[Name] ASC, BatchCount DESC, ba.[AttributeKey] ASC;";
+
+            await using var reader = await cmd.ExecuteReaderAsync(cancellationToken)
+                                              .ConfigureAwait(false);
+            while (await reader.ReadAsync(cancellationToken)
+                               .ConfigureAwait(false))
+            {
+                if (reader.IsDBNull(0) || reader.IsDBNull(1) || reader.IsDBNull(2))
+                {
+                    continue;
+                }
+
+                var businessUnitName = reader.GetString(0);
+                var attributeName = reader.GetString(1);
+                var countValue = Convert.ToInt64(reader.GetValue(2));
+                var count = checked((int)countValue);
+
+                if (!results.TryGetValue(businessUnitName, out var builder))
+                {
+                    builder = new Builder(businessUnitName);
+                    results[businessUnitName] = builder;
+                }
+
+                builder.BatchAttributeNames.Add(new NamedCount(attributeName, count));
+            }
+        }
+
+        private static async Task ReadMimeTypeCountsAsync(SqlConnection connection, Dictionary<string, Builder> results, CancellationToken cancellationToken)
+        {
+            await using var cmd = connection.CreateCommand();
+            cmd.CommandType = CommandType.Text;
+            cmd.CommandTimeout = 30;
+            cmd.CommandText = @"
+SELECT bu.[Name] AS BusinessUnitName,
+       f.[MIMEType] AS MimeType,
+       COUNT_BIG(1) AS FileCount
+FROM [BusinessUnit] bu
+INNER JOIN [Batch] b ON b.[BusinessUnitId] = bu.[Id]
+INNER JOIN [File] f ON f.[BatchId] = b.[Id]
+WHERE f.[MIMEType] IS NOT NULL
+  AND LTRIM(RTRIM(f.[MIMEType])) <> ''
+GROUP BY bu.[Name], f.[MIMEType]
+ORDER BY bu.[Name] ASC, FileCount DESC, f.[MIMEType] ASC;";
+
+            await using var reader = await cmd.ExecuteReaderAsync(cancellationToken)
+                                              .ConfigureAwait(false);
+            while (await reader.ReadAsync(cancellationToken)
+                               .ConfigureAwait(false))
+            {
+                if (reader.IsDBNull(0) || reader.IsDBNull(1) || reader.IsDBNull(2))
+                {
+                    continue;
+                }
+
+                var businessUnitName = reader.GetString(0);
+                var mimeType = reader.GetString(1);
+                var countValue = Convert.ToInt64(reader.GetValue(2));
+                var count = checked((int)countValue);
+
+                if (!results.TryGetValue(businessUnitName, out var builder))
+                {
+                    builder = new Builder(businessUnitName);
+                    results[businessUnitName] = builder;
+                }
+
+                builder.MimeTypes.Add(new NamedCount(mimeType, count));
+            }
+        }
+
+        private sealed class Builder
+        {
+            public Builder(string businessUnitName)
+            {
+                BusinessUnitName = businessUnitName;
+            }
+
+            public string BusinessUnitName { get; }
+
+            public List<NamedCount> BatchAttributeNames { get; } = [];
+
+            public List<NamedCount> MimeTypes { get; } = [];
+
+            public BusinessUnitStatistics Build()
+            {
+                var batchAttributes = BatchAttributeNames
+                    .OrderByDescending(x => x.Count)
+                    .ThenBy(x => x.Name, StringComparer.OrdinalIgnoreCase)
+                    .ToArray();
+
+                var mimeTypes = MimeTypes
+                    .OrderByDescending(x => x.Count)
+                    .ThenBy(x => x.Name, StringComparer.OrdinalIgnoreCase)
+                    .ToArray();
+
+                return new BusinessUnitStatistics(BusinessUnitName, batchAttributes, mimeTypes);
+            }
         }
 
         public sealed record IndexingStatus(int TotalBatches, int IndexedBatches);

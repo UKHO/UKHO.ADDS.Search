@@ -51,7 +51,7 @@ For the default environment (`vnext-e2e`), pull and retag the image as follows:
 
 ```bash
 az login
-# When `az login` lists available subscriptions, select `AbzuUTL`.
+# When `az login` lists available subscriptions, select `AbzuUTL`. 
 az acr login --name searchacr
 
 docker pull searchacr.azurecr.io/fss-data-vnext-e2e:latest
@@ -73,8 +73,11 @@ If you change `Parameters:environment` in the AppHost configuration, update the 
 dotnet run --project src/Hosts/AppHost/AppHost.csproj
 ```
 
-4. In the Aspire dashboard, start the **explicit start** resource `tools-fileshare-loader` (the File Share importer).
+4. Wait for the `tools-fileshare-loader-data-seeder` process to exit.
+
+5. In the Aspire dashboard, start the **explicit start** resource `tools-fileshare-loader` (the File Share importer).
    - This will seed the local named volume (if needed) and import the File Share data image into the local emulator/storage.
+   - For a full image, expect this to take some time!
 
 ### 3) Set the AppHost RunMode to `Services` and run
 

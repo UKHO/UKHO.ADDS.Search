@@ -10,13 +10,20 @@ using UKHO.Search.Infrastructure.Ingestion.Pipeline;
 using UKHO.Search.Infrastructure.Ingestion.Pipeline.Nodes;
 using UKHO.Search.Infrastructure.Ingestion.Pipeline.Terminal;
 using UKHO.Search.Infrastructure.Ingestion.Queue;
+using UKHO.Search.Infrastructure.Ingestion.Rules;
+using UKHO.Search.Infrastructure.Ingestion.Rules.Actions;
+using UKHO.Search.Infrastructure.Ingestion.Rules.Evaluation;
+using UKHO.Search.Infrastructure.Ingestion.Rules.Templating;
+using UKHO.Search.Infrastructure.Ingestion.Rules.Validation;
 using UKHO.Search.Infrastructure.Ingestion.Statistics;
+using UKHO.Search.Ingestion;
 using UKHO.Search.Ingestion.Pipeline.Operations;
 using UKHO.Search.Ingestion.Providers;
 using UKHO.Search.Ingestion.Providers.FileShare;
 using UKHO.Search.Ingestion.Providers.FileShare.Injection;
 using UKHO.Search.Ingestion.Providers.FileShare.Pipeline;
 using UKHO.Search.Ingestion.Requests;
+using UKHO.Search.Ingestion.Rules;
 using UKHO.Search.Pipelines.Nodes;
 using UKHO.Search.Services.Ingestion.Providers;
 
@@ -27,6 +34,20 @@ namespace UKHO.Search.Infrastructure.Ingestion.Injection
         public static IServiceCollection AddIngestionServices(this IServiceCollection collection)
         {
             collection.AddFileShareProvider();
+
+            collection.AddScoped<IIngestionProviderContext, IngestionProviderContext>();
+
+            collection.AddSingleton<IngestionRulesLoader>();
+            collection.AddSingleton<IngestionRulesPathValidator>();
+            collection.AddSingleton<IngestionRulesValidator>();
+            collection.AddSingleton<IngestionRulesCatalog>();
+            collection.AddSingleton<IIngestionRulesCatalog>(sp => sp.GetRequiredService<IngestionRulesCatalog>());
+            collection.AddSingleton<IPathResolver, IngestionRulesPathResolver>();
+            collection.AddSingleton<IngestionRulesPredicateEvaluator>();
+            collection.AddSingleton<IngestionRulesTemplateExpander>();
+            collection.AddSingleton<IngestionRulesActionApplier>();
+            collection.AddSingleton<IIngestionRulesEngine, IngestionRulesEngine>();
+            collection.AddScoped<IIngestionEnricher, IngestionRulesEnricher>();
 
             collection.AddSingleton<IIngestionDataProviderFactory>(sp =>
             {
@@ -52,12 +73,12 @@ namespace UKHO.Search.Infrastructure.Ingestion.Injection
 
                     CreateIndexDeadLetterSinkNode = (name, input, supervisor) => new BlobDeadLetterSinkNode<IndexOperation>(name, input, blobServiceClient, configuration, configuration.GetValue("ingestion:deadletterFatalIfCannotPersist", true), logger: loggerFactory.CreateLogger(name), fatalErrorReporter: supervisor, providerName: providerName),
 
-                    CreateDiagnosticsSinkNode = (name, input, supervisor) => new DiagnosticsSinkNode<IndexOperation>(name, input, loggerFactory.CreateLogger(name), supervisor, providerName: providerName),
+                    CreateDiagnosticsSinkNode = (name, input, supervisor) => new DiagnosticsSinkNode<IndexOperation>(name, input, loggerFactory.CreateLogger(name), supervisor, providerName),
 
                     CreateBulkIndexNode = (name, lane, input, successOutput, deadLetterOutput, supervisor) => new InOrderBulkIndexNode(name, input, bulkIndexClient, successOutput, deadLetterOutput, indexRetryMaxAttempts, TimeSpan.FromMilliseconds(indexRetryBaseDelayMs), TimeSpan.FromMilliseconds(indexRetryMaxDelayMs), TimeSpan.FromMilliseconds(indexRetryJitterMs),
                         logger: loggerFactory.CreateLogger(name), fatalErrorReporter: supervisor, providerName: providerName),
 
-                    CreateAckNode = (name, lane, input, supervisor) => new AckSinkNode<IndexOperation>(name, input, loggerFactory.CreateLogger(name), supervisor, providerName: providerName)
+                    CreateAckNode = (name, lane, input, supervisor) => new AckSinkNode<IndexOperation>(name, input, loggerFactory.CreateLogger(name), supervisor, providerName)
                 };
 
                 var processingGraphDependencies = new FileShareIngestionProcessingGraphDependencies

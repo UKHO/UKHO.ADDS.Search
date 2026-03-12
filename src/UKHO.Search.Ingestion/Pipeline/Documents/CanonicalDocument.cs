@@ -1,4 +1,5 @@
 using System.Text.Json.Serialization;
+using UKHO.Search.Geo;
 using UKHO.Search.Ingestion.Requests;
 
 namespace UKHO.Search.Ingestion.Pipeline.Documents
@@ -9,7 +10,9 @@ namespace UKHO.Search.Ingestion.Pipeline.Documents
 
         public string DocumentType { get; set; } = string.Empty;
 
-        public IngestionRequest Source { get; init; } = new();
+        public IReadOnlyList<IngestionProperty> Source { get; init; } = Array.Empty<IngestionProperty>();
+
+        public DateTimeOffset Timestamp { get; init; }
 
         [JsonInclude]
         public SortedSet<string> Keywords { get; private set; } = new(StringComparer.Ordinal);
@@ -18,7 +21,13 @@ namespace UKHO.Search.Ingestion.Pipeline.Documents
         public string SearchText { get; private set; } = string.Empty;
 
         [JsonInclude]
+        public string Content { get; private set; } = string.Empty;
+
+        [JsonInclude]
         public SortedDictionary<string, SortedSet<string>> Facets { get; private set; } = new(StringComparer.Ordinal);
+
+        [JsonInclude]
+        public List<GeoPolygon> GeoPolygons { get; private set; } = new();
 
         public void AddKeyword(string? keyword)
         {
@@ -29,6 +38,16 @@ namespace UKHO.Search.Ingestion.Pipeline.Documents
             }
 
             Keywords.Add(normalized);
+        }
+
+        public void SetKeyword(string? keyword)
+        {
+            AddKeyword(keyword);
+        }
+
+        public void AddKeywordToken(string? keyword)
+        {
+            AddKeyword(keyword);
         }
 
         public void AddKeywords(IEnumerable<string?>? keywords)
@@ -44,10 +63,8 @@ namespace UKHO.Search.Ingestion.Pipeline.Documents
             }
         }
 
-        public void SetKeywordsFromTokens(string? tokens)
+        public void AddKeywordsFromTokens(string? tokens)
         {
-            Keywords.Clear();
-
             if (string.IsNullOrWhiteSpace(tokens))
             {
                 return;
@@ -57,7 +74,12 @@ namespace UKHO.Search.Ingestion.Pipeline.Documents
             AddKeywords(split);
         }
 
-        public void SetSearchText(string? text)
+        public void SetKeywordsFromTokens(string? tokens)
+        {
+            AddKeywordsFromTokens(tokens);
+        }
+
+        public void AddSearchText(string? text)
         {
             var normalized = NormalizeToken(text);
             if (normalized is null)
@@ -72,6 +94,33 @@ namespace UKHO.Search.Ingestion.Pipeline.Documents
             }
 
             SearchText = string.Concat(SearchText, " ", normalized);
+        }
+
+        public void SetSearchText(string? text)
+        {
+            AddSearchText(text);
+        }
+
+        public void AddContent(string? text)
+        {
+            var normalized = NormalizeToken(text);
+            if (normalized is null)
+            {
+                return;
+            }
+
+            if (string.IsNullOrWhiteSpace(Content))
+            {
+                Content = normalized;
+                return;
+            }
+
+            Content = string.Concat(Content, " ", normalized);
+        }
+
+        public void SetContent(string? text)
+        {
+            AddContent(text);
         }
 
         public void AddFacetValue(string? name, string? value)
@@ -112,7 +161,7 @@ namespace UKHO.Search.Ingestion.Pipeline.Documents
             }
         }
 
-        public static CanonicalDocument CreateMinimal(string documentId, IngestionRequest source)
+        public static CanonicalDocument CreateMinimal(string documentId, IReadOnlyList<IngestionProperty> source, DateTimeOffset timestamp)
         {
             ArgumentException.ThrowIfNullOrWhiteSpace(documentId);
             ArgumentNullException.ThrowIfNull(source);
@@ -120,8 +169,28 @@ namespace UKHO.Search.Ingestion.Pipeline.Documents
             return new CanonicalDocument
             {
                 DocumentId = documentId,
-                Source = source
+                Source = source,
+                Timestamp = timestamp
             };
+        }
+
+        public void AddGeoPolygon(GeoPolygon polygon)
+        {
+            ArgumentNullException.ThrowIfNull(polygon);
+            GeoPolygons.Add(polygon);
+        }
+
+        public void AddGeoPolygons(IEnumerable<GeoPolygon>? polygons)
+        {
+            if (polygons is null)
+            {
+                return;
+            }
+
+            foreach (var polygon in polygons)
+            {
+                AddGeoPolygon(polygon);
+            }
         }
 
         private static string? NormalizeToken(string? value)

@@ -1,9 +1,13 @@
 @page "/indexing"
+@attribute [System.Diagnostics.CodeAnalysis.SuppressMessage("Style", "IDE1006:Naming Styles", Justification = "Type name used for ILogger category")]
 @using Elastic.Clients.Elasticsearch
 @using FileShareEmulator.Services
+@using Microsoft.Extensions.Logging
 @inject StatisticsService StatisticsService
 @inject IndexService IndexService
+@inject IngestionQueueService IngestionQueueService
 @inject ElasticsearchClient ElasticsearchClient
+@inject ILogger<Indexing> Logger
 
 <PageTitle>Indexing</PageTitle>
 
@@ -22,39 +26,127 @@
         </RadzenStack>
     }
 
-    <RadzenStack Orientation="Orientation.Horizontal" AlignItems="AlignItems.End" Gap="1rem" Style="margin-top: 1rem; flex-wrap: wrap;">
-        <RadzenButton Text="Index All" ButtonStyle="ButtonStyle.Primary" Disabled="@(_isIndexing || _isDeletingIndexes)" Click="@IndexAllAsync"/>
-
+    <RadzenStack Orientation="Orientation.Vertical" Gap="1.25rem" Style="margin-top: 1.5rem;">
         <RadzenStack Orientation="Orientation.Vertical" Gap="0.25rem">
-            <RadzenLabel Text="Count" Component="indexCount"/>
-            <RadzenNumeric id="indexCount" TValue="int" Style="width: 8rem" Min="1" Value="@(_count ?? 0)" Change="@(args => SetCount(args))"/>
+            <RadzenText TextStyle="TextStyle.H6">Index next pending batches</RadzenText>
+            <RadzenText TextStyle="TextStyle.Body2">Indexes the next <b>Count</b> pending batch(es) only. Use this for incremental indexing.</RadzenText>
+            <RadzenStack Orientation="Orientation.Horizontal" AlignItems="AlignItems.End" Gap="1rem" Style="flex-wrap: wrap;">
+                <RadzenStack Orientation="Orientation.Vertical" Gap="0.25rem">
+                    <RadzenLabel Text="Count" Component="indexCount"/>
+                    <RadzenNumeric id="indexCount" TValue="int" Style="width: 8rem" Min="1" Value="@(_count ?? 0)" Change="@(args => SetCount(args))"/>
+                </RadzenStack>
+
+                <RadzenButton Text="Index" ButtonStyle="ButtonStyle.Secondary" Disabled="@(!_canIndex || _isIndexing || _isDeletingIndexes)" Click="@IndexNextAsync"/>
+            </RadzenStack>
         </RadzenStack>
 
-        <RadzenButton Text="Index" ButtonStyle="ButtonStyle.Secondary" Disabled="@(!_canIndex || _isIndexing || _isDeletingIndexes)" Click="@IndexNextAsync"/>
+        <RadzenStack Orientation="Orientation.Vertical" Gap="0.25rem">
+            <RadzenText TextStyle="TextStyle.H6">Index all pending batches</RadzenText>
+            <RadzenText TextStyle="TextStyle.Body2">Indexes everything currently marked as pending, continuing until there are no pending batches left.</RadzenText>
+            <RadzenButton Text="Index All" ButtonStyle="ButtonStyle.Primary" Disabled="@(_isIndexing || _isDeletingIndexes || _isClearingQueue)" Click="@IndexAllAsync"/>
+        </RadzenStack>
 
-        <RadzenButton Text="Reset All" ButtonStyle="ButtonStyle.Light" Disabled="@(_isIndexing || _isDeletingIndexes)" Click="@ResetAllAsync"/>
+        <RadzenStack Orientation="Orientation.Vertical" Gap="0.25rem">
+            <RadzenText TextStyle="TextStyle.H6">Index batch by id</RadzenText>
+            <RadzenText TextStyle="TextStyle.Body2">Use this for debugging/testing. Enter a batch id to submit that batch to the ingestion queue.</RadzenText>
+            <RadzenStack Orientation="Orientation.Horizontal" AlignItems="AlignItems.End" Gap="1rem" Style="flex-wrap: wrap;">
+                <RadzenStack Orientation="Orientation.Vertical" Gap="0.25rem">
+                    <RadzenLabel Text="Batch id" Component="indexBatchId" />
+                    <RadzenTextBox id="indexBatchId" Style="width: 24rem" Value="@_batchIdToIndex" Change="@OnBatchIdChanged" @oninput="@OnBatchIdInput" />
+                </RadzenStack>
 
-        <RadzenButton Text="Delete Indexes" ButtonStyle="ButtonStyle.Danger" Disabled="@(_isIndexing || _isDeletingIndexes)" Click="@DeleteIndexesAsync"/>
+                <RadzenButton Text="Index batch" ButtonStyle="ButtonStyle.Secondary" Disabled="@(!CanIndexSpecificBatch || _isIndexing || _isDeletingIndexes || _isClearingQueue || _isIndexingSpecificBatch)" Click="@IndexSpecificBatchAsync" />
+            </RadzenStack>
+
+            @if (_indexSpecificBatchMessage is not null)
+            {
+                <RadzenText TextStyle="TextStyle.Body1" Style="@IndexSpecificBatchMessageStyle">@_indexSpecificBatchMessage</RadzenText>
+            }
+        </RadzenStack>
+
+        <RadzenStack Orientation="Orientation.Vertical" Gap="0.25rem">
+            <RadzenText TextStyle="TextStyle.H6">Reset all batches to pending</RadzenText>
+            <RadzenText TextStyle="TextStyle.Body2">Marks all batches as pending so they can be re-indexed from scratch (does not delete Elasticsearch indexes).</RadzenText>
+            <RadzenButton Text="Reset All" ButtonStyle="ButtonStyle.Light" Disabled="@(_isIndexing || _isDeletingIndexes || _isClearingQueue)" Click="@ResetAllAsync"/>
+        </RadzenStack>
+
+        <RadzenStack Orientation="Orientation.Vertical" Gap="0.25rem">
+            <RadzenText TextStyle="TextStyle.H6">Clear ingestion queue</RadzenText>
+            <RadzenText TextStyle="TextStyle.Body2">Clears <b>all</b> items from the ingestion queue and verifies it is empty before reporting success.</RadzenText>
+            <RadzenButton Text="Clear Queue" ButtonStyle="ButtonStyle.Danger" Disabled="@(_isIndexing || _isDeletingIndexes || _isClearingQueue)" Click="@ClearQueueAsync" />
+
+            @if (_clearQueueMessage is not null)
+            {
+                <RadzenText TextStyle="TextStyle.Body1" Style="@ClearQueueMessageStyle">@_clearQueueMessage</RadzenText>
+            }
+
+            @if (_isClearingQueue && !string.IsNullOrWhiteSpace(_clearQueueStage))
+            {
+                <RadzenText TextStyle="TextStyle.Body2" Style="margin-top: 0.5rem;">@_clearQueueStage</RadzenText>
+            }
+        </RadzenStack>
+
+        <RadzenStack Orientation="Orientation.Vertical" Gap="0.25rem">
+            <RadzenText TextStyle="TextStyle.H6">Delete Elasticsearch indexes</RadzenText>
+            <RadzenText TextStyle="TextStyle.Body2">Deletes <b>all</b> indexes in the connected Elasticsearch instance (using <code>*</code>). Use with caution.</RadzenText>
+            <RadzenButton Text="Delete Indexes" ButtonStyle="ButtonStyle.Danger" Disabled="@(_isIndexing || _isDeletingIndexes || _isClearingQueue)" Click="@DeleteIndexesAsync"/>
+
+            @if (_isDeletingIndexes && !string.IsNullOrWhiteSpace(_deleteIndexesStage))
+            {
+                <RadzenText TextStyle="TextStyle.Body2" Style="margin-top: 0.5rem;">@_deleteIndexesStage</RadzenText>
+            }
+
+            @if (_deleteIndexesMessage is not null)
+            {
+                <RadzenText TextStyle="TextStyle.Body1" Style="@DeleteIndexesMessageStyle">@_deleteIndexesMessage</RadzenText>
+            }
+        </RadzenStack>
     </RadzenStack>
-
-    @if (_deleteIndexesMessage is not null)
-    {
-        <RadzenText TextStyle="TextStyle.Body1" Style="@($"margin-top: 1rem; white-space: pre-wrap; color: {(_deleteIndexesFailed ? "var(--rz-danger)" : "var(--rz-success)")}")">@_deleteIndexesMessage</RadzenText>
-    }
 </RadzenCard>
 
 @code
 {
     private StatisticsService.IndexingStatus? _status;
     private PeriodicTimer? _timer;
+    private readonly CancellationTokenSource _disposeCts = new();
 
     private int? _count = 1;
     private bool _canIndex;
     private bool _isIndexing;
 
+    private string? _batchIdToIndex;
+    private bool _isIndexingSpecificBatch;
+    private bool _indexSpecificBatchFailed;
+    private string? _indexSpecificBatchMessage;
+
     private bool _isDeletingIndexes;
     private bool _deleteIndexesFailed;
     private string? _deleteIndexesMessage;
+    private string? _deleteIndexesStage;
+
+    private bool _isClearingQueue;
+    private bool _clearQueueFailed;
+    private string? _clearQueueMessage;
+    private string? _clearQueueStage;
+
+    private string ClearQueueMessageStyle => "margin-top: 0.75rem; white-space: pre-wrap; color: " + (_clearQueueFailed ? "var(--rz-danger)" : "var(--rz-success)");
+
+    private string DeleteIndexesMessageStyle => "margin-top: 0.75rem; white-space: pre-wrap; color: " + (_deleteIndexesFailed ? "var(--rz-danger)" : "var(--rz-success)");
+
+    private bool CanIndexSpecificBatch => !string.IsNullOrWhiteSpace(_batchIdToIndex);
+    private string IndexSpecificBatchMessageStyle => "margin-top: 0.75rem; white-space: pre-wrap; color: " + (_indexSpecificBatchFailed ? "var(--rz-danger)" : "var(--rz-success)");
+
+    private async Task OnBatchIdChanged(object? value)
+    {
+        _batchIdToIndex = value?.ToString();
+        await InvokeAsync(StateHasChanged);
+    }
+
+    private async Task OnBatchIdInput(ChangeEventArgs e)
+    {
+        _batchIdToIndex = e.Value?.ToString();
+        await InvokeAsync(StateHasChanged);
+    }
 
     protected override async Task OnInitializedAsync()
     {
@@ -86,16 +178,63 @@
         }
     }
 
+    private async Task IndexSpecificBatchAsync()
+    {
+        if (_isIndexing || _isDeletingIndexes || _isClearingQueue || _isIndexingSpecificBatch) return;
+
+        _indexSpecificBatchFailed = false;
+        _indexSpecificBatchMessage = null;
+
+        var batchIdText = _batchIdToIndex?.Trim();
+        if (string.IsNullOrWhiteSpace(batchIdText))
+        {
+            return;
+        }
+
+        _isIndexingSpecificBatch = true;
+
+        try
+        {
+            await InvokeAsync(StateHasChanged);
+
+            var result = await IndexService.IndexBatchByIdAsync(batchIdText, _disposeCts.Token)
+                                           .ConfigureAwait(false);
+
+            if (!result.Succeeded)
+            {
+                _indexSpecificBatchFailed = true;
+                _indexSpecificBatchMessage = result.FailureReason;
+                return;
+            }
+
+            _indexSpecificBatchMessage = $"Batch '{result.BatchId}' submitted to ingestion queue.";
+            Logger.LogInformation("Submitted batch {BatchId} to ingestion queue from UI.", result.BatchId);
+        }
+        catch (Exception ex)
+        {
+            _indexSpecificBatchFailed = true;
+            _indexSpecificBatchMessage = $"Failed to submit batch '{batchIdText}' to ingestion queue: {ex.Message}";
+            Logger.LogError(ex, "Failed to submit batch {BatchId} to ingestion queue.", batchIdText);
+        }
+        finally
+        {
+            _isIndexingSpecificBatch = false;
+        }
+    }
+
     private async Task DeleteIndexesAsync()
     {
-        if (_isIndexing || _isDeletingIndexes) return;
+        if (_isIndexing || _isDeletingIndexes || _isClearingQueue) return;
 
         _isDeletingIndexes = true;
         _deleteIndexesFailed = false;
         _deleteIndexesMessage = null;
+        _deleteIndexesStage = "Querying indexes";
 
         try
         {
+            await InvokeAsync(StateHasChanged);
+
             var getResponse = await ElasticsearchClient.Indices.GetAsync("*", CancellationToken.None)
                                                        .ConfigureAwait(false);
 
@@ -117,11 +256,19 @@
                 return;
             }
 
+            _deleteIndexesStage = $"Deleting indexes (0 of {indexNames.Length:N0})";
+            await InvokeAsync(StateHasChanged);
+
             var deleted = 0;
             var failed = new List<string>();
+            var attempted = 0;
 
             foreach (var indexName in indexNames)
             {
+                attempted++;
+                _deleteIndexesStage = $"Deleting indexes ({attempted:N0} of {indexNames.Length:N0})";
+                await InvokeAsync(StateHasChanged);
+
                 var deleteResponse = await ElasticsearchClient.Indices.DeleteAsync(indexName, CancellationToken.None)
                                                               .ConfigureAwait(false);
 
@@ -138,11 +285,11 @@
             if (failed.Count > 0)
             {
                 _deleteIndexesFailed = true;
-                _deleteIndexesMessage = $"Deleted {deleted:N0} index(es). Failed to delete {failed.Count:N0}: {string.Join(", ", failed)}";
+                _deleteIndexesMessage = $"Found {indexNames.Length:N0} index(es). Deleted {deleted:N0}. Failed {failed.Count:N0}: {string.Join(", ", failed)}";
                 return;
             }
 
-            _deleteIndexesMessage = $"Deleted {deleted:N0} index(es).";
+            _deleteIndexesMessage = $"Found {indexNames.Length:N0} index(es). Deleted {deleted:N0}.";
         }
         catch (Exception ex)
         {
@@ -152,6 +299,49 @@
         finally
         {
             _isDeletingIndexes = false;
+            _deleteIndexesStage = null;
+        }
+    }
+
+    private async Task ClearQueueAsync()
+    {
+        if (_isIndexing || _isDeletingIndexes || _isClearingQueue) return;
+
+        _isClearingQueue = true;
+        _clearQueueFailed = false;
+        _clearQueueMessage = null;
+        _clearQueueStage = "Clearing ingestion queue";
+
+        try
+        {
+            await InvokeAsync(StateHasChanged);
+
+            var result = await IngestionQueueService.ClearAllAsync(_disposeCts.Token)
+                                                    .ConfigureAwait(false);
+
+            _clearQueueStage = "Verifying queue is empty";
+            await InvokeAsync(StateHasChanged);
+
+            if (!result.Succeeded)
+            {
+                _clearQueueFailed = true;
+                _clearQueueMessage = $"Failed to clear queue: {result.FailureReason}";
+                return;
+            }
+
+            _clearQueueMessage = result.ItemsRemoved is null
+                ? $"Queue cleared and verified empty. Attempts: {result.Attempts:N0}. Duration: {result.Duration:g}"
+                : $"Queue cleared and verified empty. Removed {result.ItemsRemoved.Value:N0} item(s). Attempts: {result.Attempts:N0}. Duration: {result.Duration:g}";
+        }
+        catch (Exception ex)
+        {
+            _clearQueueFailed = true;
+            _clearQueueMessage = $"Failed to clear queue: {ex.Message}";
+        }
+        finally
+        {
+            _isClearingQueue = false;
+            _clearQueueStage = null;
         }
     }
 
@@ -223,6 +413,8 @@
     public ValueTask DisposeAsync()
     {
         _timer?.Dispose();
+        _disposeCts.Cancel();
+        _disposeCts.Dispose();
         return ValueTask.CompletedTask;
     }
 }

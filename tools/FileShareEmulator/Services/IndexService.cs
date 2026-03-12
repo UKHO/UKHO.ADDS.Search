@@ -59,6 +59,45 @@ namespace FileShareEmulator.Services
                             .ConfigureAwait(false);
         }
 
+        public async Task<IndexBatchByIdResult> IndexBatchByIdAsync(string batchId, CancellationToken cancellationToken = default)
+        {
+            if (string.IsNullOrWhiteSpace(batchId))
+            {
+                return IndexBatchByIdResult.Fail("Batch id is required.");
+            }
+
+            if (!Guid.TryParse(batchId, out var batchGuid))
+            {
+                return IndexBatchByIdResult.Fail($"Batch '{batchId}' not found.");
+            }
+
+            await using var connection = new SqlConnection(_connectionString);
+            await connection.OpenAsync(cancellationToken)
+                            .ConfigureAwait(false);
+
+            var exists = await BatchExistsAsync(connection, batchGuid, cancellationToken)
+                .ConfigureAwait(false);
+            if (!exists)
+            {
+                _logger.LogWarning("Batch {BatchId} not found; cannot submit to ingestion queue.", batchGuid);
+                return IndexBatchByIdResult.Fail($"Batch '{batchGuid:D}' not found.");
+            }
+
+            var queueClient = _queueServiceClient.GetQueueClient(QueueName);
+            await queueClient.CreateIfNotExistsAsync(cancellationToken: cancellationToken)
+                             .ConfigureAwait(false);
+
+            var request = await CreateRequestAsync(connection, batchGuid, cancellationToken)
+                .ConfigureAwait(false);
+            var json = JsonSerializer.Serialize(request, _jsonOptions);
+
+            await queueClient.SendMessageAsync(json, cancellationToken)
+                             .ConfigureAwait(false);
+
+            _logger.LogInformation("Submitted batch {BatchId} to ingestion queue.", batchGuid);
+            return IndexBatchByIdResult.Success(batchGuid.ToString("D"));
+        }
+
         private async Task<int> IndexNextPendingAsync(int? count, CancellationToken cancellationToken)
         {
             await using var connection = new SqlConnection(_connectionString);
@@ -277,5 +316,20 @@ namespace FileShareEmulator.Services
             _ = await cmd.ExecuteNonQueryAsync(cancellationToken)
                          .ConfigureAwait(false);
         }
+
+        private static async Task<bool> BatchExistsAsync(SqlConnection connection, Guid batchId, CancellationToken cancellationToken)
+        {
+            await using var cmd = connection.CreateCommand();
+            cmd.CommandType = CommandType.Text;
+            cmd.CommandTimeout = 30;
+            cmd.CommandText = @"SELECT 1 FROM [Batch] WHERE [Id] = @batchId;";
+            cmd.Parameters.Add(new SqlParameter("@batchId", SqlDbType.UniqueIdentifier) { Value = batchId });
+
+            var value = await cmd.ExecuteScalarAsync(cancellationToken)
+                                 .ConfigureAwait(false);
+
+            return value is not null && value != DBNull.Value;
+        }
     }
+
 }
