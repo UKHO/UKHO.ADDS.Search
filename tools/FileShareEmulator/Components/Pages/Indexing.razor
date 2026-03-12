@@ -1,10 +1,13 @@
 @page "/indexing"
+@attribute [System.Diagnostics.CodeAnalysis.SuppressMessage("Style", "IDE1006:Naming Styles", Justification = "Type name used for ILogger category")]
 @using Elastic.Clients.Elasticsearch
 @using FileShareEmulator.Services
+@using Microsoft.Extensions.Logging
 @inject StatisticsService StatisticsService
 @inject IndexService IndexService
 @inject IngestionQueueService IngestionQueueService
 @inject ElasticsearchClient ElasticsearchClient
+@inject ILogger<Indexing> Logger
 
 <PageTitle>Indexing</PageTitle>
 
@@ -41,6 +44,24 @@
             <RadzenText TextStyle="TextStyle.H6">Index all pending batches</RadzenText>
             <RadzenText TextStyle="TextStyle.Body2">Indexes everything currently marked as pending, continuing until there are no pending batches left.</RadzenText>
             <RadzenButton Text="Index All" ButtonStyle="ButtonStyle.Primary" Disabled="@(_isIndexing || _isDeletingIndexes || _isClearingQueue)" Click="@IndexAllAsync"/>
+        </RadzenStack>
+
+        <RadzenStack Orientation="Orientation.Vertical" Gap="0.25rem">
+            <RadzenText TextStyle="TextStyle.H6">Index batch by id</RadzenText>
+            <RadzenText TextStyle="TextStyle.Body2">Use this for debugging/testing. Enter a batch id to submit that batch to the ingestion queue.</RadzenText>
+            <RadzenStack Orientation="Orientation.Horizontal" AlignItems="AlignItems.End" Gap="1rem" Style="flex-wrap: wrap;">
+                <RadzenStack Orientation="Orientation.Vertical" Gap="0.25rem">
+                    <RadzenLabel Text="Batch id" Component="indexBatchId" />
+                    <RadzenTextBox id="indexBatchId" Style="width: 24rem" @bind-Value="_batchIdToIndex" />
+                </RadzenStack>
+
+                <RadzenButton Text="Index batch" ButtonStyle="ButtonStyle.Secondary" Disabled="@(!CanIndexSpecificBatch || _isIndexing || _isDeletingIndexes || _isClearingQueue || _isIndexingSpecificBatch)" Click="@IndexSpecificBatchAsync" />
+            </RadzenStack>
+
+            @if (_indexSpecificBatchMessage is not null)
+            {
+                <RadzenText TextStyle="TextStyle.Body1" Style="@IndexSpecificBatchMessageStyle">@_indexSpecificBatchMessage</RadzenText>
+            }
         </RadzenStack>
 
         <RadzenStack Orientation="Orientation.Vertical" Gap="0.25rem">
@@ -93,6 +114,11 @@
     private bool _canIndex;
     private bool _isIndexing;
 
+    private string? _batchIdToIndex;
+    private bool _isIndexingSpecificBatch;
+    private bool _indexSpecificBatchFailed;
+    private string? _indexSpecificBatchMessage;
+
     private bool _isDeletingIndexes;
     private bool _deleteIndexesFailed;
     private string? _deleteIndexesMessage;
@@ -106,6 +132,9 @@
     private string ClearQueueMessageStyle => "margin-top: 0.75rem; white-space: pre-wrap; color: " + (_clearQueueFailed ? "var(--rz-danger)" : "var(--rz-success)");
 
     private string DeleteIndexesMessageStyle => "margin-top: 0.75rem; white-space: pre-wrap; color: " + (_deleteIndexesFailed ? "var(--rz-danger)" : "var(--rz-success)");
+
+    private bool CanIndexSpecificBatch => !string.IsNullOrWhiteSpace(_batchIdToIndex);
+    private string IndexSpecificBatchMessageStyle => "margin-top: 0.75rem; white-space: pre-wrap; color: " + (_indexSpecificBatchFailed ? "var(--rz-danger)" : "var(--rz-success)");
 
     protected override async Task OnInitializedAsync()
     {
@@ -134,6 +163,50 @@
 
         catch (OperationCanceledException)
         {
+        }
+    }
+
+    private async Task IndexSpecificBatchAsync()
+    {
+        if (_isIndexing || _isDeletingIndexes || _isClearingQueue || _isIndexingSpecificBatch) return;
+
+        _indexSpecificBatchFailed = false;
+        _indexSpecificBatchMessage = null;
+
+        var batchIdText = _batchIdToIndex?.Trim();
+        if (string.IsNullOrWhiteSpace(batchIdText))
+        {
+            return;
+        }
+
+        _isIndexingSpecificBatch = true;
+
+        try
+        {
+            await InvokeAsync(StateHasChanged);
+
+            var result = await IndexService.IndexBatchByIdAsync(batchIdText, _disposeCts.Token)
+                                           .ConfigureAwait(false);
+
+            if (!result.Succeeded)
+            {
+                _indexSpecificBatchFailed = true;
+                _indexSpecificBatchMessage = result.FailureReason;
+                return;
+            }
+
+            _indexSpecificBatchMessage = $"Batch '{result.BatchId}' submitted to ingestion queue.";
+            Logger.LogInformation("Submitted batch {BatchId} to ingestion queue from UI.", result.BatchId);
+        }
+        catch (Exception ex)
+        {
+            _indexSpecificBatchFailed = true;
+            _indexSpecificBatchMessage = $"Failed to submit batch '{batchIdText}' to ingestion queue: {ex.Message}";
+            Logger.LogError(ex, "Failed to submit batch {BatchId} to ingestion queue.", batchIdText);
+        }
+        finally
+        {
+            _isIndexingSpecificBatch = false;
         }
     }
 

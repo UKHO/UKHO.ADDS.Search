@@ -1,27 +1,24 @@
 using System.IO.Compression;
-using System.Xml.Linq;
-using Kreuzberg;
-using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.Logging;
 using UKHO.Search.Ingestion.Pipeline.Documents;
 using UKHO.Search.Ingestion.Requests;
 
 namespace UKHO.Search.Ingestion.Providers.FileShare.Enrichment
 {
-    public sealed class FileContentEnricher : IIngestionEnricher
+    public sealed class BatchContentEnricher : IIngestionEnricher
     {
-        private readonly IConfiguration _configuration;
-        private readonly ILogger<FileContentEnricher> _logger;
+        private readonly ILogger<BatchContentEnricher> _logger;
         private readonly IFileShareZipDownloader _zipDownloader;
+        private readonly IEnumerable<IBatchContentHandler> _handlers;
 
-        public FileContentEnricher(IFileShareZipDownloader zipDownloader, IConfiguration configuration, ILogger<FileContentEnricher> logger)
+        public BatchContentEnricher(IFileShareZipDownloader zipDownloader, IEnumerable<IBatchContentHandler> handlers, ILogger<BatchContentEnricher> logger)
         {
             ArgumentNullException.ThrowIfNull(zipDownloader);
-            ArgumentNullException.ThrowIfNull(configuration);
+            ArgumentNullException.ThrowIfNull(handlers);
             ArgumentNullException.ThrowIfNull(logger);
 
             _zipDownloader = zipDownloader;
-            _configuration = configuration;
+            _handlers = handlers;
             _logger = logger;
         }
 
@@ -36,13 +33,6 @@ namespace UKHO.Search.Ingestion.Providers.FileShare.Enrichment
             if (string.IsNullOrWhiteSpace(batchId))
             {
                 return;
-            }
-
-            var allowedExtensions = GetAllowedExtensions();
-            var fileContentExtractionEnabled = allowedExtensions.Count > 0;
-            if (!fileContentExtractionEnabled)
-            {
-                _logger.LogWarning("File content extraction disabled because configuration key '{ConfigKey}' is missing or empty. BatchId={BatchId}", "ingestion:fileContentExtractionAllowedExtensions", batchId);
             }
 
             var workingDirectory = CreateWorkingDirectory(batchId);
@@ -63,13 +53,33 @@ namespace UKHO.Search.Ingestion.Providers.FileShare.Enrichment
                     throw;
                 }
 
-                await TryLoadCatalogXmlAsync(batchId, extractDirectory, cancellationToken)
-                    .ConfigureAwait(false);
-
-                if (fileContentExtractionEnabled)
+                try
                 {
-                    await ExtractAndEnrichAsync(batchId, extractDirectory, allowedExtensions, document, cancellationToken)
-                        .ConfigureAwait(false);
+                    ExpandNestedZips(extractDirectory, cancellationToken);
+                }
+                catch (Exception ex) when (ex is not OperationCanceledException)
+                {
+                    _logger.LogError(ex, "Failed to unzip nested ZIP(s) within extracted batch. BatchId={BatchId}", batchId);
+                    throw;
+                }
+
+                var paths = Directory.EnumerateFiles(extractDirectory, "*", SearchOption.AllDirectories)
+                                     .OrderBy(x => x, StringComparer.OrdinalIgnoreCase)
+                                     .ToList();
+
+                foreach (var handler in _handlers)
+                {
+                    cancellationToken.ThrowIfCancellationRequested();
+
+                    try
+                    {
+                        await handler.HandleFiles(paths, request, document, cancellationToken)
+                                     .ConfigureAwait(false);
+                    }
+                    catch (Exception ex) when (ex is not OperationCanceledException)
+                    {
+                        _logger.LogError(ex, "Batch content handler failed. BatchId={BatchId} Handler={HandlerType}", batchId, handler.GetType().FullName);
+                    }
                 }
             }
             finally
@@ -78,56 +88,9 @@ namespace UKHO.Search.Ingestion.Providers.FileShare.Enrichment
             }
         }
 
-        private async Task TryLoadCatalogXmlAsync(string batchId, string extractDirectory, CancellationToken cancellationToken)
-        {
-            var catalogPath = Directory.EnumerateFiles(extractDirectory, "catalog.xml", SearchOption.AllDirectories)
-                                       .OrderBy(x => x, StringComparer.OrdinalIgnoreCase)
-                                       .FirstOrDefault();
-
-            if (string.IsNullOrWhiteSpace(catalogPath))
-            {
-                return;
-            }
-
-            try
-            {
-                await using var stream = File.OpenRead(catalogPath);
-                var catalogXml = await XDocument.LoadAsync(stream, LoadOptions.None, cancellationToken)
-                                                .ConfigureAwait(false);
-                _ = catalogXml;
-            }
-            catch (Exception ex) when (ex is not OperationCanceledException)
-            {
-                _logger.LogWarning(ex, "Failed to load catalog.xml. BatchId={BatchId} FilePath={FilePath}", batchId, catalogPath);
-            }
-        }
-
-        private HashSet<string> GetAllowedExtensions()
-        {
-            var raw = _configuration["ingestion:fileContentExtractionAllowedExtensions"];
-            if (string.IsNullOrWhiteSpace(raw))
-            {
-                return new HashSet<string>(StringComparer.Ordinal);
-            }
-
-            var set = new HashSet<string>(StringComparer.Ordinal);
-            foreach (var token in raw.Split(';', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries))
-            {
-                if (string.IsNullOrWhiteSpace(token))
-                {
-                    continue;
-                }
-
-                var normalized = token.StartsWith(".", StringComparison.Ordinal) ? token : "." + token;
-                set.Add(normalized.ToLowerInvariant());
-            }
-
-            return set;
-        }
-
         private static string CreateWorkingDirectory(string batchId)
         {
-            var basePath = Path.Combine(Path.GetTempPath(), "ukho-search", "fileshare", "kreuzberg", batchId, Guid.NewGuid()
+            var basePath = Path.Combine(Path.GetTempPath(), "ukho-search", "file-share", batchId, Guid.NewGuid()
                                                                                                                   .ToString("N"));
             Directory.CreateDirectory(basePath);
             return basePath;
@@ -183,41 +146,63 @@ namespace UKHO.Search.Ingestion.Providers.FileShare.Enrichment
             }
         }
 
-        private async Task ExtractAndEnrichAsync(string batchId, string extractDirectory, HashSet<string> allowedExtensions, CanonicalDocument document, CancellationToken cancellationToken)
+        private void ExpandNestedZips(string extractDirectory, CancellationToken cancellationToken)
         {
-            var extractedFiles = Directory.EnumerateFiles(extractDirectory, "*", SearchOption.AllDirectories)
-                                          .OrderBy(x => x, StringComparer.OrdinalIgnoreCase)
-                                          .ToList();
+            const int maxIterations = 25;
 
-            foreach (var filePath in extractedFiles)
+            var extracted = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
+            var extractedCount = 0;
+
+            for (var i = 0; i < maxIterations; i++)
             {
                 cancellationToken.ThrowIfCancellationRequested();
 
-                var extension = Path.GetExtension(filePath)
-                                    .ToLowerInvariant();
-                if (string.IsNullOrWhiteSpace(extension) || !allowedExtensions.Contains(extension))
-                {
-                    continue;
-                }
+                var newExtractionsThisPass = 0;
 
-                try
+                var zipFiles = Directory.EnumerateFiles(extractDirectory, "*.zip", SearchOption.AllDirectories)
+                                         .OrderBy(x => x, StringComparer.OrdinalIgnoreCase)
+                                         .ToList();
+
+                foreach (var zipFile in zipFiles)
                 {
-                    var result = await KreuzbergClient.ExtractFileAsync(filePath, null, cancellationToken)
-                                                      .ConfigureAwait(false);
-                    if (string.IsNullOrWhiteSpace(result.Content))
+                    cancellationToken.ThrowIfCancellationRequested();
+
+                    if (!extracted.Add(zipFile))
                     {
                         continue;
                     }
 
-                    document.SetContent(result.Content);
+                    var destinationDirectory = Path.Combine(Path.GetDirectoryName(zipFile)!, Path.GetFileNameWithoutExtension(zipFile));
 
-                    var keyword = Path.GetFileNameWithoutExtension(filePath);
-                    document.SetKeyword(keyword);
+                    if (Directory.Exists(destinationDirectory) && Directory.EnumerateFileSystemEntries(destinationDirectory).Any())
+                    {
+                        _logger.LogWarning("Skipping nested ZIP extraction because destination directory already exists and is not empty. ZipFile={ZipFile} DestinationDirectory={DestinationDirectory}", zipFile, destinationDirectory);
+                        continue;
+                    }
+
+                    try
+                    {
+                        ExtractZipFileSafely(zipFile, destinationDirectory);
+                        extractedCount++;
+                        newExtractionsThisPass++;
+
+                        _logger.LogDebug("Extracted nested ZIP. ZipFile={ZipFile} DestinationDirectory={DestinationDirectory}", zipFile, destinationDirectory);
+                    }
+                    catch (Exception ex) when (ex is not OperationCanceledException)
+                    {
+                        throw new InvalidOperationException($"Failed to extract nested ZIP '{zipFile}'.", ex);
+                    }
                 }
-                catch (Exception ex) when (ex is not OperationCanceledException)
+
+                if (newExtractionsThisPass == 0)
                 {
-                    _logger.LogWarning(ex, "Failed to extract file content. BatchId={BatchId} FilePath={FilePath}", batchId, filePath);
+                    break;
                 }
+            }
+
+            if (extractedCount > 0)
+            {
+                _logger.LogInformation("Extracted {NestedZipCount} nested ZIP(s) under '{ExtractDirectory}'.", extractedCount, extractDirectory);
             }
         }
 

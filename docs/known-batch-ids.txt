@@ -1,0 +1,9 @@
+Following are known batch ids for the vnext-e2e file share data image
+
+S-100 Batches
+-------------
+3160db48-95c3-4fa2-b241-273e0bb60b3e
+
+
+S-57 Batches
+------------
