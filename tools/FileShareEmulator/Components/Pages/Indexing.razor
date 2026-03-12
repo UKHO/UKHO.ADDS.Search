@@ -52,7 +52,7 @@
             <RadzenStack Orientation="Orientation.Horizontal" AlignItems="AlignItems.End" Gap="1rem" Style="flex-wrap: wrap;">
                 <RadzenStack Orientation="Orientation.Vertical" Gap="0.25rem">
                     <RadzenLabel Text="Batch id" Component="indexBatchId" />
-                    <RadzenTextBox id="indexBatchId" Style="width: 24rem" @bind-Value="_batchIdToIndex" />
+                    <RadzenTextBox id="indexBatchId" Style="width: 24rem" Value="@_batchIdToIndex" Change="@OnBatchIdChanged" @oninput="@OnBatchIdInput" />
                 </RadzenStack>
 
                 <RadzenButton Text="Index batch" ButtonStyle="ButtonStyle.Secondary" Disabled="@(!CanIndexSpecificBatch || _isIndexing || _isDeletingIndexes || _isClearingQueue || _isIndexingSpecificBatch)" Click="@IndexSpecificBatchAsync" />
@@ -135,6 +135,18 @@
 
     private bool CanIndexSpecificBatch => !string.IsNullOrWhiteSpace(_batchIdToIndex);
     private string IndexSpecificBatchMessageStyle => "margin-top: 0.75rem; white-space: pre-wrap; color: " + (_indexSpecificBatchFailed ? "var(--rz-danger)" : "var(--rz-success)");
+
+    private async Task OnBatchIdChanged(object? value)
+    {
+        _batchIdToIndex = value?.ToString();
+        await InvokeAsync(StateHasChanged);
+    }
+
+    private async Task OnBatchIdInput(ChangeEventArgs e)
+    {
+        _batchIdToIndex = e.Value?.ToString();
+        await InvokeAsync(StateHasChanged);
+    }
 
     protected override async Task OnInitializedAsync()
     {

@@ -35,6 +35,9 @@ namespace UKHO.Search.Ingestion.Providers.FileShare.Enrichment.Handlers
                 return;
             }
 
+            // catalog.xml is present, so this is S-100 data
+
+
             try
             {
                 await using var stream = File.OpenRead(catalogPath);
