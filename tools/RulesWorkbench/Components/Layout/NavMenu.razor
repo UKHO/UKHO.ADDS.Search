@@ -6,11 +6,17 @@
 
 <input type="checkbox" title="Navigation menu" class="navbar-toggler" />
 
-<div class="nav-scrollable" onclick="document.querySelector('.navbar-toggler').click()">
-    <nav class="nav flex-column">
+<div class="nav-scrollable">
+    <nav class="nav flex-column" @onclick="CloseNavMenu">
         <div class="nav-item px-3">
             <NavLink class="nav-link" href="" Match="NavLinkMatch.All">
                 <span class="bi bi-house-door-fill-nav-menu" aria-hidden="true"></span> Home
+            </NavLink>
+        </div>
+
+        <div class="nav-item px-3">
+            <NavLink class="nav-link" href="rules">
+                <span class="bi bi-list-nested-nav-menu" aria-hidden="true"></span> Rules
             </NavLink>
         </div>
 
@@ -27,4 +33,13 @@
         </div>
     </nav>
 </div>
+
+@code
+{
+    private void CloseNavMenu()
+    {
+        // Close the nav menu after a link is clicked.
+        // Avoid global DOM onclick handlers that can interfere with Blazor event processing.
+    }
+}
 

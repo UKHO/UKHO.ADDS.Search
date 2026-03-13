@@ -1,4 +1,5 @@
 using RulesWorkbench.Components;
+using RulesWorkbench.Services;
 using UKHO.Search.Configuration;
 
 namespace RulesWorkbench;
@@ -13,10 +14,19 @@ public class Program
         builder.Services.AddRazorComponents()
             .AddInteractiveServerComponents();
 
+        builder.Services.AddSingleton<RulesSnapshotStore>();
+       builder.Services.AddSingleton<IRuleJsonValidator, SystemTextJsonRuleJsonValidator>();
+        builder.Services.AddScoped<IClipboardService, BrowserClipboardService>();
+
         builder.AddSqlServerClient(StorageNames.FileShareEmulatorDatabase);
         builder.AddAzureBlobServiceClient(ServiceNames.Blobs);
 
         var app = builder.Build();
+
+        {
+            using var scope = app.Services.CreateScope();
+            scope.ServiceProvider.GetRequiredService<RulesSnapshotStore>().LoadFileShareRules();
+        }
 
         // Configure the HTTP request pipeline.
         if (!app.Environment.IsDevelopment())

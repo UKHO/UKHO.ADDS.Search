@@ -1,0 +1,75 @@
+@using Microsoft.JSInterop
+
+@inject IJSRuntime JsRuntime
+
+<div @ref="_host" style="@HostStyle"></div>
+
+@code
+{
+	private ElementReference _host;
+	private IJSObjectReference? _module;
+	private IJSObjectReference? _editor;
+
+	[Parameter]
+	public string Value { get; set; } = string.Empty;
+
+	[Parameter]
+	public EventCallback<string> ValueChanged { get; set; }
+
+	[Parameter]
+	public bool IsReadOnly { get; set; }
+
+	[Parameter]
+	public string HostStyle { get; set; } = "height: 70vh; border: 1px solid #dee2e6; border-radius: 0.25rem;";
+
+	[Parameter]
+	public bool EnableFolding { get; set; } = true;
+
+	private string? _lastAppliedValue;
+
+	protected override async Task OnAfterRenderAsync(bool firstRender)
+	{
+		if (firstRender)
+		{
+			_module = await JsRuntime.InvokeAsync<IJSObjectReference>("import", "./js/monacoEditorInterop.js");
+			_editor = await _module.InvokeAsync<IJSObjectReference>(
+				"createJsonEditor",
+				_host,
+				Value,
+				IsReadOnly,
+				EnableFolding,
+				DotNetObjectReference.Create(this));
+			_lastAppliedValue = Value;
+		}
+		else if (_editor is not null && _lastAppliedValue != Value)
+		{
+         await _module!.InvokeVoidAsync("setValue", _editor, Value);
+			_lastAppliedValue = Value;
+		}
+	}
+
+	[JSInvokable]
+	public async Task OnEditorValueChanged(string value)
+	{
+		_lastAppliedValue = value;
+		await ValueChanged.InvokeAsync(value);
+	}
+
+	public async ValueTask DisposeAsync()
+	{
+		if (_module is not null)
+		{
+			try
+			{
+				if (_editor is not null)
+				{
+					await _module.InvokeVoidAsync("dispose", _editor);
+				}
+			}
+			finally
+			{
+				await _module.DisposeAsync();
+			}
+		}
+	}
+}

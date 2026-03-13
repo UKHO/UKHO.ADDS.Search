@@ -46,4 +46,7 @@
     <Project Path="test/UKHO.Search.Query.Tests/UKHO.Search.Query.Tests.csproj" />
     <Project Path="test/UKHO.Search.Tests/UKHO.Search.Tests.csproj" Id="be8fa9d3-90f0-449f-9ad0-795a833a3b38" />
   </Folder>
+  <Folder Name="/@test/98 Tools/">
+    <Project Path="test/RulesWorkbench.Tests/RulesWorkbench.Tests.csproj" Id="d1ac88b4-3302-4f83-be76-49c835c2eb2c" />
+  </Folder>
 </Solution>

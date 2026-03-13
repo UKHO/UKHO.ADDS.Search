@@ -22,4 +22,10 @@
 		<ProjectReference Include="..\..\src\UKHO.Search\UKHO.Search.csproj" />
 		<ProjectReference Include="..\..\src\UKHO.Search.Ingestion\UKHO.Search.Ingestion.csproj" />
 	</ItemGroup>
+
+ <ItemGroup>
+		<Content Update="ingestion-rules.json">
+			<CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+		</Content>
+	</ItemGroup>
 </Project>

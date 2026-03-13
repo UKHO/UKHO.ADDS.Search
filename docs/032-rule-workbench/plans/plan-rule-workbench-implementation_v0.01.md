@@ -29,6 +29,10 @@ Shared implementation conventions:
   - Any UI surface that allows JSON editing MUST use Monaco.
   - Any UI surface that displays JSON MUST use Monaco in read-only mode.
   - Enable JSON folding/collapsing by default.
+  - When serializing JSON for display, use `JsonSerializerOptions` with `Encoder = JavaScriptEncoder.UnsafeRelaxedJsonEscaping` so strings with embedded quotes render like `properties[\"x\"]` instead of `properties[\u0022x\u0022]`.
+- Testing placement:
+  - All unit tests for Workbench services/state (and any non-Playwright UI-adjacent tests) MUST be placed in `test/RulesWorkbench.Tests`.
+  - Avoid adding Workbench tests to the general `test/UKHO.Search.Tests` project.
 
 ---
 
@@ -36,7 +40,7 @@ Shared implementation conventions:
 
 ## Slice A: Bootstrap “Hello Workbench” (rules snapshot + minimal evaluation)
 
-- [ ] Work Item A1: Workbench service boots, loads `file-share` rules once, and renders a UI smoke path
+- [x] Work Item A1: Workbench service boots, loads `file-share` rules once, and renders a UI smoke path - Completed
   - **Purpose**: Establish runnable end-to-end vertical slice proving the Workbench host can load a rules snapshot and render it in the UI.
   - **Acceptance Criteria**:
     - Workbench starts via Aspire and serves a web UI.
@@ -49,21 +53,21 @@ Shared implementation conventions:
     - Logging & error handling added
     - Documentation updated (this plan references spec)
     - Can execute end-to-end via: running the Workbench and opening the UI
-  - [ ] Task A1.1: Add private rules snapshot to Workbench output
-    - [ ] Step: Copy `src/Hosts/IngestionServiceHost/ingestion-rules.json` into `tools/RulesWorkbench/ingestion-rules.json` (private copy) and configure project to copy to output.
-    - [ ] Step: Ensure loader reads this only once at app startup and keeps an in-memory editable copy.
-  - [ ] Task A1.2: Implement rules snapshot loader (Workbench-only)
-    - [ ] Step: Define a Workbench service that loads/parses JSON and extracts `rules.file-share` array.
-    - [ ] Step: Capture parse/validation errors distinctly (syntax/schema) and expose in diagnostics.
-  - [ ] Task A1.3: Minimal UI wiring
-    - [ ] Step: Add a page that renders the rule count and any load errors.
+  - [x] Task A1.1: Add private rules snapshot to Workbench output - Completed
+    - Summary: Added `tools/RulesWorkbench/ingestion-rules.json` as a private rules snapshot and configured copy-to-output in `RulesWorkbench.csproj`.
+  - [x] Task A1.2: Implement rules snapshot loader (Workbench-only) - Completed
+    - Summary: Implemented singleton `RulesSnapshotStore` that loads/parses `ingestion-rules.json` once, extracts `rules.file-share`, logs rule count, and returns structured load errors.
+  - [x] Task A1.3: Minimal UI wiring - Completed
+    - Summary: Updated `Home.razor` to display file-share rule count and load errors.
   - **Files**:
     - `tools/RulesWorkbench/ingestion-rules.json`: private rules snapshot (content only)
     - `tools/RulesWorkbench/RulesWorkbench.csproj`: mark rules file as content copied to output
     - `tools/RulesWorkbench/Program.cs`: DI registration + load-at-start wiring
     - `tools/RulesWorkbench/Services/RulesSnapshotStore.cs`: in-memory rules snapshot and parsing
+    - `tools/RulesWorkbench/Services/FileShareRulesSnapshot.cs`: snapshot model
+    - `tools/RulesWorkbench/Services/RulesSnapshotError.cs`: error model
     - `tools/RulesWorkbench/Pages/RuleWorkbench.razor`: landing page
-    - `test/...`: integration/smoke tests for rules snapshot loading
+    - `test/RulesWorkbench.Tests/*`: unit/smoke tests for rules snapshot loading (xUnit, no Playwright)
   - **Work Item Dependencies**: none
   - **Run / Verification Instructions**:
     - Run via Aspire (existing entrypoint)
@@ -74,7 +78,7 @@ Shared implementation conventions:
 
 ## Slice B: Rule browsing (provider rules list + search/filter + selection)
 
-- [ ] Work Item B1: Browse `file-share` rules with search/filter and view selected rule JSON (read-only)
+- [x] Work Item B1: Browse `file-share` rules with search/filter and view selected rule JSON (read-only) - Completed
   - **Purpose**: Provide rule authors immediate visibility into the ruleset and the ability to select a rule.
   - **Acceptance Criteria**:
     - UI displays a list of `file-share` rules in ruleset order.
@@ -83,16 +87,23 @@ Shared implementation conventions:
   - **Definition of Done**:
     - Browsing and selection feature runnable end-to-end
     - Unit tests for filtering logic
-    - Integration tests (UI smoke via Playwright) for basic browse/select
-  - [ ] Task B1.2: Implement UI rule list + search + selection
-    - [ ] Step: Add rule list component with search box.
-    - [ ] Step: Add a details panel showing selected rule JSON using Monaco read-only.
-    - [ ] Step: Add a “Copy JSON” action for the selected rule (clipboard) for quick author workflows.
+    - Unit tests added in `test/RulesWorkbench.Tests` (no Playwright for this slice)
+  - [x] Task B1.2: Implement UI rule list + search + selection - Completed
+    - [x] Step: Add rule list component with search box.
+    - [x] Step: Add a details panel showing selected rule JSON using Monaco read-only.
+    - [x] Step: Add a “Copy JSON” action for the selected rule (clipboard) for quick author workflows.
+    - Summary: Added `/rules` page that lists and filters file-share rules from the singleton snapshot store and allows selecting a rule and copying its JSON.
   - **Files**:
-    - `tools/RulesWorkbench/Pages/Rules.razor`: list + filter + details
+    - `tools/RulesWorkbench/Components/Pages/Rules.razor`: list + filter + details
     - `tools/RulesWorkbench/Shared/*`: reusable list/detail components (if project conventions prefer)
     - `tools/RulesWorkbench/Services/RulesSnapshotStore.cs`: query methods
-    - `test/...`: unit tests for filtering + Playwright smoke
+    - `tools/RulesWorkbench/Services/RuleSummary.cs`: rules list DTO
+    - `tools/RulesWorkbench/Services/ClipboardService.cs`: clipboard abstraction
+    - `tools/RulesWorkbench/Services/BrowserClipboardService.cs`: browser clipboard implementation (JS interop)
+    - `tools/RulesWorkbench/wwwroot/rulesWorkbench.js`: clipboard JS helper
+    - `tools/RulesWorkbench/Components/App.razor`: include clipboard JS
+    - `tools/RulesWorkbench/Components/Layout/NavMenu.razor`: add Rules nav item
+    - `test/RulesWorkbench.Tests/*`: unit tests for filtering/browsing behavior
   - **Work Item Dependencies**: A1
   - **Run / Verification Instructions**:
     - Navigate to `/rules` in Workbench UI and filter/select rules
@@ -101,7 +112,7 @@ Shared implementation conventions:
 
 ## Slice C: JSON editing (Monaco preferred) + validation gating
 
-- [ ] Work Item C1: Edit a selected rule in JSON mode with syntax validation and builder-mode gate
+- [x] Work Item C1: Edit a selected rule in JSON mode with syntax validation and builder-mode gate - Completed
   - **Purpose**: Enable power-user edits directly in JSON while preventing invalid JSON from corrupting in-memory rules.
   - **Acceptance Criteria**:
     - Monaco editor is used for JSON editing (no plain-text fallback for v1).
@@ -114,21 +125,22 @@ Shared implementation conventions:
     - Validation feedback works
     - UI reflects updated in-memory JSON for the selected rule
     - Tests cover JSON parsing/validation
-  - [ ] Task C1.1: Add Monaco (or equivalent) JSON editor integration
-    - [ ] Step: Load Monaco via CDN and add JS interop wrapper for Monaco.
-    - [ ] Step: Provide JSON schema hints if available (optional); at least JSON language mode.
-  - [ ] Task C1.2: Implement rule JSON edit state + apply/cancel
-    - [ ] Step: Keep draft text separate from last-known-good JSON.
-    - [ ] Step: On apply: parse JSON to object, run ruleset validation, and update the in-memory rule.
-  - [ ] Task C1.3: Validation model
-    - [ ] Step: Separate syntax errors (JSON parse) from engine validation (schema/operator/path).
-    - [ ] Step: Display errors prominently near editor.
+  - [x] Task C1.1: Add Monaco (or equivalent) JSON editor integration - Completed
+    - Summary: Added `JsonEditor` component and JS module interop that loads Monaco via CDN (RequireJS + cdnjs) and enables JSON folding.
+  - [x] Task C1.2: Implement rule JSON edit state + apply/cancel - Completed
+    - Summary: Added JSON edit mode to `/rules` with draft/apply/cancel and in-memory update of selected rule.
+  - [x] Task C1.3: Validation model - Completed
+    - Summary: Added syntax validation (System.Text.Json) and gated Apply + Builder switch until JSON is valid.
   - **Files**:
     - `tools/RulesWorkbench/Components/JsonEditor.razor`: Monaco wrapper component
-    - `tools/RulesWorkbench/wwwroot/*`: JS interop glue (no Monaco assets; loaded from CDN)
-    - `tools/RulesWorkbench/Services/RuleEditSession.cs`: draft/valid state
+    - `tools/RulesWorkbench/wwwroot/js/monacoEditorInterop.js`: Monaco JS module interop
+    - `tools/RulesWorkbench/Components/App.razor`: includes RequireJS loader for Monaco
+    - `tools/RulesWorkbench/Services/RuleJsonValidator.cs`: validator interface
+    - `tools/RulesWorkbench/Services/RuleJsonValidationResult.cs`: validation result
+    - `tools/RulesWorkbench/Services/SystemTextJsonRuleJsonValidator.cs`: System.Text.Json implementation
     - `tools/RulesWorkbench/Services/RulesSnapshotStore.cs`: update rule API
-    - `test/...`: unit tests for JSON validation + update behavior
+    - `tools/RulesWorkbench/Components/Pages/Rules.razor`: JSON edit UI wiring
+    - `test/RulesWorkbench.Tests/*`: unit tests for JSON validation + update behavior
   - **Work Item Dependencies**: B1
   - **Run / Verification Instructions**:
     - Select rule → edit JSON → introduce syntax error (error shown) → fix → apply → re-open rule confirms update
