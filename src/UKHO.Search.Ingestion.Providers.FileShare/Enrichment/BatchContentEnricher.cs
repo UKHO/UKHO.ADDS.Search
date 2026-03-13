@@ -29,7 +29,7 @@ namespace UKHO.Search.Ingestion.Providers.FileShare.Enrichment
             ArgumentNullException.ThrowIfNull(request);
             ArgumentNullException.ThrowIfNull(document);
 
-            var batchId = request.AddItem?.Id ?? request.UpdateItem?.Id;
+            var batchId = request.IndexItem?.Id;
             if (string.IsNullOrWhiteSpace(batchId))
             {
                 return;

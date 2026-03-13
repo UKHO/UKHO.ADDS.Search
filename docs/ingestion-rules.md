@@ -340,6 +340,7 @@ The `then` block defines monotonic enrichments:
 - `content.add`
 - `facets.add`
 - `documentType.set`
+- additional top-level fields (see §11.7)
 
 Example structure:
 
@@ -354,7 +355,15 @@ Example structure:
       { "name": "facet name", "values": ["...", "..."] }
     ]
   },
-  "documentType": { "set": "..." }
+  "documentType": { "set": "..." },
+  "authority": { "add": ["..."] },
+  "region": { "add": ["..."] },
+  "fornat": { "add": ["..."] },
+  "category": { "add": ["..."] },
+  "series": { "add": ["..."] },
+  "instance": { "add": ["..."] },
+  "majorVersion": { "add": [1] },
+  "minorVersion": { "add": [0] }
 }
 ```
 
@@ -386,34 +395,68 @@ Appends phrases to `CanonicalDocument.SearchText`.
 
 Same behavior as `searchText.add`, but targets `CanonicalDocument.Content`.
 
-### 11.5 `facets.add`
+### 11.5 Additional top-level fields (`*.add`)
 
-Adds facets to `CanonicalDocument.Facets`.
+The rules engine can also add values to additional top-level set-based fields on `CanonicalDocument`.
 
-Each entry must have:
+These are **set-based**, **additive** enrichments (non-destructive):
 
-- `name`: string or template
-- either:
-  - `value`: string/template, or
-  - `values`: array of string/templates
+- Adding the same value multiple times does not create duplicates.
+- String outputs are normalized like other actions (trim + lowercase invariant).
+- Empty/null/whitespace outputs are skipped.
+- Numeric outputs must be JSON numbers; invalid/missing runtime values simply result in no output.
 
-Rules:
+Notes:
 
-- A facet entry must not specify both `value` and `values`.
-- Facet names and values are normalized and deduplicated.
+- String fields support templates/variables (see §12).
+- Numeric fields (`majorVersion`, `minorVersion`) do **not** support templating; values must be JSON numbers.
 
-### 11.6 `documentType.set`
+Supported actions:
 
-Sets `CanonicalDocument.DocumentType`.
+- `authority.add` (string[])
+- `region.add` (string[])
+- `fornat.add` (string[])
+- `category.add` (string[])
+- `series.add` (string[])
+- `instance.add` (string[])
+- `majorVersion.add` (number[])
+- `minorVersion.add` (number[])
 
-- The produced result must be **exactly one value**.
-  - If it produces **zero values**, document type is not set.
-  - If it could produce **multiple values**, the ruleset is rejected at startup.
+Example (string fields):
 
-Startup scalar-safety rules:
+```json
+{
+  "id": "region-and-authority",
+  "if": {
+    "all": [
+      { "path": "properties[\"region\"]", "exists": true },
+      { "path": "properties[\"authority\"]", "exists": true }
+    ]
+  },
+  "then": {
+    "region": { "add": ["$path:properties[\"region\"]"] },
+    "authority": { "add": ["$path:properties[\"authority\"]"] }
+  }
+}
+```
 
-- `$path:` in `documentType.set` must not reference a wildcard path containing `[*]`.
-- `$val` in `documentType.set` is only allowed when the predicate is a **single leaf** and the leaf path does not contain `[*]`.
+Example (numeric fields):
+
+```json
+{
+  "id": "versions",
+  "if": {
+    "all": [
+      { "path": "properties[\"majorVersion\"]", "exists": true },
+      { "path": "properties[\"minorVersion\"]", "exists": true }
+    ]
+  },
+  "then": {
+    "majorVersion": { "add": [10] },
+    "minorVersion": { "add": [1] }
+  }
+}
+```
 
 ---
 

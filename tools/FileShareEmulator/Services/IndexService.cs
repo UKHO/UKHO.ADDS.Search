@@ -174,14 +174,14 @@ namespace FileShareEmulator.Services
                 Value = securityTokenResult.BusinessUnitName ?? string.Empty
             });
 
-            var addItem = new AddItemRequest(batchId.ToString("D"), properties, securityTokenResult.SecurityTokens, batchCreatedOn, files);
+            var indexItem = new IndexRequest(batchId.ToString("D"), properties, securityTokenResult.SecurityTokens, batchCreatedOn, files);
 
             _logger.LogDebug("Created ingestion request for batch {BatchId} with {SecurityTokenCount} security tokens and {FileCount} files.", batchId, securityTokenResult.SecurityTokens.Length, files.Count);
 
             return new IngestionRequest
             {
-                RequestType = IngestionRequestType.AddItem,
-                AddItem = addItem
+                RequestType = IngestionRequestType.IndexItem,
+                IndexItem = indexItem
             };
         }
 

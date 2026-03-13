@@ -6,11 +6,9 @@ namespace UKHO.Search.Ingestion.Pipeline.Documents
 {
     public sealed record CanonicalDocument
     {
-        public string DocumentId { get; init; } = string.Empty;
+        public string Id { get; init; } = string.Empty;
 
-        public string DocumentType { get; set; } = string.Empty;
-
-        public IReadOnlyList<IngestionProperty> Source { get; init; } = Array.Empty<IngestionProperty>();
+        public IndexRequest Source { get; init; } = new();
 
         public DateTimeOffset Timestamp { get; init; }
 
@@ -18,13 +16,34 @@ namespace UKHO.Search.Ingestion.Pipeline.Documents
         public SortedSet<string> Keywords { get; private set; } = new(StringComparer.Ordinal);
 
         [JsonInclude]
+        public SortedSet<string> Authority { get; private set; } = new(StringComparer.Ordinal);
+
+        [JsonInclude]
+        public SortedSet<string> Region { get; private set; } = new(StringComparer.Ordinal);
+
+        [JsonInclude]
+        public SortedSet<string> Fornat { get; private set; } = new(StringComparer.Ordinal);
+
+        [JsonInclude]
+        public SortedSet<int> MajorVersion { get; private set; } = new();
+
+        [JsonInclude]
+        public SortedSet<int> MinorVersion { get; private set; } = new();
+
+        [JsonInclude]
+        public SortedSet<string> Category { get; private set; } = new(StringComparer.Ordinal);
+
+        [JsonInclude]
+        public SortedSet<string> Series { get; private set; } = new(StringComparer.Ordinal);
+
+        [JsonInclude]
+        public SortedSet<string> Instance { get; private set; } = new(StringComparer.Ordinal);
+
+        [JsonInclude]
         public string SearchText { get; private set; } = string.Empty;
 
         [JsonInclude]
         public string Content { get; private set; } = string.Empty;
-
-        [JsonInclude]
-        public SortedDictionary<string, SortedSet<string>> Facets { get; private set; } = new(StringComparer.Ordinal);
 
         [JsonInclude]
         public List<GeoPolygon> GeoPolygons { get; private set; } = new();
@@ -38,6 +57,86 @@ namespace UKHO.Search.Ingestion.Pipeline.Documents
             }
 
             Keywords.Add(normalized);
+        }
+
+        public void AddAuthority(string? authority)
+        {
+            AddNormalizedStringValue(Authority, authority);
+        }
+
+        public void SetAuthority(string? authority)
+        {
+            AddAuthority(authority);
+        }
+
+        public void AddRegion(string? region)
+        {
+            AddNormalizedStringValue(Region, region);
+        }
+
+        public void SetRegion(string? region)
+        {
+            AddRegion(region);
+        }
+
+        public void AddFornat(string? fornat)
+        {
+            AddNormalizedStringValue(Fornat, fornat);
+        }
+
+        public void SetFornat(string? fornat)
+        {
+            AddFornat(fornat);
+        }
+
+        public void AddMajorVersion(int? majorVersion)
+        {
+            AddIntValue(MajorVersion, majorVersion);
+        }
+
+        public void SetMajorVersion(int? majorVersion)
+        {
+            AddMajorVersion(majorVersion);
+        }
+
+        public void AddMinorVersion(int? minorVersion)
+        {
+            AddIntValue(MinorVersion, minorVersion);
+        }
+
+        public void SetMinorVersion(int? minorVersion)
+        {
+            AddMinorVersion(minorVersion);
+        }
+
+        public void AddCategory(string? category)
+        {
+            AddNormalizedStringValue(Category, category);
+        }
+
+        public void SetCategory(string? category)
+        {
+            AddCategory(category);
+        }
+
+        public void AddSeries(string? series)
+        {
+            AddNormalizedStringValue(Series, series);
+        }
+
+        public void SetSeries(string? series)
+        {
+            AddSeries(series);
+        }
+
+        public void AddInstance(string? instance)
+        {
+            AddNormalizedStringValue(Instance, instance);
+        }
+
+        public void SetInstance(string? instance)
+        {
+            AddInstance(instance);
         }
 
         public void SetKeyword(string? keyword)
@@ -123,52 +222,14 @@ namespace UKHO.Search.Ingestion.Pipeline.Documents
             AddContent(text);
         }
 
-        public void AddFacetValue(string? name, string? value)
+        public static CanonicalDocument CreateMinimal(string id, IndexRequest source, DateTimeOffset timestamp)
         {
-            var normalizedName = NormalizeToken(name);
-            var normalizedValue = NormalizeToken(value);
-
-            if (normalizedName is null || normalizedValue is null)
-            {
-                return;
-            }
-
-            if (!Facets.TryGetValue(normalizedName, out var values))
-            {
-                values = new SortedSet<string>(StringComparer.Ordinal);
-                Facets.Add(normalizedName, values);
-            }
-
-            values.Add(normalizedValue);
-        }
-
-        public void AddFacetValues(string? name, IEnumerable<string?>? values)
-        {
-            var normalizedName = NormalizeToken(name);
-            if (normalizedName is null)
-            {
-                return;
-            }
-
-            if (values is null)
-            {
-                return;
-            }
-
-            foreach (var value in values)
-            {
-                AddFacetValue(normalizedName, value);
-            }
-        }
-
-        public static CanonicalDocument CreateMinimal(string documentId, IReadOnlyList<IngestionProperty> source, DateTimeOffset timestamp)
-        {
-            ArgumentException.ThrowIfNullOrWhiteSpace(documentId);
+            ArgumentException.ThrowIfNullOrWhiteSpace(id);
             ArgumentNullException.ThrowIfNull(source);
 
             return new CanonicalDocument
             {
-                DocumentId = documentId,
+                Id = id,
                 Source = source,
                 Timestamp = timestamp
             };
@@ -202,6 +263,27 @@ namespace UKHO.Search.Ingestion.Pipeline.Documents
 
             return value.Trim()
                         .ToLowerInvariant();
+        }
+
+        private static void AddNormalizedStringValue(SortedSet<string> target, string? value)
+        {
+            var normalized = NormalizeToken(value);
+            if (normalized is null)
+            {
+                return;
+            }
+
+            target.Add(normalized);
+        }
+
+        private static void AddIntValue(SortedSet<int> target, int? value)
+        {
+            if (!value.HasValue)
+            {
+                return;
+            }
+
+            target.Add(value.Value);
         }
     }
 }

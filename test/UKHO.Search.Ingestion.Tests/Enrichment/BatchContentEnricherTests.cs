@@ -30,11 +30,11 @@ namespace UKHO.Search.Ingestion.Tests.Enrichment
             var enricher = new BatchContentEnricher(downloader, Array.Empty<IBatchContentHandler>(), NullLogger<BatchContentEnricher>.Instance);
 
             var request = CreateAddRequest("batch-1");
-            var document = CanonicalDocument.CreateMinimal("doc-1", request.AddItem!.Properties, request.AddItem.Timestamp);
+            var document = CanonicalDocument.CreateMinimal("doc-1", request.IndexItem!, request.IndexItem.Timestamp);
 
             await enricher.TryBuildEnrichmentAsync(request, document, CancellationToken.None);
 
-            calls.ShouldBe(new[] { request.AddItem!.Id });
+            calls.ShouldBe(new[] { request.IndexItem!.Id });
             document.Content.ShouldBeEmpty();
             document.Keywords.ShouldBeEmpty();
         }
@@ -53,7 +53,7 @@ namespace UKHO.Search.Ingestion.Tests.Enrichment
             var enricher = new BatchContentEnricher(downloader, new[] { handler }, NullLogger<BatchContentEnricher>.Instance);
 
             var request = CreateAddRequest("batch-nested-catalog");
-            var document = CanonicalDocument.CreateMinimal("doc-1", request.AddItem!.Properties, request.AddItem.Timestamp);
+            var document = CanonicalDocument.CreateMinimal("doc-1", request.IndexItem!, request.IndexItem.Timestamp);
 
             await enricher.TryBuildEnrichmentAsync(request, document, CancellationToken.None);
         }
@@ -79,7 +79,7 @@ namespace UKHO.Search.Ingestion.Tests.Enrichment
             var enricher = new BatchContentEnricher(downloader, new[] { handler }, NullLogger<BatchContentEnricher>.Instance);
 
             var request = CreateAddRequest("batch-single-nested-zip");
-            var document = CanonicalDocument.CreateMinimal("doc-1", request.AddItem!.Properties, request.AddItem.Timestamp);
+            var document = CanonicalDocument.CreateMinimal("doc-1", request.IndexItem!, request.IndexItem.Timestamp);
 
             await enricher.TryBuildEnrichmentAsync(request, document, CancellationToken.None);
 
@@ -115,7 +115,7 @@ namespace UKHO.Search.Ingestion.Tests.Enrichment
             var enricher = new BatchContentEnricher(downloader, new[] { handler }, NullLogger<BatchContentEnricher>.Instance);
 
             var request = CreateAddRequest("batch-multi-nested-zip");
-            var document = CanonicalDocument.CreateMinimal("doc-1", request.AddItem!.Properties, request.AddItem.Timestamp);
+            var document = CanonicalDocument.CreateMinimal("doc-1", request.IndexItem!, request.IndexItem.Timestamp);
 
             await enricher.TryBuildEnrichmentAsync(request, document, CancellationToken.None);
 
@@ -135,7 +135,7 @@ namespace UKHO.Search.Ingestion.Tests.Enrichment
             var enricher = new BatchContentEnricher(downloader, Array.Empty<IBatchContentHandler>(), NullLogger<BatchContentEnricher>.Instance);
 
             var request = CreateAddRequest("batch-corrupt-nested-zip");
-            var document = CanonicalDocument.CreateMinimal("doc-1", request.AddItem!.Properties, request.AddItem.Timestamp);
+            var document = CanonicalDocument.CreateMinimal("doc-1", request.IndexItem!, request.IndexItem.Timestamp);
 
             var ex = await Should.ThrowAsync<InvalidOperationException>(() => enricher.TryBuildEnrichmentAsync(request, document, CancellationToken.None));
             ex.Message.ShouldContain("nested.zip");
@@ -148,7 +148,7 @@ namespace UKHO.Search.Ingestion.Tests.Enrichment
             var enricher = new BatchContentEnricher(downloader, Array.Empty<IBatchContentHandler>(), NullLogger<BatchContentEnricher>.Instance);
 
             var request = CreateAddRequest("batch-2");
-            var document = CanonicalDocument.CreateMinimal("doc-1", request.AddItem!.Properties, request.AddItem.Timestamp);
+            var document = CanonicalDocument.CreateMinimal("doc-1", request.IndexItem!, request.IndexItem.Timestamp);
 
             await Should.ThrowAsync<InvalidOperationException>(() => enricher.TryBuildEnrichmentAsync(request, document, CancellationToken.None));
         }
@@ -162,7 +162,7 @@ namespace UKHO.Search.Ingestion.Tests.Enrichment
             var enricher = new BatchContentEnricher(downloader, Array.Empty<IBatchContentHandler>(), NullLogger<BatchContentEnricher>.Instance);
 
             var request = CreateAddRequest("batch-3");
-            var document = CanonicalDocument.CreateMinimal("doc-1", request.AddItem!.Properties, request.AddItem.Timestamp);
+            var document = CanonicalDocument.CreateMinimal("doc-1", request.IndexItem!, request.IndexItem.Timestamp);
 
             await Should.ThrowAsync<InvalidDataException>(() => enricher.TryBuildEnrichmentAsync(request, document, CancellationToken.None));
         }
@@ -181,7 +181,7 @@ namespace UKHO.Search.Ingestion.Tests.Enrichment
             var enricher = new BatchContentEnricher(downloader, new[] { handler }, NullLogger<BatchContentEnricher>.Instance);
 
             var request = CreateAddRequest("batch-4");
-            var document = CanonicalDocument.CreateMinimal("doc-1", request.AddItem!.Properties, request.AddItem.Timestamp);
+            var document = CanonicalDocument.CreateMinimal("doc-1", request.IndexItem!, request.IndexItem.Timestamp);
 
             await enricher.TryBuildEnrichmentAsync(request, document, CancellationToken.None);
 
@@ -203,7 +203,7 @@ namespace UKHO.Search.Ingestion.Tests.Enrichment
             var enricher = new BatchContentEnricher(downloader, new[] { handler }, NullLogger<BatchContentEnricher>.Instance);
 
             var request = CreateAddRequest("batch-6-case-insensitive");
-            var document = CanonicalDocument.CreateMinimal("doc-1", request.AddItem!.Properties, request.AddItem.Timestamp);
+            var document = CanonicalDocument.CreateMinimal("doc-1", request.IndexItem!, request.IndexItem.Timestamp);
 
             await enricher.TryBuildEnrichmentAsync(request, document, CancellationToken.None);
 
@@ -226,7 +226,7 @@ namespace UKHO.Search.Ingestion.Tests.Enrichment
             var enricher = new BatchContentEnricher(downloader, new[] { handler }, NullLogger<BatchContentEnricher>.Instance);
 
             var request = CreateAddRequest(batchId);
-            var document = CanonicalDocument.CreateMinimal("doc-1", request.AddItem!.Properties, request.AddItem.Timestamp);
+            var document = CanonicalDocument.CreateMinimal("doc-1", request.IndexItem!, request.IndexItem.Timestamp);
 
             await enricher.TryBuildEnrichmentAsync(request, document, CancellationToken.None);
 
@@ -240,8 +240,8 @@ namespace UKHO.Search.Ingestion.Tests.Enrichment
 
         private static IngestionRequest CreateAddRequest(string batchId)
         {
-            var add = new AddItemRequest(batchId, Array.Empty<IngestionProperty>(), new[] { "t1" }, DateTimeOffset.UnixEpoch, new IngestionFileList());
-            return new IngestionRequest(IngestionRequestType.AddItem, add, null, null, null);
+            var add = new IndexRequest(batchId, Array.Empty<IngestionProperty>(), new[] { "t1" }, DateTimeOffset.UnixEpoch, new IngestionFileList());
+            return new IngestionRequest(IngestionRequestType.IndexItem, add, null, null);
         }
 
         private static byte[] CreateZipBytes(IReadOnlyDictionary<string, byte[]> entries)

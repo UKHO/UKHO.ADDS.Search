@@ -5,8 +5,7 @@ namespace UKHO.Search.Ingestion.Requests
     [JsonConverter(typeof(JsonStringEnumConverter))]
     public enum IngestionRequestType
     {
-        AddItem,
-        UpdateItem,
+        IndexItem,
         DeleteItem,
         UpdateAcl
     }

@@ -27,7 +27,7 @@ namespace UKHO.Search.Ingestion.Tests.Rules
                 new IngestionFile("f1", 1, DateTimeOffset.UtcNow, "app/s63")
             });
 
-            var document = CanonicalDocument.CreateMinimal("doc-1", request.AddItem!.Properties, request.AddItem.Timestamp);
+            var document = CanonicalDocument.CreateMinimal("doc-1", request.IndexItem!, request.IndexItem.Timestamp);
             engine.Apply("file-share", request, document);
 
             document.Keywords.ShouldContain("exchange-set");
@@ -47,36 +47,12 @@ namespace UKHO.Search.Ingestion.Tests.Rules
                 new IngestionProperty { Name = "abcdef", Type = IngestionPropertyType.String, Value = "a value" }
             ], new IngestionFileList());
 
-            var document = CanonicalDocument.CreateMinimal("doc-2", request.AddItem!.Properties, request.AddItem.Timestamp);
+            var document = CanonicalDocument.CreateMinimal("doc-2", request.IndexItem!, request.IndexItem.Timestamp);
             engine.Apply("file-share", request, document);
 
             document.Keywords.ShouldContain("key1");
             document.Keywords.ShouldContain("key2");
         }
-
-        [Fact]
-        public void Property_abcdef_exists_adds_facet_with_path_value()
-        {
-            using var temp = new TempRulesRoot();
-            temp.WriteRulesFile(GetExampleRulesJson());
-
-            using var provider = CreateProvider(temp.RootPath);
-            var engine = provider.GetRequiredService<IIngestionRulesEngine>();
-
-            var request = CreateRequest("doc-3", [
-                new IngestionProperty { Name = "abcdef", Type = IngestionPropertyType.String, Value = "another" }
-            ], new IngestionFileList());
-
-            var document = CanonicalDocument.CreateMinimal("doc-3", request.AddItem!.Properties, request.AddItem.Timestamp);
-            engine.Apply("file-share", request, document);
-
-            document.Facets.ShouldContainKey("facet 1");
-            document.Facets["facet 1"]
-                    .ShouldBe(new[] { "another" });
-            document.Keywords.ShouldNotContain("key1");
-            document.Keywords.ShouldNotContain("key2");
-        }
-
         private static ServiceProvider CreateProvider(string contentRootPath)
         {
             var services = new ServiceCollection();
@@ -90,9 +66,9 @@ namespace UKHO.Search.Ingestion.Tests.Rules
 
         private static IngestionRequest CreateRequest(string id, IReadOnlyList<IngestionProperty> properties, IngestionFileList files)
         {
-            var addItem = new AddItemRequest(id, properties, ["token"], DateTimeOffset.UtcNow, files);
+            var indexRequest = new IndexRequest(id, properties, ["token"], DateTimeOffset.UtcNow, files);
 
-            return new IngestionRequest(IngestionRequestType.AddItem, addItem, null, null, null);
+            return new IngestionRequest(IngestionRequestType.IndexItem, indexRequest, null, null);
         }
 
         private static string GetExampleRulesJson()
@@ -123,23 +99,6 @@ namespace UKHO.Search.Ingestion.Tests.Rules
                            },
                            "then": {
                              "keywords": { "add": ["key1", "key2"] }
-                           }
-                         },
-                         {
-                           "id": "prop-abcdef-facet",
-                           "description": "When properties.abcdef exists, add facet 1 with that value",
-                           "enabled": true,
-                           "if": {
-                             "all": [
-                               { "path": "properties[\"abcdef\"]", "exists": true }
-                             ]
-                           },
-                           "then": {
-                             "facets": {
-                               "add": [
-                                 { "name": "facet 1", "value": "$path:properties[\"abcdef\"]" }
-                               ]
-                             }
                            }
                          }
                        ]

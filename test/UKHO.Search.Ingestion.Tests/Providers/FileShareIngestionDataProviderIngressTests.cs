@@ -14,7 +14,7 @@ namespace UKHO.Search.Ingestion.Tests.Providers
         {
             var provider = new FileShareIngestionDataProvider(1, NullLogger<FileShareIngestionDataProvider>.Instance);
 
-            var request = new IngestionRequest(IngestionRequestType.AddItem, new AddItemRequest("doc-1", Array.Empty<IngestionProperty>(), new[] { "t1" }, DateTimeOffset.UnixEpoch, new IngestionFileList()), null, null, null);
+            var request = new IngestionRequest(IngestionRequestType.IndexItem, new IndexRequest("doc-1", Array.Empty<IngestionProperty>(), new[] { "t1" }, DateTimeOffset.UnixEpoch, new IngestionFileList()), null, null);
 
             var envelope = new Envelope<IngestionRequest>("doc-1", request);
 
@@ -38,7 +38,7 @@ namespace UKHO.Search.Ingestion.Tests.Providers
         {
             var provider = new FileShareIngestionDataProvider(1, NullLogger<FileShareIngestionDataProvider>.Instance);
 
-            var request = new IngestionRequest(IngestionRequestType.AddItem, new AddItemRequest("doc-1", Array.Empty<IngestionProperty>(), new[] { "t1" }, DateTimeOffset.UnixEpoch, new IngestionFileList()), null, null, null);
+            var request = new IngestionRequest(IngestionRequestType.IndexItem, new IndexRequest("doc-1", Array.Empty<IngestionProperty>(), new[] { "t1" }, DateTimeOffset.UnixEpoch, new IngestionFileList()), null, null);
 
             var envelope1 = new Envelope<IngestionRequest>("doc-1", request);
             var envelope2 = new Envelope<IngestionRequest>("doc-2", request);

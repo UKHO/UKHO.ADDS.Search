@@ -61,12 +61,7 @@ namespace UKHO.Search.Ingestion.Providers.FileShare.Pipeline.Nodes
             var request = envelope.Payload;
 
             var present = 0;
-            if (request.AddItem is not null)
-            {
-                present++;
-            }
-
-            if (request.UpdateItem is not null)
+            if (request.IndexItem is not null)
             {
                 present++;
             }
@@ -83,7 +78,7 @@ namespace UKHO.Search.Ingestion.Providers.FileShare.Pipeline.Nodes
 
             if (present != 1)
             {
-                error = CreateValidationError("PAYLOAD_ONEOF", "IngestionRequest must contain exactly one of AddItem, UpdateItem, DeleteItem, UpdateAcl.");
+                error = CreateValidationError("PAYLOAD_ONEOF", "IngestionRequest must contain exactly one of IndexItem, DeleteItem, UpdateAcl.");
                 return false;
             }
 
@@ -91,45 +86,23 @@ namespace UKHO.Search.Ingestion.Providers.FileShare.Pipeline.Nodes
 
             switch (request.RequestType)
             {
-                case IngestionRequestType.AddItem:
-                    if (request.AddItem is null)
+                case IngestionRequestType.IndexItem:
+                    if (request.IndexItem is null)
                     {
-                        error = CreateValidationError("ADD_MISSING", "RequestType is AddItem but AddItem payload is missing.");
+                        error = CreateValidationError("INDEX_MISSING", "RequestType is IndexItem but IndexItem payload is missing.");
                         return false;
                     }
 
-                    id = request.AddItem.Id;
+                    id = request.IndexItem.Id;
                     if (string.IsNullOrWhiteSpace(id))
                     {
-                        error = CreateValidationError("ID_EMPTY", "AddItem.Id must be non-empty.");
+                        error = CreateValidationError("ID_EMPTY", "IndexItem.Id must be non-empty.");
                         return false;
                     }
 
-                    if (!HasValidSecurityTokens(request.AddItem.SecurityTokens))
+                    if (!HasValidSecurityTokens(request.IndexItem.SecurityTokens))
                     {
-                        error = CreateValidationError("TOKENS_INVALID", "AddItem.SecurityTokens must be non-empty and cannot contain blank tokens.");
-                        return false;
-                    }
-
-                    break;
-
-                case IngestionRequestType.UpdateItem:
-                    if (request.UpdateItem is null)
-                    {
-                        error = CreateValidationError("UPDATE_MISSING", "RequestType is UpdateItem but UpdateItem payload is missing.");
-                        return false;
-                    }
-
-                    id = request.UpdateItem.Id;
-                    if (string.IsNullOrWhiteSpace(id))
-                    {
-                        error = CreateValidationError("ID_EMPTY", "UpdateItem.Id must be non-empty.");
-                        return false;
-                    }
-
-                    if (!HasValidSecurityTokens(request.UpdateItem.SecurityTokens))
-                    {
-                        error = CreateValidationError("TOKENS_INVALID", "UpdateItem.SecurityTokens must be non-empty and cannot contain blank tokens.");
+                        error = CreateValidationError("TOKENS_INVALID", "IndexItem.SecurityTokens must be non-empty and cannot contain blank tokens.");
                         return false;
                     }
 

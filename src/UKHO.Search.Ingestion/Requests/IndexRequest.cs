@@ -3,9 +3,9 @@ using System.Text.Json.Serialization;
 
 namespace UKHO.Search.Ingestion.Requests
 {
-    public sealed record UpdateItemRequest : IJsonOnDeserialized
+    public sealed record IndexRequest : IJsonOnDeserialized
     {
-        public UpdateItemRequest(string id, IReadOnlyList<IngestionProperty> properties, string[] securityTokens, DateTimeOffset timestamp, IngestionFileList files)
+        public IndexRequest(string id, IReadOnlyList<IngestionProperty> properties, string[] securityTokens, DateTimeOffset timestamp, IngestionFileList files)
         {
             Id = id;
             Properties = properties;
@@ -16,7 +16,7 @@ namespace UKHO.Search.Ingestion.Requests
             Validate();
         }
 
-        public UpdateItemRequest()
+        public IndexRequest()
         {
         }
 
@@ -53,37 +53,37 @@ namespace UKHO.Search.Ingestion.Requests
         {
             if (string.IsNullOrWhiteSpace(Id))
             {
-                throw new JsonException("UpdateItemRequest.Id is required.");
+                throw new JsonException("IndexRequest.Id is required.");
             }
 
             if (Properties is null)
             {
-                throw new JsonException("UpdateItemRequest.Properties cannot be null.");
+                throw new JsonException("IndexRequest.Properties cannot be null.");
             }
 
             if (SecurityTokens is null || SecurityTokens.Length == 0)
             {
-                throw new JsonException("UpdateItemRequest.SecurityTokens is required and must be non-empty.");
+                throw new JsonException("IndexRequest.SecurityTokens is required and must be non-empty.");
             }
 
             if (SecurityTokens.Any(string.IsNullOrWhiteSpace))
             {
-                throw new JsonException("UpdateItemRequest.SecurityTokens cannot contain null/empty tokens.");
+                throw new JsonException("IndexRequest.SecurityTokens cannot contain null/empty tokens.");
             }
 
             if (Files is null)
             {
-                throw new JsonException("UpdateItemRequest.Files cannot be null.");
+                throw new JsonException("IndexRequest.Files cannot be null.");
             }
 
             if (Files.Any(f => f is null))
             {
-                throw new JsonException("UpdateItemRequest.Files cannot contain null entries.");
+                throw new JsonException("IndexRequest.Files cannot contain null entries.");
             }
 
             if (Properties.Any(p => string.Equals(p.Name, "Id", StringComparison.OrdinalIgnoreCase)))
             {
-                throw new JsonException("UpdateItemRequest.Properties cannot contain an IngestionProperty named 'Id'. Id is a first-class property.");
+                throw new JsonException("IndexRequest.Properties cannot contain an IngestionProperty named 'Id'. Id is a first-class property.");
             }
 
             var duplicates = Properties.Where(p => !string.IsNullOrWhiteSpace(p.Name))
@@ -92,7 +92,7 @@ namespace UKHO.Search.Ingestion.Requests
 
             if (duplicates is not null)
             {
-                throw new JsonException($"UpdateItemRequest.Properties contains duplicate Name '{duplicates.Key}'. Names are case-insensitive.");
+                throw new JsonException($"IndexRequest.Properties contains duplicate Name '{duplicates.Key}'. Names are case-insensitive.");
             }
         }
     }

@@ -32,15 +32,11 @@ namespace UKHO.Search.Infrastructure.Ingestion.Rules
                 return;
             }
 
-            object? payload = request.AddItem;
-            if (payload is null)
-            {
-                payload = request.UpdateItem;
-            }
+            object? payload = request.IndexItem;
 
             if (payload is null)
             {
-                _logger.LogDebug("Rules engine ignored request type '{RequestType}' for provider '{ProviderName}' (no AddItem/UpdateItem payload).", request.RequestType, providerName);
+                _logger.LogDebug("Rules engine ignored request type '{RequestType}' for provider '{ProviderName}' (no IndexItem payload).", request.RequestType, providerName);
                 return;
             }
 

@@ -66,9 +66,9 @@ namespace UKHO.Search.Ingestion.Tests.Rules
                 var rulesEnricher = enrichers.Single(x => string.Equals(x.GetType()
                                                                          .Name, "IngestionRulesEnricher", StringComparison.Ordinal));
 
-                var request = new IngestionRequest(IngestionRequestType.AddItem, new AddItemRequest("doc-1", Array.Empty<IngestionProperty>(), new[] { "t1" }, DateTimeOffset.UnixEpoch, new IngestionFileList()), null, null, null);
+                var request = new IngestionRequest(IngestionRequestType.IndexItem, new IndexRequest("doc-1", Array.Empty<IngestionProperty>(), new[] { "t1" }, DateTimeOffset.UnixEpoch, new IngestionFileList()), null, null);
 
-                var doc = CanonicalDocument.CreateMinimal("doc-1", request.AddItem!.Properties, request.AddItem.Timestamp);
+                var doc = CanonicalDocument.CreateMinimal("doc-1", request.IndexItem!, request.IndexItem.Timestamp);
 
                 await rulesEnricher.TryBuildEnrichmentAsync(request, doc, CancellationToken.None);
 

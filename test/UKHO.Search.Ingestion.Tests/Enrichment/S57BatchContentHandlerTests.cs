@@ -15,8 +15,8 @@ namespace UKHO.Search.Ingestion.Tests.Enrichment
         {
             var handler = new S57BatchContentHandler(NullLogger<S57BatchContentHandler>.Instance);
 
-            var doc = CanonicalDocument.CreateMinimal("doc-1", Array.Empty<IngestionProperty>(), DateTimeOffset.UtcNow);
-            var request = new IngestionRequest(IngestionRequestType.AddItem, new AddItemRequest("doc-1", new List<IngestionProperty>(), new[] { "t1" }, DateTimeOffset.UtcNow, new IngestionFileList()), null, null, null);
+            var doc = CanonicalDocument.CreateMinimal("doc-1", new IndexRequest("doc-1", Array.Empty<IngestionProperty>(), ["t"], DateTimeOffset.UtcNow, new IngestionFileList()), DateTimeOffset.UtcNow);
+            var request = new IngestionRequest(IngestionRequestType.IndexItem, new IndexRequest("doc-1", new List<IngestionProperty>(), new[] { "t1" }, DateTimeOffset.UtcNow, new IngestionFileList()), null, null);
 
             var fixturePath = FindFixturePath("sample.000");
             var paths = new[] { fixturePath };

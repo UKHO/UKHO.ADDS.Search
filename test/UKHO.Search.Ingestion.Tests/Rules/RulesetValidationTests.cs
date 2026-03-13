@@ -157,38 +157,6 @@ namespace UKHO.Search.Ingestion.Tests.Rules
             ex.Errors.ShouldContain(x => x.Contains("Unsupported selector", StringComparison.OrdinalIgnoreCase));
         }
 
-        [Fact]
-        public void Facets_add_value_and_values_together_fails_validation()
-        {
-            using var temp = new TempRulesRoot();
-            temp.WriteRulesFile("""
-                                {
-                                  "schemaVersion": "1.0",
-                                  "rules": {
-                                    "file-share": [
-                                      {
-                                        "id": "facet-bad",
-                                        "if": { "any": [ { "path": "id", "exists": true } ] },
-                                        "then": {
-                                          "facets": {
-                                            "add": [
-                                              { "name": "facet1", "value": "a", "values": [ "b" ] }
-                                            ]
-                                          }
-                                        }
-                                      }
-                                    ]
-                                  }
-                                }
-                                """);
-
-            using var provider = CreateProvider(temp.RootPath);
-            var catalog = provider.GetRequiredService<IIngestionRulesCatalog>();
-
-            var ex = Should.Throw<IngestionRulesValidationException>(() => catalog.EnsureLoaded());
-            ex.Errors.ShouldContain(x => x.Contains("value", StringComparison.OrdinalIgnoreCase) && x.Contains("values", StringComparison.OrdinalIgnoreCase));
-        }
-
         private static ServiceProvider CreateProvider(string contentRootPath)
         {
             var services = new ServiceCollection();

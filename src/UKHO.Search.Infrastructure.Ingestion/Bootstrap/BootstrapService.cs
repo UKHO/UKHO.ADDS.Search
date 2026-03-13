@@ -111,7 +111,6 @@ namespace UKHO.Search.Infrastructure.Ingestion.Bootstrap
             }
 
             EnsureHasType(fields, "documentId", "keyword");
-            EnsureHasType(fields, "documentType", "keyword");
             EnsureHasType(fields, "keywords", "keyword");
 
             // Default dynamic mapping typically creates a keyword multi-field; the canonical mapping intentionally does not.

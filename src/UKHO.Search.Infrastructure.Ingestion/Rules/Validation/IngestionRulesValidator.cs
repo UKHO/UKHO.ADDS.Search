@@ -168,68 +168,6 @@ namespace UKHO.Search.Infrastructure.Ingestion.Rules.Validation
 
         private void ValidateThen(ThenDto then, string? ruleId, string providerName, List<string> errors, JsonElement? predicate)
         {
-            ValidateFacetsThen(then, ruleId, providerName, errors);
-            ValidateDocumentTypeThen(then, ruleId, providerName, errors, predicate);
-        }
-
-        private static void ValidateFacetsThen(ThenDto then, string? ruleId, string providerName, List<string> errors)
-        {
-            if (then.Facets?.Add is null)
-            {
-                return;
-            }
-
-            foreach (var add in then.Facets.Add)
-            {
-                if (add is null)
-                {
-                    continue;
-                }
-
-                if (add.Value is not null && add.Values is not null)
-                {
-                    errors.Add($"Rule '{ruleId ?? "<missing id>"}' in provider '{providerName}': facets.add entry must not contain both 'value' and 'values'.");
-                }
-            }
-        }
-
-        private static void ValidateDocumentTypeThen(ThenDto then, string? ruleId, string providerName, List<string> errors, JsonElement? predicate)
-        {
-            var template = then.DocumentType?.Set;
-            if (string.IsNullOrWhiteSpace(template))
-            {
-                return;
-            }
-
-            if (template.Contains("$path:", StringComparison.Ordinal))
-            {
-                foreach (var path in ExtractPathVariables(template))
-                {
-                    if (path.Contains("[*]", StringComparison.Ordinal))
-                    {
-                        errors.Add($"Rule '{ruleId ?? "<missing id>"}' in provider '{providerName}': documentType.set must not reference wildcard paths via $path:. Path '{path}'.");
-                    }
-                }
-            }
-
-            if (!template.Contains("$val", StringComparison.Ordinal))
-            {
-                return;
-            }
-
-            if (predicate is null)
-            {
-                return;
-            }
-
-            var leafCount = 0;
-            var hasWildcard = false;
-            CollectPredicateShape(predicate.Value, ref leafCount, ref hasWildcard);
-
-            if (hasWildcard || leafCount != 1)
-            {
-                errors.Add($"Rule '{ruleId ?? "<missing id>"}' in provider '{providerName}': documentType.set using $val is only allowed when the predicate is a single, non-wildcard leaf.");
-            }
         }
 
         private static IEnumerable<string> ExtractPathVariables(string template)

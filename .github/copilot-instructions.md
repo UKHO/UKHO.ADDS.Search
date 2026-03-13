@@ -53,7 +53,7 @@ Rules:
 - For each new Work Package/piece of work: create a new numbered folder under `./docs/` named `xxx-<descriptor>` (e.g. `001-Initial-Shell`).
 - Store ALL related documents (specs, plans, architecture notes, etc.) together inside that Work Package folder.
 - Do not overwrite prior work packages; create the next incremental folder (e.g. `002-...`).
-- When asked to create specification documents for a work package, create the markdown files in the repository under the requested `docs/xxx-.../` folder (not just provide the content in chat).
+- When asked to create specification documents for a work package, create only one document containing everything needed; do not split across multiple documents. If multiple were created, merge into one and delete the extras.
 - Use appropriate prompt family & phase from `.github/prompts/`.
 
 ## Emulator Constraints

@@ -21,18 +21,17 @@ namespace UKHO.Search.Ingestion.Tests.Enrichment
         {
             var enricher = new BasicEnricher();
 
-            var add = new AddItemRequest("doc-1", [
+            var add = new IndexRequest("doc-1", [
                 new IngestionProperty { Name = "Title", Type = IngestionPropertyType.String, Value = "Hello World" },
                 new IngestionProperty { Name = "Department", Type = IngestionPropertyType.String, Value = "Hydro" }
             ], ["t1"], DateTimeOffset.UnixEpoch, new IngestionFileList());
 
-            var request = new IngestionRequest(IngestionRequestType.AddItem, add, null, null, null);
-            var document = CanonicalDocument.CreateMinimal("doc-1", Array.Empty<IngestionProperty>(), DateTimeOffset.UnixEpoch);
+            var request = new IngestionRequest(IngestionRequestType.IndexItem, add, null, null);
+            var document = CanonicalDocument.CreateMinimal("doc-1", request.IndexItem!, request.IndexItem.Timestamp);
 
             await enricher.TryBuildEnrichmentAsync(request, document);
 
             document.Keywords.ShouldBe(new[] { "hello world", "hydro" });
-            document.Facets.ShouldBeEmpty();
         }
 
         [Fact]
@@ -40,17 +39,16 @@ namespace UKHO.Search.Ingestion.Tests.Enrichment
         {
             var enricher = new BasicEnricher();
 
-            var update = new UpdateItemRequest("doc-1", [
+            var update = new IndexRequest("doc-1", [
                 new IngestionProperty { Name = "Title", Type = IngestionPropertyType.String, Value = "Hello World" }
             ], ["t1"], DateTimeOffset.UnixEpoch, new IngestionFileList());
 
-            var request = new IngestionRequest(IngestionRequestType.UpdateItem, null, update, null, null);
-            var document = CanonicalDocument.CreateMinimal("doc-1", Array.Empty<IngestionProperty>(), DateTimeOffset.UnixEpoch);
+            var request = new IngestionRequest(IngestionRequestType.IndexItem, update, null, null);
+            var document = CanonicalDocument.CreateMinimal("doc-1", request.IndexItem!, request.IndexItem.Timestamp);
 
             await enricher.TryBuildEnrichmentAsync(request, document);
 
             document.Keywords.ShouldBe(new[] { "hello world" });
-            document.Facets.ShouldBeEmpty();
         }
 
         [Fact]
@@ -58,17 +56,16 @@ namespace UKHO.Search.Ingestion.Tests.Enrichment
         {
             var enricher = new BasicEnricher();
 
-            var add = new AddItemRequest("doc-1", [
+            var add = new IndexRequest("doc-1", [
                 new IngestionProperty { Name = "Tags", Type = IngestionPropertyType.StringArray, Value = new[] { "A", "b", "A", "  " } }
             ], ["t1"], DateTimeOffset.UnixEpoch, new IngestionFileList());
 
-            var request = new IngestionRequest(IngestionRequestType.AddItem, add, null, null, null);
-            var document = CanonicalDocument.CreateMinimal("doc-1", Array.Empty<IngestionProperty>(), DateTimeOffset.UnixEpoch);
+            var request = new IngestionRequest(IngestionRequestType.IndexItem, add, null, null);
+            var document = CanonicalDocument.CreateMinimal("doc-1", request.IndexItem!, request.IndexItem.Timestamp);
 
             await enricher.TryBuildEnrichmentAsync(request, document);
 
             document.Keywords.ShouldBe(new[] { "a", "b" });
-            document.Facets.ShouldBeEmpty();
         }
 
         [Fact]
@@ -76,17 +73,16 @@ namespace UKHO.Search.Ingestion.Tests.Enrichment
         {
             var enricher = new BasicEnricher();
 
-            var add = new AddItemRequest("doc-1", [
+            var add = new IndexRequest("doc-1", [
                 new IngestionProperty { Name = "Title", Type = IngestionPropertyType.String, Value = "  " }
             ], ["t1"], DateTimeOffset.UnixEpoch, new IngestionFileList());
 
-            var request = new IngestionRequest(IngestionRequestType.AddItem, add, null, null, null);
-            var document = CanonicalDocument.CreateMinimal("doc-1", Array.Empty<IngestionProperty>(), DateTimeOffset.UnixEpoch);
+            var request = new IngestionRequest(IngestionRequestType.IndexItem, add, null, null);
+            var document = CanonicalDocument.CreateMinimal("doc-1", request.IndexItem!, request.IndexItem.Timestamp);
 
             await enricher.TryBuildEnrichmentAsync(request, document);
 
             document.Keywords.ShouldBeEmpty();
-            document.Facets.ShouldBeEmpty();
         }
 
         [Fact]
@@ -94,17 +90,16 @@ namespace UKHO.Search.Ingestion.Tests.Enrichment
         {
             var enricher = new BasicEnricher();
 
-            var add = new AddItemRequest("doc-1", [
+            var add = new IndexRequest("doc-1", [
                 new IngestionProperty { Name = "Url", Type = IngestionPropertyType.Uri, Value = new Uri("https://Example.COM/Path") }
             ], ["t1"], DateTimeOffset.UnixEpoch, new IngestionFileList());
 
-            var request = new IngestionRequest(IngestionRequestType.AddItem, add, null, null, null);
-            var document = CanonicalDocument.CreateMinimal("doc-1", Array.Empty<IngestionProperty>(), DateTimeOffset.UnixEpoch);
+            var request = new IngestionRequest(IngestionRequestType.IndexItem, add, null, null);
+            var document = CanonicalDocument.CreateMinimal("doc-1", request.IndexItem!, request.IndexItem.Timestamp);
 
             await enricher.TryBuildEnrichmentAsync(request, document);
 
             document.Keywords.ShouldBe(new[] { "https://example.com/path" });
-            document.Facets.ShouldBeEmpty();
         }
 
         [Fact]
@@ -112,18 +107,17 @@ namespace UKHO.Search.Ingestion.Tests.Enrichment
         {
             var enricher = new BasicEnricher();
 
-            var add = new AddItemRequest("doc-1", [
+            var add = new IndexRequest("doc-1", [
                 new IngestionProperty { Name = "Title", Type = IngestionPropertyType.String, Value = "Alpha" },
                 new IngestionProperty { Name = "Department", Type = IngestionPropertyType.String, Value = "ALPHA" }
             ], ["t1"], DateTimeOffset.UnixEpoch, new IngestionFileList());
 
-            var request = new IngestionRequest(IngestionRequestType.AddItem, add, null, null, null);
-            var document = CanonicalDocument.CreateMinimal("doc-1", Array.Empty<IngestionProperty>(), DateTimeOffset.UnixEpoch);
+            var request = new IngestionRequest(IngestionRequestType.IndexItem, add, null, null);
+            var document = CanonicalDocument.CreateMinimal("doc-1", request.IndexItem!, request.IndexItem.Timestamp);
 
             await enricher.TryBuildEnrichmentAsync(request, document);
 
             document.Keywords.ShouldBe(new[] { "alpha" });
-            document.Facets.ShouldBeEmpty();
         }
     }
 }

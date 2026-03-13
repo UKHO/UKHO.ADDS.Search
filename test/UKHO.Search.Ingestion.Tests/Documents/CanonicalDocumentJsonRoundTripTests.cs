@@ -13,19 +13,16 @@ namespace UKHO.Search.Ingestion.Tests.Documents
         public void CanonicalDocument_round_trips_via_system_text_json()
         {
             var timestamp = new DateTimeOffset(2024, 01, 02, 03, 04, 05, TimeSpan.Zero);
-            var source = new[]
+            var source = new IndexRequest("doc-1", new[]
             {
                 new IngestionProperty { Name = "Category", Type = IngestionPropertyType.String, Value = "A" }
-            };
+            }, ["t"], timestamp, new IngestionFileList());
 
             var doc = CanonicalDocument.CreateMinimal("doc-1", source, timestamp);
-            doc.DocumentType = "type-x";
             doc.AddKeyword("Alpha");
             doc.AddKeyword("BETA");
             doc.AddSearchText("Hello WORLD");
             doc.AddContent("Hello BODY");
-            doc.AddFacetValue("Category", "A");
-            doc.AddFacetValue("Category", "B");
             doc.AddGeoPolygon(GeoPolygon.Create(new[]
             {
                 GeoCoordinate.Create(0d, 0d),
@@ -38,7 +35,7 @@ namespace UKHO.Search.Ingestion.Tests.Documents
 
             using var parsed = JsonDocument.Parse(json);
             parsed.RootElement.GetProperty("Source")
-                  .ValueKind.ShouldBe(JsonValueKind.Array);
+                  .ValueKind.ShouldBe(JsonValueKind.Object);
             parsed.RootElement.GetProperty("Timestamp")
                   .ValueKind.ShouldBe(JsonValueKind.String);
             parsed.RootElement.GetProperty("Keywords")
@@ -47,11 +44,6 @@ namespace UKHO.Search.Ingestion.Tests.Documents
                   .ValueKind.ShouldBe(JsonValueKind.String);
             parsed.RootElement.GetProperty("Content")
                   .ValueKind.ShouldBe(JsonValueKind.String);
-            parsed.RootElement.GetProperty("Facets")
-                  .ValueKind.ShouldBe(JsonValueKind.Object);
-            parsed.RootElement.GetProperty("Facets")
-                  .GetProperty("category")
-                  .ValueKind.ShouldBe(JsonValueKind.Array);
 
             parsed.RootElement.GetProperty("GeoPolygons")
                   .ValueKind.ShouldBe(JsonValueKind.Array);
@@ -59,22 +51,19 @@ namespace UKHO.Search.Ingestion.Tests.Documents
             var roundTripped = JsonSerializer.Deserialize<CanonicalDocument>(json);
             roundTripped.ShouldNotBeNull();
 
-            roundTripped!.DocumentId.ShouldBe("doc-1");
-            roundTripped.DocumentType.ShouldBe("type-x");
-            roundTripped.Source.Count.ShouldBe(1);
-            roundTripped.Source[0]
+            roundTripped!.Id.ShouldBe("doc-1");
+            roundTripped.Source.Properties.Count.ShouldBe(1);
+            roundTripped.Source.Properties[0]
                         .Name.ShouldBe("Category");
-            roundTripped.Source[0]
+            roundTripped.Source.Properties[0]
                         .Type.ShouldBe(IngestionPropertyType.String);
-            roundTripped.Source[0]
+            roundTripped.Source.Properties[0]
                         .Value.ShouldBe("A");
             roundTripped.Timestamp.ShouldBe(timestamp);
 
             roundTripped.Keywords.ShouldBe(new[] { "alpha", "beta" });
             roundTripped.SearchText.ShouldBe("hello world");
             roundTripped.Content.ShouldBe("hello body");
-            roundTripped.Facets["category"]
-                        .ShouldBe(new[] { "a", "b" });
 
             roundTripped.GeoPolygons.Count.ShouldBe(1);
             roundTripped.GeoPolygons[0].Rings.Count.ShouldBe(1);

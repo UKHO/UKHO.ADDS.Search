@@ -11,10 +11,10 @@ using Xunit;
 
 namespace UKHO.Search.Ingestion.Tests.Rules
 {
-    public sealed class RulesEnginePayloadSelectionRegressionTests
+    public sealed class RulesEngineIndexItemPayloadRegressionTests
     {
         [Fact]
-        public void AddItem_is_preferred_when_both_AddItem_and_UpdateItem_are_present()
+        public void IndexItem_payload_is_used_for_rule_evaluation()
         {
             using var temp = new TempRulesRoot();
             temp.WriteRulesFile("""
@@ -38,12 +38,11 @@ namespace UKHO.Search.Ingestion.Tests.Rules
 
             var request = new IngestionRequest
             {
-                RequestType = IngestionRequestType.AddItem,
-                AddItem = new AddItemRequest("add-id", Array.Empty<IngestionProperty>(), new[] { "t1" }, DateTimeOffset.UnixEpoch, new IngestionFileList()),
-                UpdateItem = new UpdateItemRequest("update-id", Array.Empty<IngestionProperty>(), new[] { "t1" }, DateTimeOffset.UnixEpoch, new IngestionFileList())
+                RequestType = IngestionRequestType.IndexItem,
+                IndexItem = new IndexRequest("add-id", Array.Empty<IngestionProperty>(), new[] { "t1" }, DateTimeOffset.UnixEpoch, new IngestionFileList())
             };
 
-            var document = CanonicalDocument.CreateMinimal("doc-1", Array.Empty<IngestionProperty>(), DateTimeOffset.UnixEpoch);
+            var document = CanonicalDocument.CreateMinimal("doc-1", new IndexRequest("doc-1", Array.Empty<IngestionProperty>(), ["t"], DateTimeOffset.UnixEpoch, new IngestionFileList()), DateTimeOffset.UnixEpoch);
 
             engine.Apply("file-share", request, document);
 
@@ -51,7 +50,7 @@ namespace UKHO.Search.Ingestion.Tests.Rules
         }
 
         [Fact]
-        public void UpdateItem_is_used_when_AddItem_is_absent()
+        public void IndexItem_payload_enrichment_populates_new_fields_on_the_canonical_document()
         {
             using var temp = new TempRulesRoot();
             temp.WriteRulesFile("""
@@ -60,10 +59,19 @@ namespace UKHO.Search.Ingestion.Tests.Rules
                                   "rules": {
                                     "file-share": [
                                       {
-                                        "id": "payload-selection-update",
+                                        "id": "additional-fields",
                                         "enabled": true,
-                                        "if": { "id": "update-id" },
-                                        "then": { "keywords": { "add": [ "matched" ] } }
+                                        "if": { "id": "doc-1" },
+                                        "then": {
+                                          "authority": { "add": [ "UKHO" ] },
+                                          "region": { "add": [ "$path:properties[\"region\"]" ] },
+                                          "fornat": { "add": [ "PDF" ] },
+                                          "majorVersion": { "add": [ 2 ] },
+                                          "minorVersion": { "add": [ 10 ] },
+                                          "category": { "add": [ "Charts" ] },
+                                          "series": { "add": [ "A" ] },
+                                          "instance": { "add": [ "1" ] }
+                                        }
                                       }
                                     ]
                                   }
@@ -73,14 +81,29 @@ namespace UKHO.Search.Ingestion.Tests.Rules
             using var provider = CreateProvider(temp.RootPath);
             var engine = provider.GetRequiredService<IIngestionRulesEngine>();
 
-            var update = new UpdateItemRequest("update-id", Array.Empty<IngestionProperty>(), new[] { "t1" }, DateTimeOffset.UnixEpoch, new IngestionFileList());
-            var request = new IngestionRequest(IngestionRequestType.UpdateItem, null, update, null, null);
+            var request = new IngestionRequest
+            {
+                RequestType = IngestionRequestType.IndexItem,
+                IndexItem = new IndexRequest(
+                    "doc-1",
+                    new[] { new IngestionProperty { Name = "region", Type = IngestionPropertyType.String, Value = "Europe" } },
+                    new[] { "t1" },
+                    DateTimeOffset.UnixEpoch,
+                    new IngestionFileList())
+            };
 
-            var document = CanonicalDocument.CreateMinimal("doc-1", Array.Empty<IngestionProperty>(), DateTimeOffset.UnixEpoch);
+            var document = CanonicalDocument.CreateMinimal("doc-1", request.IndexItem!, request.IndexItem.Timestamp);
 
             engine.Apply("file-share", request, document);
 
-            document.Keywords.ShouldContain("matched");
+            document.Authority.ShouldBe(new[] { "ukho" });
+            document.Region.ShouldBe(new[] { "europe" });
+            document.Fornat.ShouldBe(new[] { "pdf" });
+            document.MajorVersion.ShouldBe(new[] { 2 });
+            document.MinorVersion.ShouldBe(new[] { 10 });
+            document.Category.ShouldBe(new[] { "charts" });
+            document.Series.ShouldBe(new[] { "a" });
+            document.Instance.ShouldBe(new[] { "1" });
         }
 
         private static ServiceProvider CreateProvider(string contentRootPath)

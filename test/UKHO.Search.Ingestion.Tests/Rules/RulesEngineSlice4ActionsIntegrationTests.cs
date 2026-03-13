@@ -48,21 +48,7 @@ namespace UKHO.Search.Ingestion.Tests.Rules
                                       {
                                         "id": "r4",
                                         "if": { "all": [ { "path": "properties[\"abcdef\"]", "exists": true } ] },
-                                        "then": {
-                                          "facets": {
-                                            "add": [
-                                              { "name": "facet 1", "value": "$path:properties[\"abcdef\"]" },
-                                              { "name": "facet 2", "values": [ "$path:files[*].mimeType" ] }
-                                            ]
-                                          }
-                                        }
-                                      },
-                                      {
-                                        "id": "r5",
-                                        "if": { "id": "doc-1" },
-                                        "then": {
-                                          "documentType": { "set": "exchange-$path:id" }
-                                        }
+                                         "then": { }
                                       },
                                       {
                                         "id": "r6",
@@ -87,7 +73,7 @@ namespace UKHO.Search.Ingestion.Tests.Rules
             var engine = provider.GetRequiredService<IIngestionRulesEngine>();
 
             var request = CreateRequest();
-            var document = CanonicalDocument.CreateMinimal("doc-1", request.AddItem!.Properties, request.AddItem.Timestamp);
+            var document = CanonicalDocument.CreateMinimal("doc-1", request.IndexItem!, request.IndexItem.Timestamp);
 
             engine.Apply("file-share", request, document);
 
@@ -100,16 +86,6 @@ namespace UKHO.Search.Ingestion.Tests.Rules
 
             document.SearchText.ShouldBe("first second");
             document.Content.ShouldBe("c1");
-
-            document.Facets.ShouldContainKey("facet 1");
-            document.Facets["facet 1"]
-                    .ShouldBe(new[] { "a value" });
-
-            document.Facets.ShouldContainKey("facet 2");
-            document.Facets["facet 2"]
-                    .ShouldBe(new[] { "app/s63", "text/plain" });
-
-            document.DocumentType.ShouldBe("exchange-doc-1");
         }
 
         private static ServiceProvider CreateProvider(string contentRootPath)
@@ -125,7 +101,7 @@ namespace UKHO.Search.Ingestion.Tests.Rules
 
         private static IngestionRequest CreateRequest()
         {
-            var addItem = new AddItemRequest("doc-1", [
+            var indexRequest = new IndexRequest("doc-1", [
                 new IngestionProperty { Name = "abcdef", Type = IngestionPropertyType.String, Value = "a value" }
             ], ["token"], DateTimeOffset.UtcNow, new IngestionFileList
             {
@@ -133,7 +109,7 @@ namespace UKHO.Search.Ingestion.Tests.Rules
                 new IngestionFile("f2", 1, DateTimeOffset.UtcNow, "text/plain")
             });
 
-            return new IngestionRequest(IngestionRequestType.AddItem, addItem, null, null, null);
+            return new IngestionRequest(IngestionRequestType.IndexItem, indexRequest, null, null);
         }
     }
 }

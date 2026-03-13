@@ -10,7 +10,7 @@ namespace UKHO.Search.Ingestion.Tests.Rules
         [Fact]
         public void Resolve_id_returns_payload_id()
         {
-            var payload = CreateAddItem();
+            var payload = CreateIndexRequest();
             var resolver = new IngestionRulesPathResolver();
 
             resolver.Resolve(payload, "id")
@@ -20,7 +20,7 @@ namespace UKHO.Search.Ingestion.Tests.Rules
         [Fact]
         public void Resolve_files_wildcard_mimetype_returns_all_values()
         {
-            var payload = CreateAddItem();
+            var payload = CreateIndexRequest();
             var resolver = new IngestionRulesPathResolver();
 
             resolver.Resolve(payload, "files[*].mimeType")
@@ -30,7 +30,7 @@ namespace UKHO.Search.Ingestion.Tests.Rules
         [Fact]
         public void Resolve_properties_dot_name_returns_value()
         {
-            var payload = CreateAddItem();
+            var payload = CreateIndexRequest();
             var resolver = new IngestionRulesPathResolver();
 
             resolver.Resolve(payload, "properties.abcdef")
@@ -40,16 +40,16 @@ namespace UKHO.Search.Ingestion.Tests.Rules
         [Fact]
         public void Resolve_properties_bracket_name_returns_value()
         {
-            var payload = CreateAddItem();
+            var payload = CreateIndexRequest();
             var resolver = new IngestionRulesPathResolver();
 
             resolver.Resolve(payload, "properties[\"abcdef\"]")
                     .ShouldBe(new[] { "a value" });
         }
 
-        private static AddItemRequest CreateAddItem()
+        private static IndexRequest CreateIndexRequest()
         {
-            return new AddItemRequest("doc-1", [
+            return new IndexRequest("doc-1", [
                 new IngestionProperty { Name = "abcdef", Type = IngestionPropertyType.String, Value = "a value" }
             ], ["token"], DateTimeOffset.UtcNow, new IngestionFileList
             {

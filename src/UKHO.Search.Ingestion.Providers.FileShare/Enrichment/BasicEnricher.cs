@@ -13,7 +13,7 @@ namespace UKHO.Search.Ingestion.Providers.FileShare.Enrichment
             ArgumentNullException.ThrowIfNull(request);
             ArgumentNullException.ThrowIfNull(document);
 
-            var properties = request.AddItem?.Properties ?? request.UpdateItem?.Properties;
+            var properties = request.IndexItem?.Properties;
             if (properties is null || properties.Count == 0)
             {
                 return Task.CompletedTask;

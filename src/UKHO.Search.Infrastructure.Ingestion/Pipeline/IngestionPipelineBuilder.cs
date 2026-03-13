@@ -149,9 +149,9 @@ namespace UKHO.Search.Infrastructure.Ingestion.Pipeline
                 }
             };
 
-            var updateItem = new UpdateItemRequest($"doc-{sequence % 8}", properties, tokens, DateTimeOffset.UnixEpoch, new IngestionFileList());
+            var updateItem = new IndexRequest($"doc-{sequence % 8}", properties, tokens, DateTimeOffset.UnixEpoch, new IngestionFileList());
 
-            return new IngestionRequest(IngestionRequestType.UpdateItem, null, updateItem, null, null);
+            return new IngestionRequest(IngestionRequestType.IndexItem, updateItem, null, null);
         }
     }
 }

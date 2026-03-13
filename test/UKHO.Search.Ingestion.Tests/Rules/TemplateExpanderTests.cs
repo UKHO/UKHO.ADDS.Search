@@ -11,7 +11,7 @@ namespace UKHO.Search.Ingestion.Tests.Rules
         [Fact]
         public void Val_variable_expands_to_all_values()
         {
-            var payload = CreateAddItem();
+            var payload = CreateIndexRequest();
             var resolver = new IngestionRulesPathResolver();
             var expander = new IngestionRulesTemplateExpander();
             var context = new TemplateContext(payload, resolver, ["a", "b"]);
@@ -25,7 +25,7 @@ namespace UKHO.Search.Ingestion.Tests.Rules
         [Fact]
         public void Path_variable_expands_to_resolved_values()
         {
-            var payload = CreateAddItem();
+            var payload = CreateIndexRequest();
             var resolver = new IngestionRulesPathResolver();
             var expander = new IngestionRulesTemplateExpander();
             var context = new TemplateContext(payload, resolver, ["ignored"]);
@@ -39,7 +39,7 @@ namespace UKHO.Search.Ingestion.Tests.Rules
         [Fact]
         public void Unknown_or_empty_variables_produce_no_values()
         {
-            var payload = CreateAddItem();
+            var payload = CreateIndexRequest();
             var resolver = new IngestionRulesPathResolver();
             var expander = new IngestionRulesTemplateExpander();
 
@@ -49,9 +49,9 @@ namespace UKHO.Search.Ingestion.Tests.Rules
                     .ShouldBeEmpty();
         }
 
-        private static AddItemRequest CreateAddItem()
+        private static IndexRequest CreateIndexRequest()
         {
-            return new AddItemRequest("doc-1", [
+            return new IndexRequest("doc-1", [
                 new IngestionProperty { Name = "abcdef", Type = IngestionPropertyType.String, Value = "a value" }
             ], ["token"], DateTimeOffset.UtcNow, new IngestionFileList
             {

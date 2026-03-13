@@ -42,6 +42,7 @@ namespace AppHost
 
             var sqlServer = builder.AddSqlServer(ServiceNames.SqlServer)
                                    .WithLifetime(ContainerLifetime.Persistent)
+                                   .WithDataVolume()
                                    .AddDatabase(StorageNames.FileShareEmulatorDatabase);
 
             switch (runMode)

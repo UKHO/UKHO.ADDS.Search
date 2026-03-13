@@ -27,7 +27,7 @@ namespace UKHO.Search.Ingestion.Providers.FileShare.Enrichment.Handlers
                 return Task.FromCanceled(cancellationToken);
             }
 
-            var batchId = request.AddItem?.Id ?? request.UpdateItem?.Id;
+            var batchId = request.IndexItem?.Id;
             var fileCount = paths is ICollection<string> c ? c.Count : paths.Count();
 
             var datasets = S57DatasetGrouper.GroupDatasets(paths);

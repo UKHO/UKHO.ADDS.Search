@@ -454,12 +454,10 @@ The canonical search document should be stable across all ingestion sources.
 ```json
 {
   "documentId": "...",
-  "documentType": "...",
   "source": { },
   "normalized": { },
   "descriptions": { },
   "search": { },
-  "facets": { },
   "quality": { },
   "provenance": { }
 }
@@ -477,19 +475,7 @@ Stable unique identifier for the canonical record.
 - unique across reprocessing
 - suitable as Elasticsearch `_id`
 
-## 2. `documentType`
-
-High-level business classification, such as:
-
-- `shipment-event`
-- `declaration`
-- `case-file`
-- `submission`
-- `notice`
-
-This should be a low-cardinality `keyword` field.
-
-## 3. `source`
+## 2. `source`
 
 Contains preserved raw material and extraction summaries.
 

@@ -8,8 +8,8 @@ namespace UKHO.Search.Infrastructure.Ingestion.Rules.Validation
     {
         private static readonly Type[] _payloadTypes =
         [
-            typeof(AddItemRequest),
-            typeof(UpdateItemRequest)
+            typeof(IndexRequest),
+            typeof(IndexRequest)
         ];
 
         public bool TryValidate(string path, out string? error)

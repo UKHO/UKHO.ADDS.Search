@@ -91,22 +91,11 @@ namespace UKHO.Search.Ingestion.Providers.FileShare.Pipeline.Nodes
 
             switch (request.RequestType)
             {
-                case IngestionRequestType.AddItem:
+                case IngestionRequestType.IndexItem:
                 {
-                    if (request.AddItem is null)
+                    if (request.IndexItem is null)
                     {
-                        throw new InvalidOperationException("AddItem payload missing.");
-                    }
-
-                    var doc = _canonicalBuilder.BuildForUpsert(documentId, request);
-                    return new UpsertOperation(documentId, doc);
-                }
-
-                case IngestionRequestType.UpdateItem:
-                {
-                    if (request.UpdateItem is null)
-                    {
-                        throw new InvalidOperationException("UpdateItem payload missing.");
+                        throw new InvalidOperationException("IndexItem payload missing.");
                     }
 
                     var doc = _canonicalBuilder.BuildForUpsert(documentId, request);
