@@ -1,0 +1,114 @@
+# Implementation Plan
+
+## Facet discovery (nested key/value) – end-to-end delivery
+
+- [ ] Work Item 1: Add nested facets field to the canonical index and ingest it
+  - **Purpose**: Enable Elasticsearch to aggregate across facet `name/value` pairs without knowing facet names up front by indexing facets as a `nested` collection.
+  - **Acceptance Criteria**:
+    - Canonical index mapping includes a `nested` facets field with `name` and `value` as `keyword`.
+    - Ingestion/indexing outputs the nested facet entries derived from the existing canonical facet dictionary.
+    - Index bootstrapping and integration tests validate the mapping.
+  - **Definition of Done**:
+    - Code implemented (index mapping + indexing transform)
+    - Unit/integration tests passing
+    - Logging & error handling added where relevant
+    - Documentation updated (this plan + spec referenced)
+    - Can execute end-to-end via: run AppHost, ingest one document, inspect index mapping and stored document JSON
+  - [ ] Task 1.1: Extend canonical index mapping
+    - [ ] Step 1: Update `src/UKHO.Search.Infrastructure.Ingestion/Elastic/CanonicalIndexDefinition.cs` to add a new `nested` field (e.g., `facetEntries`) with properties `name` and `value` mapped as `keyword`.
+    - [ ] Step 2: Keep the existing `facets` dynamic-object mapping for backward compatibility during rollout (timeboxed; removal as a later cleanup).
+    - [ ] Step 3: Update/extend existing index definition tests to assert `facetEntries` mapping exists and is `nested`.
+  - [ ] Task 1.2: Transform canonical facets into nested entries at index time
+    - [ ] Step 1: Locate the bulk indexing/serialization layer that writes `CanonicalDocument` into Elasticsearch.
+    - [ ] Step 2: Implement a transform that flattens `CanonicalDocument.Facets` into `facetEntries: [{ name, value }]`.
+    - [ ] Step 3: Ensure facet name/value normalization rules remain consistent (lowercase, trimmed) with existing `CanonicalDocument` behavior.
+    - [ ] Step 4: Add unit tests covering deterministic ordering and correct flattening for multiple names/values.
+  - **Files**:
+    - `src/UKHO.Search.Infrastructure.Ingestion/Elastic/CanonicalIndexDefinition.cs`: Add `nested` mapping for `facetEntries`.
+    - `test/.../CanonicalIndexDefinitionTests.cs` (existing): Assert `facetEntries` mapping.
+    - `src/...` indexing pipeline file(s): Add transform to emit `facetEntries`.
+    - `test/...` new/existing tests: Validate transform behavior.
+  - **Work Item Dependencies**: None.
+  - **Run / Verification Instructions**:
+    - `dotnet run --project src/Hosts/AppHost/AppHost.csproj`
+    - In Kibana Dev Tools: `GET <indexName>/_mapping` and verify `facetEntries` is `nested`.
+    - In Kibana Dev Tools: `GET <indexName>/_search?size=1` and verify documents include `facetEntries`.
+  - **User Instructions**:
+    - Ensure Elasticsearch/Kibana is running via AppHost.
+
+- [ ] Work Item 2: Return discovered facets (names + value counts) from the Query Service
+  - **Purpose**: Provide the UI with a complete facet panel for a query in the initial response, independent of hit paging.
+  - **Acceptance Criteria**:
+    - Query Service issues a nested aggregation over `facetEntries` that returns facet names and value buckets with counts.
+    - Response DTO includes facet results in a UI-friendly structure.
+    - Integration tests validate aggregation parsing and response shape.
+  - **Definition of Done**:
+    - Query request -> Elasticsearch -> response includes `hits` and `facets` results
+    - Tests passing
+    - Logging & error handling added
+    - Can execute end-to-end via: run QueryServiceHost, issue a query, observe facet results in response
+  - [ ] Task 2.1: Add aggregation to query client
+    - [ ] Step 1: Locate the Elasticsearch query client in `src/Hosts/QueryServiceHost` (or underlying `UKHO.Search.Infrastructure.*` query project).
+    - [ ] Step 2: Add nested aggregation:
+      - nested path: `facetEntries`
+      - `terms` on `facetEntries.name`
+      - sub-`terms` on `facetEntries.value`
+    - [ ] Step 3: Apply configurable limits for facet-name buckets and value buckets.
+    - [ ] Step 4: Add `track_total_hits` if needed for UI paging.
+  - [ ] Task 2.2: Parse aggregation results into a response model
+    - [ ] Step 1: Define/extend response DTOs to represent:
+      - facet name
+      - values (value, count)
+    - [ ] Step 2: Implement parsing of nested aggregation results into DTOs.
+    - [ ] Step 3: Add guardrails for empty/missing aggregations.
+  - [ ] Task 2.3: Tests
+    - [ ] Step 1: Add unit tests for aggregation parsing using a representative Elasticsearch response sample.
+    - [ ] Step 2: Add an integration test (if available) that queries a test index with known facet entries and asserts returned facet shapes.
+  - **Files**:
+    - `src/Hosts/QueryServiceHost/Services/IQueryUiSearchClient.cs`: Extend interface to return facets.
+    - `src/Hosts/QueryServiceHost/...` implementation: Add nested aggs and parse.
+    - `src/Hosts/QueryServiceHost/Models/QueryRequest.cs`: Add request-level configuration for facet limits if required.
+    - `src/Hosts/QueryServiceHost/Models/...Response*.cs`: Add/extend response DTO.
+    - `test/...Query...Tests.cs`: Add/extend tests.
+  - **Work Item Dependencies**:
+    - Depends on Work Item 1 (index contains nested `facetEntries`).
+  - **Run / Verification Instructions**:
+    - `dotnet run --project src/Hosts/QueryServiceHost/QueryServiceHost.csproj`
+    - Call the query endpoint (existing route) with a query that matches multiple providers/facets.
+    - Verify response includes facet names and value counts without paging.
+
+- [ ] Work Item 3: Wire facets into the Blazor UI facet panel from the Query Service response
+  - **Purpose**: Ensure the UI facet panel is driven by aggregation results (complete for the query) rather than inferred from paged hits.
+  - **Acceptance Criteria**:
+    - UI renders facet categories and values from the Query Service response.
+    - Facets remain stable when user pages hits.
+    - Selecting a facet filter re-queries and returns updated facet counts (standard faceted navigation behavior).
+  - **Definition of Done**:
+    - End-to-end UI flow works (query -> results + facets -> apply facet -> updated results + facets)
+    - Tests passing (Playwright preferred)
+    - Documentation updated
+    - Can execute end-to-end via: run UI host and interact with facet panel
+  - [ ] Task 3.1: Update UI data contracts and client calls
+    - [ ] Step 1: Identify the Blazor search page/component responsible for rendering facets.
+    - [ ] Step 2: Extend the UI client/service to consume facet results from the Query Service API.
+    - [ ] Step 3: Bind facet rendering to the returned facet model.
+  - [ ] Task 3.2: Facet interaction and state
+    - [ ] Step 1: Ensure selected facet filters are included in subsequent search requests.
+    - [ ] Step 2: Confirm the request triggers recomputation of facet aggregations under the selected filters.
+  - [ ] Task 3.3: Tests
+    - [ ] Step 1: Add/extend Playwright test to validate:
+      - initial query shows facets
+      - pagination doesn’t change available facet categories
+      - applying a facet updates results and facet counts
+  - **Files**:
+    - `src/...` Blazor search UI components: Render facet panel from response.
+    - `src/...` UI API client: Deserialize new facet response.
+    - `test/...` Playwright tests: End-to-end facet behaviour.
+  - **Work Item Dependencies**:
+    - Depends on Work Item 2 (API returns facets).
+  - **Run / Verification Instructions**:
+    - Run required hosts (AppHost or individual services per repo conventions).
+    - Navigate to the search UI, execute a query, verify facet panel completeness and stability across paging.
+
+## Summary
+This plan introduces a nested facet representation (`facetEntries` as `nested` `{ name, value }`) to enable Elasticsearch to discover facet names at query time and compute value counts across the full matched result set (independent of hit paging). It then updates the Query Service to return facets from nested aggregations and finally updates the Blazor UI to render facets from the aggregation response, with vertical-slice work items that each produce demonstrable end-to-end capability.
