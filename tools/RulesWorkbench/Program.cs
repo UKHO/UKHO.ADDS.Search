@@ -1,4 +1,5 @@
 using RulesWorkbench.Components;
+using UKHO.Search.Configuration;
 
 namespace RulesWorkbench;
 
@@ -11,6 +12,9 @@ public class Program
         // Add services to the container.
         builder.Services.AddRazorComponents()
             .AddInteractiveServerComponents();
+
+        builder.AddSqlServerClient(StorageNames.FileShareEmulatorDatabase);
+        builder.AddAzureBlobServiceClient(ServiceNames.Blobs);
 
         var app = builder.Build();
 
