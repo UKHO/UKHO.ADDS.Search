@@ -152,12 +152,14 @@ The standard Blazor project at `tools/RulesWorkbench` will already exist and be 
 - The workbench SHALL run evaluation against the current in-memory rule draft (not persisted).
 - The engine SHALL produce outputs consistent with ingestion.
 
+- After the user clicks the "Run" action, the UI SHALL display the transformed `CanonicalDocument` output as JSON somewhere in the results area.
+
 ### 3.5 Evaluation reporting
 
 - The results UI SHALL display:
   - which rules matched/fired
   - ordering of application
-  - resulting `CanonicalDocument` state
+  - resulting `CanonicalDocument` state (including a JSON representation)
 
 - The report SHOULD include action summaries per rule (counts of values added).
 - The report MAY include detailed predicate trace (future enhancement).
