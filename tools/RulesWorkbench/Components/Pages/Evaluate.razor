@@ -1,0 +1,549 @@
+@page "/evaluate"
+@rendermode InteractiveServer
+
+@using System.Text.Encodings.Web
+@using System.Text.Json
+@using RulesWorkbench.Contracts
+@using RulesWorkbench.Services
+
+@inject EvaluationPayloadMapper PayloadMapper
+@inject RuleEvaluationService RuleEvaluationService
+@inject BatchPayloadLoader BatchPayloadLoader
+@inject IClipboardService ClipboardService
+
+<PageTitle>Evaluate</PageTitle>
+
+<h1>Evaluate</h1>
+
+<p class="text-muted">
+    Build an evaluation payload using form inputs or edit the raw JSON. Validation errors are shown below.
+</p>
+
+<div class="mb-3">
+    <button class="btn btn-sm btn-outline-primary" @onclick="CopyPayloadJsonAsync" disabled="@string.IsNullOrWhiteSpace(PayloadJson)">Copy payload JSON</button>
+    <button class="btn btn-sm btn-primary ms-2" @onclick="RunAsync" disabled="@(!CanRun)">Run</button>
+    <button class="btn btn-sm btn-outline-secondary ms-2" @onclick="ResetPayload">Reset</button>
+</div>
+
+<div class="card mb-3">
+    <div class="card-body">
+        <h3 class="h5">Load from batchId</h3>
+        <div class="row g-2 align-items-end">
+            <div class="col-12 col-md-8">
+                <label class="form-label">batchId</label>
+                <input class="form-control" placeholder="GUID" @bind="BatchId" @bind:event="oninput" />
+            </div>
+            <div class="col-12 col-md-4">
+                <button class="btn btn-outline-primary w-100" @onclick="LoadFromBatchAsync" disabled="@IsLoadingBatch">@LoadBatchButtonText</button>
+            </div>
+        </div>
+
+        @if (!string.IsNullOrWhiteSpace(BatchLoadMessage))
+        {
+            <div class="mt-2 alert @BatchLoadAlertClass" role="alert">
+                @BatchLoadMessage
+            </div>
+        }
+    </div>
+</div>
+
+@if (Errors.Count > 0)
+{
+    <div class="alert alert-danger" role="alert">
+        <ul class="mb-0">
+            @foreach (var error in Errors)
+            {
+                <li>@error</li>
+            }
+        </ul>
+    </div>
+}
+
+@if (RunError is not null)
+{
+    <div class="alert alert-danger" role="alert">
+        @RunError
+    </div>
+}
+
+@if (Report is not null)
+{
+    <hr />
+    <h2>Results</h2>
+
+    @if (Report.ValidationErrors.Count > 0)
+    {
+        <div class="alert alert-danger" role="alert">
+            <strong>Validation errors</strong>
+            <ul class="mb-0">
+                @foreach (var err in Report.ValidationErrors)
+                {
+                    <li>@err</li>
+                }
+            </ul>
+        </div>
+    }
+
+    @if (Report.RuntimeWarnings.Count > 0)
+    {
+        <div class="alert alert-warning" role="alert">
+            <strong>Warnings</strong>
+            <ul class="mb-0">
+                @foreach (var warn in Report.RuntimeWarnings)
+                {
+                    <li>@warn</li>
+                }
+            </ul>
+        </div>
+    }
+
+    <div class="mb-2">
+        <button class="btn btn-sm btn-outline-primary" @onclick="CopyCanonicalDocumentJsonAsync" disabled="@string.IsNullOrWhiteSpace(Report.FinalDocumentJson)">Copy CanonicalDocument JSON</button>
+        <button class="btn btn-sm btn-outline-primary ms-2" @onclick="CopyRawReportJsonAsync" disabled="@string.IsNullOrWhiteSpace(RawReportJson)">Copy raw report JSON</button>
+    </div>
+
+    <h3>CanonicalDocument</h3>
+    <JsonEditor Value="Report.FinalDocumentJson" IsReadOnly="true" />
+
+    <details class="mt-3">
+        <summary>Raw report JSON</summary>
+        <div class="mt-2">
+            <JsonEditor Value="RawReportJson" IsReadOnly="true" />
+        </div>
+    </details>
+}
+
+<div class="row">
+    <div class="col-12 col-xl-5">
+        <h3>Form</h3>
+
+        <div class="mb-3">
+            <label class="form-label">Id</label>
+            <input class="form-control" @bind="Payload.Id" @bind:event="oninput" />
+        </div>
+
+        <div class="mb-3">
+            <label class="form-label">Timestamp (optional)</label>
+            <input class="form-control" placeholder="e.g. 2026-01-01T12:34:56Z" @bind="TimestampText" @bind:event="oninput" />
+        </div>
+
+        <h4>Security tokens</h4>
+        @for (var i = 0; i < Payload.SecurityTokens.Count; i++)
+        {
+            <div class="input-group mb-2">
+                <input class="form-control" @bind="Payload.SecurityTokens[i]" @bind:event="oninput" />
+                <button class="btn btn-outline-danger" @onclick="() => RemoveToken(i)" disabled="@(Payload.SecurityTokens.Count == 1)">Remove</button>
+            </div>
+        }
+        <button class="btn btn-sm btn-outline-primary mb-3" @onclick="AddToken">Add token</button>
+
+        <h4>Properties</h4>
+        @for (var i = 0; i < Payload.Properties.Count; i++)
+        {
+            <div class="card mb-2">
+                <div class="card-body">
+                    <div class="row g-2">
+                        <div class="col-12 col-md-4">
+                            <label class="form-label">Name</label>
+                            <input class="form-control" @bind="Payload.Properties[i].Name" @bind:event="oninput" />
+                        </div>
+                        <div class="col-12 col-md-4">
+                            <label class="form-label">Type</label>
+                            <select class="form-select" @bind="Payload.Properties[i].Type">
+                                @foreach (var type in PropertyTypeOptions)
+                                {
+                                    <option value="@type">@type</option>
+                                }
+                            </select>
+                        </div>
+                        <div class="col-12 col-md-4">
+                            <label class="form-label">Value</label>
+                            <input class="form-control" @bind="Payload.Properties[i].Value" @bind:event="oninput" />
+                        </div>
+                    </div>
+
+                    <div class="mt-2">
+                        <button class="btn btn-sm btn-outline-danger" @onclick="() => RemoveProperty(i)">Remove property</button>
+                    </div>
+                </div>
+            </div>
+        }
+        <button class="btn btn-sm btn-outline-primary mb-3" @onclick="AddProperty">Add property</button>
+
+        <h4>Files</h4>
+        @for (var i = 0; i < Payload.Files.Count; i++)
+        {
+            <div class="card mb-2">
+                <div class="card-body">
+                    <div class="row g-2">
+                        <div class="col-12 col-md-4">
+                            <label class="form-label">Filename</label>
+                            <input class="form-control" @bind="Payload.Files[i].Filename" @bind:event="oninput" />
+                        </div>
+                        <div class="col-6 col-md-2">
+                            <label class="form-label">Size</label>
+                            <input class="form-control" type="number" @bind="Payload.Files[i].Size" />
+                        </div>
+                        <div class="col-12 col-md-3">
+                            <label class="form-label">Timestamp (optional)</label>
+                            <input class="form-control" placeholder="e.g. 2026-01-01T12:34:56Z" @bind="FilesTimestampText[i]" @bind:event="oninput" @onchange="() => ApplyFilesTimestampText(i)" />
+                        </div>
+                        <div class="col-12 col-md-3">
+                            <label class="form-label">MimeType</label>
+                            <input class="form-control" @bind="Payload.Files[i].MimeType" @bind:event="oninput" />
+                        </div>
+                    </div>
+
+                    <div class="mt-2">
+                        <button class="btn btn-sm btn-outline-danger" @onclick="() => RemoveFile(i)">Remove file</button>
+                    </div>
+                </div>
+            </div>
+        }
+        <button class="btn btn-sm btn-outline-primary" @onclick="AddFile">Add file</button>
+    </div>
+
+    <div class="col-12 col-xl-7">
+        <h3>Raw JSON</h3>
+
+        <JsonEditor Value="PayloadJson" ValueChanged="OnPayloadJsonChanged" IsReadOnly="false" />
+
+        <div class="mt-2">
+            <button class="btn btn-sm btn-outline-secondary" @onclick="ApplyJsonToForm" disabled="@(!IsJsonValid)">Apply JSON to form</button>
+            <span class="ms-2 text-muted">@JsonStatusText</span>
+        </div>
+    </div>
+</div>
+
+@code
+{
+    private static readonly IReadOnlyList<string> PropertyTypeOptions = new[]
+    {
+        "String",
+        "Text",
+        "Integer",
+        "Double",
+        "Decimal",
+        "Boolean",
+        "DateTime",
+        "StringArray",
+    };
+
+    private static readonly JsonSerializerOptions JsonOptions = new()
+    {
+        WriteIndented = true,
+        Encoder = JavaScriptEncoder.UnsafeRelaxedJsonEscaping,
+    };
+
+    private EvaluationPayloadDto Payload { get; set; } = EvaluationPayloadDto.CreateDefault();
+
+    private string TimestampText { get; set; } = string.Empty;
+
+    private List<string> FilesTimestampText { get; set; } = new();
+
+    private string PayloadJson { get; set; } = string.Empty;
+
+    private bool IsJsonValid { get; set; } = true;
+
+    private string JsonStatusText { get; set; } = string.Empty;
+
+    private List<string> Errors { get; } = new();
+
+    private RuleEvaluationReportDto? Report { get; set; }
+
+    private string RawReportJson { get; set; } = string.Empty;
+
+    private string? RunError { get; set; }
+
+    private bool CanRun => Errors.Count == 0 && IsJsonValid;
+
+    private string BatchId { get; set; } = string.Empty;
+
+    private bool IsLoadingBatch { get; set; }
+
+    private string BatchLoadMessage { get; set; } = string.Empty;
+
+    private string BatchLoadAlertClass { get; set; } = "alert-info";
+
+    private string LoadBatchButtonText => IsLoadingBatch ? "Loading..." : "Load";
+
+    protected override void OnInitialized()
+    {
+        SyncJsonFromPayload();
+        SyncTextFieldsFromPayload();
+        ValidatePayload();
+    }
+
+    private void ResetPayload()
+    {
+        Payload = EvaluationPayloadDto.CreateDefault();
+        BatchId = string.Empty;
+        BatchLoadMessage = string.Empty;
+        SyncJsonFromPayload();
+        SyncTextFieldsFromPayload();
+        ValidatePayload();
+    }
+
+    private async Task LoadFromBatchAsync()
+    {
+        BatchLoadMessage = string.Empty;
+        BatchLoadAlertClass = "alert-info";
+
+        if (string.IsNullOrWhiteSpace(BatchId))
+        {
+            BatchLoadMessage = "Batch id is required.";
+            BatchLoadAlertClass = "alert-danger";
+            return;
+        }
+
+        IsLoadingBatch = true;
+        try
+        {
+            var result = await BatchPayloadLoader.TryLoadAsync(BatchId, CancellationToken.None);
+            if (!result.Found || result.Payload is null)
+            {
+                BatchLoadMessage = result.Error ?? "Batch not found.";
+                BatchLoadAlertClass = "alert-warning";
+                return;
+            }
+
+            Payload = result.Payload;
+            SyncTextFieldsFromPayload();
+            ValidatePayload();
+
+            BatchLoadMessage = "Batch loaded.";
+            BatchLoadAlertClass = "alert-success";
+        }
+        finally
+        {
+            IsLoadingBatch = false;
+        }
+    }
+
+    private async Task CopyPayloadJsonAsync()
+    {
+        if (string.IsNullOrWhiteSpace(PayloadJson))
+        {
+            return;
+        }
+
+        await ClipboardService.CopyTextAsync(PayloadJson);
+    }
+
+    private async Task RunAsync()
+    {
+        RunError = null;
+        Report = null;
+        RawReportJson = string.Empty;
+
+        ValidatePayload();
+        if (!CanRun)
+        {
+            RunError = "Fix validation errors before running evaluation.";
+            return;
+        }
+
+        var (request, validation) = PayloadMapper.TryMapToIndexRequest(Payload);
+        if (!validation.IsValid || request is null)
+        {
+            Errors.Clear();
+            Errors.AddRange(validation.Errors);
+            RunError = "Payload could not be mapped to an IndexRequest.";
+            return;
+        }
+
+        try
+        {
+            Report = await RuleEvaluationService.EvaluateFileShareAsync(request, CancellationToken.None);
+            RawReportJson = JsonSerializer.Serialize(Report, JsonOptions);
+        }
+        catch (Exception ex)
+        {
+            RunError = ex.Message;
+        }
+    }
+
+    private async Task CopyCanonicalDocumentJsonAsync()
+    {
+        if (Report is null || string.IsNullOrWhiteSpace(Report.FinalDocumentJson))
+        {
+            return;
+        }
+
+        await ClipboardService.CopyTextAsync(Report.FinalDocumentJson);
+    }
+
+    private async Task CopyRawReportJsonAsync()
+    {
+        if (string.IsNullOrWhiteSpace(RawReportJson))
+        {
+            return;
+        }
+
+        await ClipboardService.CopyTextAsync(RawReportJson);
+    }
+
+    private void AddToken()
+    {
+        Payload.SecurityTokens.Add(string.Empty);
+        ValidatePayload();
+    }
+
+    private void RemoveToken(int index)
+    {
+        Payload.SecurityTokens.RemoveAt(index);
+        ValidatePayload();
+    }
+
+    private void AddProperty()
+    {
+        Payload.Properties.Add(new EvaluationPayloadPropertyDto());
+        ValidatePayload();
+    }
+
+    private void RemoveProperty(int index)
+    {
+        Payload.Properties.RemoveAt(index);
+        ValidatePayload();
+    }
+
+    private void AddFile()
+    {
+        Payload.Files.Add(new EvaluationPayloadFileDto());
+        FilesTimestampText.Add(string.Empty);
+        ValidatePayload();
+    }
+
+    private void RemoveFile(int index)
+    {
+        Payload.Files.RemoveAt(index);
+        FilesTimestampText.RemoveAt(index);
+        ValidatePayload();
+    }
+
+    private Task OnPayloadJsonChanged(string updated)
+    {
+        PayloadJson = updated;
+
+        IsJsonValid = TryParsePayloadJson(updated, out _, out var jsonErrors);
+        JsonStatusText = IsJsonValid ? "JSON valid" : "JSON invalid";
+
+        if (!IsJsonValid)
+        {
+            Errors.Clear();
+            Errors.AddRange(jsonErrors);
+        }
+
+        return Task.CompletedTask;
+    }
+
+    private void ApplyJsonToForm()
+    {
+        if (!TryParsePayloadJson(PayloadJson, out var parsed, out var jsonErrors) || parsed is null)
+        {
+            Errors.Clear();
+            Errors.AddRange(jsonErrors);
+            return;
+        }
+
+        Payload = parsed;
+        SyncTextFieldsFromPayload();
+        ValidatePayload();
+    }
+
+    private static bool TryParsePayloadJson(string json, out EvaluationPayloadDto? payload, out IReadOnlyList<string> errors)
+    {
+        try
+        {
+            payload = JsonSerializer.Deserialize<EvaluationPayloadDto>(json, JsonOptions);
+            if (payload is null)
+            {
+                errors = new[] { "Payload JSON deserialized as null." };
+                return false;
+            }
+
+            errors = Array.Empty<string>();
+            return true;
+        }
+        catch (JsonException ex)
+        {
+            payload = null;
+            errors = new[] { ex.Message };
+            return false;
+        }
+    }
+
+    private void ValidatePayload()
+    {
+        Errors.Clear();
+
+        if (TryParseTimestamp(TimestampText, out var timestamp))
+        {
+            Payload.Timestamp = timestamp;
+        }
+        else
+        {
+            Payload.Timestamp = null;
+        }
+
+        var result = PayloadMapper.Validate(Payload);
+        if (!result.IsValid)
+        {
+            Errors.AddRange(result.Errors);
+        }
+
+        SyncJsonFromPayload();
+    }
+
+    private void SyncJsonFromPayload()
+    {
+        PayloadJson = JsonSerializer.Serialize(Payload, JsonOptions);
+        IsJsonValid = true;
+        JsonStatusText = "JSON valid";
+    }
+
+    private void SyncTextFieldsFromPayload()
+    {
+        TimestampText = Payload.Timestamp?.ToString("O") ?? string.Empty;
+
+        FilesTimestampText = Payload.Files
+            .Select(f => f.Timestamp?.ToString("O") ?? string.Empty)
+            .ToList();
+    }
+
+    private void ApplyFilesTimestampText(int index)
+    {
+        if (index < 0 || index >= Payload.Files.Count)
+        {
+            return;
+        }
+
+        if (!TryParseTimestamp(FilesTimestampText[index], out var timestamp))
+        {
+            Payload.Files[index] = Payload.Files[index] with { Timestamp = null };
+            ValidatePayload();
+            return;
+        }
+
+        Payload.Files[index] = Payload.Files[index] with { Timestamp = timestamp };
+        ValidatePayload();
+    }
+
+    private static bool TryParseTimestamp(string input, out DateTimeOffset? timestamp)
+    {
+        if (string.IsNullOrWhiteSpace(input))
+        {
+            timestamp = null;
+            return true;
+        }
+
+        if (DateTimeOffset.TryParse(input, out var parsed))
+        {
+            timestamp = parsed;
+            return true;
+        }
+
+        timestamp = null;
+        return false;
+    }
+}

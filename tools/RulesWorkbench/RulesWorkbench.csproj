@@ -21,6 +21,7 @@
 		<ProjectReference Include="..\..\src\Hosts\UKHO.Search.ServiceDefaults\UKHO.Search.ServiceDefaults.csproj" />
 		<ProjectReference Include="..\..\src\UKHO.Search\UKHO.Search.csproj" />
 		<ProjectReference Include="..\..\src\UKHO.Search.Ingestion\UKHO.Search.Ingestion.csproj" />
+        <ProjectReference Include="..\..\src\UKHO.Search.Infrastructure.Ingestion\UKHO.Search.Infrastructure.Ingestion.csproj" />
 	</ItemGroup>
 
  <ItemGroup>

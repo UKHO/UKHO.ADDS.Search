@@ -2,6 +2,7 @@ using RulesWorkbench.Components;
 using RulesWorkbench.Builder;
 using RulesWorkbench.Services;
 using UKHO.Search.Configuration;
+using UKHO.Search.Infrastructure.Ingestion.Injection;
 
 namespace RulesWorkbench;
 
@@ -18,7 +19,12 @@ public class Program
         builder.Services.AddSingleton<RulesSnapshotStore>();
         builder.Services.AddSingleton<IRuleBuilderMapper, RuleBuilderMapper>();
        builder.Services.AddSingleton<IRuleJsonValidator, SystemTextJsonRuleJsonValidator>();
+        builder.Services.AddSingleton<EvaluationPayloadMapper>();
+        builder.Services.AddSingleton<RuleEvaluationService>();
+        builder.Services.AddScoped<BatchPayloadLoader>();
         builder.Services.AddScoped<IClipboardService, BrowserClipboardService>();
+
+        builder.Services.AddIngestionRulesEngine();
 
         builder.AddSqlServerClient(StorageNames.FileShareEmulatorDatabase);
         builder.AddAzureBlobServiceClient(ServiceNames.Blobs);
