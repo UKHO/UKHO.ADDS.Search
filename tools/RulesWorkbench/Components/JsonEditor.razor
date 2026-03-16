@@ -2,7 +2,7 @@
 
 @inject IJSRuntime JsRuntime
 
-<div @ref="_host" style="@HostStyle"></div>
+<div class="json-editor-host" style="@HostStyle" @ref="_host"></div>
 
 @code
 {
@@ -20,7 +20,7 @@
 	public bool IsReadOnly { get; set; }
 
 	[Parameter]
-	public string HostStyle { get; set; } = "height: 70vh; border: 1px solid #dee2e6; border-radius: 0.25rem;";
+ public string HostStyle { get; set; } = "width: 100%; min-height: 70vh; border: 1px solid #dee2e6; border-radius: 0.25rem;";
 
 	[Parameter]
 	public bool EnableFolding { get; set; } = true;
