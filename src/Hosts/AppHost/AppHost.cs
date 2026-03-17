@@ -106,8 +106,8 @@ namespace AppHost
                                                 .WaitFor(sqlServer)
                                                 .WaitFor(storageBlob);
 
-                    // Configuration
-                    if (builder.ExecutionContext.IsRunMode)
+                        // Configuration
+                        if (builder.ExecutionContext.IsRunMode)
                     {
                         builder.AddConfigurationEmulator(ServiceConfiguration.ServiceGroupName, [ingestionService, queryService!], [fileShareEmulator], @"../../../configuration/configuration.json", @"../../../configuration/external-services.json");
                     }
