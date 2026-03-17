@@ -15,6 +15,7 @@
 
   <ItemGroup>
     <InternalsVisibleTo Include="UKHO.ADDS.Aspire.Configuration.Seeder.Tests" />
+    <InternalsVisibleTo Include="UKHO.Aspire.Configuration.Seeder.Tests" />
   </ItemGroup>
 
   <ItemGroup>

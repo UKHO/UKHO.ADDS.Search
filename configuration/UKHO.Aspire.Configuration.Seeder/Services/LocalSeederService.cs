@@ -1,11 +1,15 @@
 ﻿using Azure.Data.AppConfiguration;
 using Microsoft.Extensions.Hosting;
 using Microsoft.Extensions.Logging;
+using UKHO.Aspire.Configuration.Seeder.AdditionalConfiguration;
 
 namespace UKHO.Aspire.Configuration.Seeder.Services
 {
     internal class LocalSeederService : IHostedService
     {
+        private readonly AdditionalConfigurationSeeder _additionalSeeder;
+        private readonly string _additionalConfigurationPath;
+        private readonly string _additionalConfigurationPrefix;
         private readonly string _configFilePath;
         private readonly ConfigurationService _configService;
         private readonly ConfigurationClient _configurationClient;
@@ -14,14 +18,17 @@ namespace UKHO.Aspire.Configuration.Seeder.Services
         private readonly string _serviceName;
         private readonly string _servicesFilePath;
 
-        public LocalSeederService(IHostApplicationLifetime hostApplicationLifetime, ConfigurationService configService, string serviceName, ConfigurationClient configurationClient, string configFilePath, string servicesFilePath, ILogger<LocalSeederService> logger)
+        public LocalSeederService(IHostApplicationLifetime hostApplicationLifetime, ConfigurationService configService, AdditionalConfigurationSeeder additionalSeeder, string serviceName, ConfigurationClient configurationClient, string configFilePath, string servicesFilePath, string additionalConfigurationPath, string additionalConfigurationPrefix, ILogger<LocalSeederService> logger)
         {
             _hostApplicationLifetime = hostApplicationLifetime;
             _configService = configService;
+            _additionalSeeder = additionalSeeder;
             _serviceName = serviceName;
             _configurationClient = configurationClient;
             _configFilePath = configFilePath;
             _servicesFilePath = servicesFilePath;
+            _additionalConfigurationPath = additionalConfigurationPath;
+            _additionalConfigurationPrefix = additionalConfigurationPrefix;
             _logger = logger;
         }
 
@@ -38,7 +45,16 @@ namespace UKHO.Aspire.Configuration.Seeder.Services
 
             try
             {
-                await _configService.SeedConfigurationAsync(AddsEnvironment.Local, _configurationClient, _serviceName, _configFilePath, _servicesFilePath, timeoutCts.Token);
+                await _configService.SeedConfigurationAsync(
+                    AddsEnvironment.Local,
+                    _configurationClient,
+                    _serviceName,
+                    _configFilePath,
+                    _servicesFilePath,
+                    _additionalConfigurationPath,
+                    _additionalConfigurationPrefix,
+                    timeoutCts.Token);
+
                 _logger.LogInformation("Local seeding completed; stopping host.");
             }
             catch (Exception ex)

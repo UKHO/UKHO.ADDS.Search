@@ -4,6 +4,7 @@ using CommandLine;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Hosting;
 using Microsoft.Extensions.Logging;
+using UKHO.Aspire.Configuration.Seeder.AdditionalConfiguration;
 using UKHO.Aspire.Configuration.Seeder.Services;
 
 namespace UKHO.Aspire.Configuration.Seeder
@@ -41,25 +42,29 @@ namespace UKHO.Aspire.Configuration.Seeder
                 try
                 {
                     logger.LogDebug(
-                        "Parsed args. ServiceName={ServiceName}, EnvironmentName={EnvironmentName}, ConfigurationFilePath={ConfigurationFilePath}, ServicesFilePath={ServicesFilePath}, AppConfigServiceUrl={AppConfigServiceUrl}",
+                        "Parsed args. ServiceName={ServiceName}, EnvironmentName={EnvironmentName}, ConfigurationFilePath={ConfigurationFilePath}, ServicesFilePath={ServicesFilePath}, AppConfigServiceUrl={AppConfigServiceUrl}, AdditionalConfigurationPath={AdditionalConfigurationPath}, AdditionalConfigurationPrefix={AdditionalConfigurationPrefix}",
                         parameters.ServiceName,
                         parameters.EnvironmentName,
                         parameters.ConfigurationFilePath,
                         parameters.ServicesFilePath,
-                        parameters.AppConfigServiceUrl);
+                        parameters.AppConfigServiceUrl,
+                        parameters.AdditionalConfigurationPath,
+                        parameters.AdditionalConfigurationPrefix);
 
                     ValidateFilePath(logger, parameters.ConfigurationFilePath, nameof(parameters.ConfigurationFilePath));
                     ValidateFilePath(logger, parameters.ServicesFilePath, nameof(parameters.ServicesFilePath));
                     ValidateUri(logger, parameters.AppConfigServiceUrl, nameof(parameters.AppConfigServiceUrl));
 
-                    var configService = new ConfigurationService(bootstrapLoggerFactory.CreateLogger<ConfigurationService>());
+                    var configService = new ConfigurationService(
+                        bootstrapLoggerFactory.CreateLogger<ConfigurationService>(),
+                        new AdditionalConfigurationSeeder(bootstrapLoggerFactory.CreateLogger<AdditionalConfigurationSeeder>()));
                     var configClient = new ConfigurationClient(new Uri(parameters.AppConfigServiceUrl), new DefaultAzureCredential());
 
                     var addsEnvironment = AddsEnvironment.Parse(parameters.EnvironmentName);
 
                     logger.LogInformation("Seeding configuration. Environment={Environment}, Label={Label}", addsEnvironment, parameters.ServiceName.ToLowerInvariant());
 
-                    await configService.SeedConfigurationAsync(addsEnvironment, configClient, parameters.ServiceName, parameters.ConfigurationFilePath, parameters.ServicesFilePath, CancellationToken.None);
+                    await configService.SeedConfigurationAsync(addsEnvironment, configClient, parameters.ServiceName, parameters.ConfigurationFilePath, parameters.ServicesFilePath, parameters.AdditionalConfigurationPath, parameters.AdditionalConfigurationPrefix, CancellationToken.None);
 
                     logger.LogInformation("Seeding completed successfully.");
 
@@ -95,6 +100,9 @@ namespace UKHO.Aspire.Configuration.Seeder
 
                 var serviceName = builder.Configuration[WellKnownConfigurationName.ServiceName]!;
 
+                var additionalConfigurationPath = builder.Configuration[WellKnownConfigurationName.AdditionalConfigurationPath] ?? string.Empty;
+                var additionalConfigurationPrefix = builder.Configuration[WellKnownConfigurationName.AdditionalConfigurationPrefix] ?? string.Empty;
+
                 logger.LogDebug(
                     "Configuration resolved. ServiceName={ServiceName}, ConfigurationFilePath={ConfigurationFilePath}, ExternalServicesFilePath={ExternalServicesFilePath}",
                     serviceName,
@@ -102,6 +110,7 @@ namespace UKHO.Aspire.Configuration.Seeder
                     serviceFilePath);
 
                 builder.Services.AddSingleton<ConfigurationService>();
+                builder.Services.AddSingleton<AdditionalConfigurationSeeder>();
 
                 builder.Services.AddSingleton(x =>
                 {
@@ -130,16 +139,20 @@ namespace UKHO.Aspire.Configuration.Seeder
                     var factoryLogger = x.GetRequiredService<ILoggerFactory>().CreateLogger("LocalSeederServiceFactory");
                     var hostedLifetime = x.GetRequiredService<IHostApplicationLifetime>();
                     var configService = x.GetRequiredService<ConfigurationService>();
+                    var additionalSeeder = x.GetRequiredService<AdditionalConfigurationSeeder>();
 
                     factoryLogger.LogDebug("Creating LocalSeederService.");
 
                     return new LocalSeederService(
                         hostedLifetime,
                         configService,
+                        additionalSeeder,
                         serviceName,
                         x.GetRequiredService<ConfigurationClient>(),
                         configFilePath,
                         serviceFilePath,
+                        additionalConfigurationPath,
+                        additionalConfigurationPrefix,
                         x.GetRequiredService<ILogger<LocalSeederService>>());
                 });
 
@@ -207,6 +220,12 @@ namespace UKHO.Aspire.Configuration.Seeder
 
             [Value(4, HelpText = "Azure App Configuration Service URL", Required = true)]
             public required string AppConfigServiceUrl { get; set; }
+
+            [Value(5, HelpText = "Additional configuration root directory path", Required = false, Default = "")]
+            public string AdditionalConfigurationPath { get; set; } = string.Empty;
+
+            [Value(6, HelpText = "Additional configuration key prefix", Required = false, Default = "")]
+            public string AdditionalConfigurationPrefix { get; set; } = string.Empty;
         }
     }
 }
