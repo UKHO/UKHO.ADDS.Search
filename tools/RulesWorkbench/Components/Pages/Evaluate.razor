@@ -16,11 +16,11 @@
 <h1>Evaluate</h1>
 
 <p class="text-muted">
-    Build an evaluation payload using form inputs or edit the raw JSON. Validation errors are shown below.
+    Build an evaluation payload using form inputs or edit the rule JSON. Validation errors are shown below.
 </p>
 
 <div class="mb-3">
-    <button type="button" class="btn btn-sm btn-outline-primary" @onclick="CopyPayloadJsonAsync" disabled="@string.IsNullOrWhiteSpace(PayloadJson)">Copy payload JSON</button>
+    <button type="button" class="btn btn-sm btn-outline-primary" @onclick="CopyPayloadJsonAsync" disabled="@string.IsNullOrWhiteSpace(PayloadJson)">Copy rule JSON</button>
     <button type="button" class="btn btn-sm btn-primary ms-2" @onclick="RunAsync" disabled="@(!CanRun)">Run</button>
     <button type="button" class="btn btn-sm btn-outline-secondary ms-2" @onclick="ResetPayload">Reset</button>
 </div>
@@ -285,7 +285,7 @@
     </div>
 
     <div class="col-12 col-xl-7">
-        <h3>Raw JSON</h3>
+        <h3>Rule JSON</h3>
 
         <JsonEditor Value="PayloadJson" ValueChanged="OnPayloadJsonChanged" IsReadOnly="false" />
 
@@ -322,7 +322,7 @@
 
     private List<string> FilesTimestampText { get; set; } = new();
 
-    private string PayloadJson { get; set; } = string.Empty;
+    private string PayloadJson { get; set; } = "RuleJson\n\n{\n  \"rule\": {\n  }\n}";
 
     private bool IsJsonValid { get; set; } = true;
 
