@@ -35,7 +35,22 @@
     {
         if (Module is not null)
         {
-            await Module.DisposeAsync();
+            try
+            {
+                await Module.DisposeAsync();
+            }
+            catch (JSDisconnectedException)
+            {
+                // Circuit is already gone; nothing to clean up in JS.
+            }
+            catch (TaskCanceledException)
+            {
+                // Circuit is tearing down.
+            }
+            catch (ObjectDisposedException)
+            {
+                // JS runtime disposed during shutdown.
+            }
         }
     }
 
@@ -43,9 +58,24 @@
     {
         if (firstRender)
         {
-            Module = await JS.InvokeAsync<IJSObjectReference>("import", "./Components/AzureAnchoredRegion.razor.js");
+            try
+            {
+                Module = await JS.InvokeAsync<IJSObjectReference>("import", "./Components/AzureAnchoredRegion.razor.js");
 
-            await Module.InvokeVoidAsync("anchor", AnchoredRegion, Anchor, HorizontalDefaultPosition, HorizontalInset, HorizontalPositioningMode, HorizontalThreshold, VerticalDefaultPosition, VerticalInset, VerticalPositioningMode, VerticalThreshold);
+                await Module.InvokeVoidAsync("anchor", AnchoredRegion, Anchor, HorizontalDefaultPosition, HorizontalInset, HorizontalPositioningMode, HorizontalThreshold, VerticalDefaultPosition, VerticalInset, VerticalPositioningMode, VerticalThreshold);
+            }
+            catch (JSDisconnectedException)
+            {
+                // The circuit was disconnected while the component was rendering/disposing.
+            }
+            catch (TaskCanceledException)
+            {
+                // The render is being aborted (e.g., navigation away / shutdown).
+            }
+            catch (ObjectDisposedException)
+            {
+                // Component or JS runtime disposed during shutdown.
+            }
         }
     }
 

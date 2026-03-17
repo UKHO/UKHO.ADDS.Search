@@ -114,7 +114,22 @@
     {
         if (Module is not null)
         {
-            await Module.DisposeAsync();
+            try
+            {
+                await Module.DisposeAsync();
+            }
+            catch (JSDisconnectedException)
+            {
+                // Circuit is already gone; nothing to clean up in JS.
+            }
+            catch (TaskCanceledException)
+            {
+                // Circuit is tearing down.
+            }
+            catch (ObjectDisposedException)
+            {
+                // JS runtime disposed during shutdown.
+            }
         }
     }
 
@@ -159,23 +174,38 @@
         {
             if (Trigger is not MouseButton.None)
             {
-                Module = await JS.InvokeAsync<IJSObjectReference>("import", "./Components/AzureMenu.razor.js");
-
-                DotNetHelper = DotNetObjectReference.Create(this);
-
-                if (!string.IsNullOrEmpty(Anchor))
+                try
                 {
-                    switch (Trigger)
+                    Module = await JS.InvokeAsync<IJSObjectReference>("import", "./Components/AzureMenu.razor.js");
+
+                    DotNetHelper = DotNetObjectReference.Create(this);
+
+                    if (!string.IsNullOrEmpty(Anchor))
                     {
-                        case MouseButton.Left:
-                            await Module.InvokeVoidAsync("addEventLeftClick", Anchor, DotNetHelper);
+                        switch (Trigger)
+                        {
+                            case MouseButton.Left:
+                                await Module.InvokeVoidAsync("addEventLeftClick", Anchor, DotNetHelper);
 
-                            break;
-                        case MouseButton.Right:
-                            await Module.InvokeVoidAsync("addEventRightClick", Anchor, DotNetHelper);
+                                break;
+                            case MouseButton.Right:
+                                await Module.InvokeVoidAsync("addEventRightClick", Anchor, DotNetHelper);
 
-                            break;
+                                break;
+                        }
                     }
+                }
+                catch (JSDisconnectedException)
+                {
+                    // The circuit was disconnected while the component was rendering/disposing.
+                }
+                catch (TaskCanceledException)
+                {
+                    // The render is being aborted (e.g., navigation away / shutdown).
+                }
+                catch (ObjectDisposedException)
+                {
+                    // Component or JS runtime disposed during shutdown.
                 }
             }
         }

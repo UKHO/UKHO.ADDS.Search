@@ -3,6 +3,7 @@ using Azure;
 using Azure.Data.AppConfiguration;
 using Microsoft.Extensions.Logging;
 using UKHO.ADDS.Infrastructure.Serialization.Json;
+using UKHO.Aspire.Configuration.Seeder.AdditionalConfiguration;
 using UKHO.Aspire.Configuration.Seeder.Json;
 
 namespace UKHO.Aspire.Configuration.Seeder.Services
@@ -10,16 +11,23 @@ namespace UKHO.Aspire.Configuration.Seeder.Services
     internal class ConfigurationService
     {
         private readonly ILogger<ConfigurationService> _logger;
+        private readonly AdditionalConfigurationSeeder _additionalSeeder;
 
         private static readonly TimeSpan OperationTimeout = TimeSpan.FromSeconds(15);
         private const int MaxAttempts = 8;
 
-        public ConfigurationService(ILogger<ConfigurationService> logger)
+        public ConfigurationService(ILogger<ConfigurationService> logger, AdditionalConfigurationSeeder additionalSeeder)
         {
             _logger = logger;
+            _additionalSeeder = additionalSeeder;
         }
 
         public async Task SeedConfigurationAsync(AddsEnvironment environment, ConfigurationClient configurationClient, string serviceName, string configFilePath, string servicesFilePath, CancellationToken cancellationToken)
+        {
+            await SeedConfigurationAsync(environment, configurationClient, serviceName, configFilePath, servicesFilePath, string.Empty, string.Empty, cancellationToken);
+        }
+
+        public async Task SeedConfigurationAsync(AddsEnvironment environment, ConfigurationClient configurationClient, string serviceName, string configFilePath, string servicesFilePath, string additionalConfigurationPath, string additionalConfigurationPrefix, CancellationToken cancellationToken)
         {
             var label = serviceName.ToLowerInvariant();
 
@@ -64,6 +72,17 @@ namespace UKHO.Aspire.Configuration.Seeder.Services
 
                 configurationSetting = new ConfigurationSetting(key, json, label) { ContentType = MediaTypeNames.Text.Plain };
                 await SetConfigurationSettingWithRetryAsync(configurationClient, configurationSetting, cancellationToken);
+            }
+
+            if (!string.IsNullOrWhiteSpace(additionalConfigurationPath) && !string.IsNullOrWhiteSpace(additionalConfigurationPrefix))
+            {
+                _logger.LogInformation(
+                    "Writing additional configuration from {Path} with prefix {Prefix} (Label={Label}).",
+                    additionalConfigurationPath,
+                    additionalConfigurationPrefix,
+                    label);
+
+                await _additionalSeeder.SeedAsync(configurationClient, label, additionalConfigurationPath, additionalConfigurationPrefix, cancellationToken);
             }
 
             _logger.LogInformation("SeedConfigurationAsync completed.");

@@ -106,10 +106,19 @@ namespace AppHost
                                                 .WaitFor(sqlServer)
                                                 .WaitFor(storageBlob);
 
-                        // Configuration
-                        if (builder.ExecutionContext.IsRunMode)
+                    // Configuration
+                    if (builder.ExecutionContext.IsRunMode)
                     {
-                        builder.AddConfigurationEmulator(ServiceConfiguration.ServiceGroupName, [ingestionService, queryService!], [fileShareEmulator], @"../../../configuration/configuration.json", @"../../../configuration/external-services.json");
+                        var rulesPath = Path.GetFullPath(Path.Combine(builder.Environment.ContentRootPath, "..", "..", "..", "rules"));
+
+                        builder.AddConfigurationEmulator(
+                            ServiceConfiguration.ServiceGroupName,
+                            [ingestionService, queryService!],
+                            [fileShareEmulator],
+                            @"../../../configuration/configuration.json",
+                            @"../../../configuration/external-services.json",
+                            additionalConfigurationPath: rulesPath,
+                            additionalConfigurationPrefix: "rules");
                     }
                     else
                     {

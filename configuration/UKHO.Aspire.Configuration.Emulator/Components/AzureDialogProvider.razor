@@ -14,10 +14,13 @@
 @code {
     private IJSObjectReference? Module { get; set; }
 
+    private bool _isDisposing;
+
     private ICollection<IDialogReference> References { get; } = [];
 
     public void Dispose()
     {
+        _isDisposing = true;
         DialogService.OnDialogClosed -= HandleDialogClosed;
 
         DialogService.OnDialogShown -= HandleDialogShown;
@@ -25,17 +28,45 @@
 
     public async ValueTask DisposeAsync()
     {
+        _isDisposing = true;
+
+        DialogService.OnDialogClosed -= HandleDialogClosed;
+
+        DialogService.OnDialogShown -= HandleDialogShown;
+
         if (Module is not null)
         {
-            await Module.DisposeAsync();
+            try
+            {
+                await Module.DisposeAsync();
+            }
+            catch (JSDisconnectedException)
+            {
+                // Circuit is already gone; nothing to clean up in JS.
+            }
+            catch (TaskCanceledException)
+            {
+                // Circuit is tearing down.
+            }
         }
     }
 
     protected override async Task OnAfterRenderAsync(bool firstRender)
     {
-        if (firstRender)
+        if (firstRender && !_isDisposing)
         {
-            Module = await JS.InvokeAsync<IJSObjectReference>("import", "./Components/AzureDialogProvider.razor.js");
+            try
+            {
+                Module = await JS.InvokeAsync<IJSObjectReference>("import", "./Components/AzureDialogProvider.razor.js");
+            }
+            catch (JSDisconnectedException)
+            {
+                // Circuit disconnected during initial render.
+            }
+            catch (TaskCanceledException)
+            {
+                // Circuit is tearing down.
+            }
         }
     }
 
@@ -48,9 +79,20 @@
 
     private async Task HandleDialogClosed(IDialogReference reference, IDialogResult? result)
     {
-        if (Module is not null)
+        if (Module is not null && !_isDisposing)
         {
-            await Module.InvokeVoidAsync("close", await reference.Element, result);
+            try
+            {
+                await Module.InvokeVoidAsync("close", await reference.Element, result);
+            }
+            catch (JSDisconnectedException)
+            {
+                // Circuit disconnected; ignore.
+            }
+            catch (TaskCanceledException)
+            {
+                // Circuit is tearing down; ignore.
+            }
         }
 
         References.Remove(reference);
@@ -62,9 +104,20 @@
         References.Add(reference);
         StateHasChanged();
 
-        if (Module is not null)
+        if (Module is not null && !_isDisposing)
         {
-            await Module.InvokeVoidAsync("show", await reference.Element);
+            try
+            {
+                await Module.InvokeVoidAsync("show", await reference.Element);
+            }
+            catch (JSDisconnectedException)
+            {
+                // Circuit disconnected; ignore.
+            }
+            catch (TaskCanceledException)
+            {
+                // Circuit is tearing down; ignore.
+            }
         }
     }
 
