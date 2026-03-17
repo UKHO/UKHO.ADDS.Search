@@ -62,7 +62,7 @@ namespace UKHO.Search.Ingestion.Tests.Pipeline
 
             await graph.Supervisor.StartAsync();
 
-            var request = new IngestionRequest(IngestionRequestType.AddItem, new AddItemRequest("doc-1", Array.Empty<IngestionProperty>(), new[] { "t1" }, DateTimeOffset.UnixEpoch, new IngestionFileList()), null, null, null);
+            var request = new IngestionRequest(IngestionRequestType.IndexItem, new IndexRequest("doc-1", Array.Empty<IngestionProperty>(), new[] { "t1" }, DateTimeOffset.UnixEpoch, new IngestionFileList()), null, null);
             await ingress.Writer.WriteAsync(new Envelope<IngestionRequest>("doc-1", request), cts.Token);
             ingress.Writer.TryComplete();
 
@@ -74,7 +74,7 @@ namespace UKHO.Search.Ingestion.Tests.Pipeline
             var op = ackSink.Items.Single()
                             .Payload;
             var upsert = op.ShouldBeOfType<UpsertOperation>();
-            upsert.Document.DocumentId.ShouldBe("doc-1");
+            upsert.Document.Id.ShouldBe("doc-1");
         }
     }
 }

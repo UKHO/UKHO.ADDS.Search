@@ -214,8 +214,7 @@ namespace UKHO.Search.Infrastructure.Ingestion.Queue
         {
             return request.RequestType switch
             {
-                IngestionRequestType.AddItem => request.AddItem?.Id,
-                IngestionRequestType.UpdateItem => request.UpdateItem?.Id,
+                IngestionRequestType.IndexItem => request.IndexItem?.Id,
                 IngestionRequestType.DeleteItem => request.DeleteItem?.Id,
                 IngestionRequestType.UpdateAcl => request.UpdateAcl?.Id,
                 var _ => null

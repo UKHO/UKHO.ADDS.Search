@@ -37,7 +37,7 @@ namespace UKHO.Search.Ingestion.Providers.FileShare.Enrichment.Handlers
 
         private async Task HandleS100Files(string catalogPath, IngestionRequest request, CanonicalDocument document, CancellationToken cancellationToken)
         {
-            var batchId = request.AddItem?.Id ?? request.UpdateItem?.Id;
+            var batchId = request.IndexItem?.Id;
 
             // catalog.xml is present, so this is S-100 data
 
@@ -60,11 +60,6 @@ namespace UKHO.Search.Ingestion.Providers.FileShare.Enrichment.Handlers
                 var productName = root.Element(xc + "productSpecification")
                                       ?.Element(xc + "name")
                                       ?.Value;
-
-                if (!string.IsNullOrWhiteSpace(productName))
-                {
-                    document.DocumentType = productName;
-                }
 
                 if (!IsS101ProductName(productName))
                 {

@@ -10,7 +10,7 @@ namespace UKHO.Search.Ingestion.Tests.Rules
         [Fact]
         public void Resolve_id_returns_payload_id()
         {
-            var payload = CreateAddItem();
+            var payload = CreateIndexRequest();
             var resolver = new IngestionRulesPathResolver();
 
             resolver.Resolve(payload, "id")
@@ -20,7 +20,7 @@ namespace UKHO.Search.Ingestion.Tests.Rules
         [Fact]
         public void Resolve_files_wildcard_mimetype_returns_all_values()
         {
-            var payload = CreateAddItem();
+            var payload = CreateIndexRequest();
             var resolver = new IngestionRulesPathResolver();
 
             resolver.Resolve(payload, "files[*].mimeType")
@@ -30,7 +30,7 @@ namespace UKHO.Search.Ingestion.Tests.Rules
         [Fact]
         public void Resolve_properties_dot_name_returns_value()
         {
-            var payload = CreateAddItem();
+            var payload = CreateIndexRequest();
             var resolver = new IngestionRulesPathResolver();
 
             resolver.Resolve(payload, "properties.abcdef")
@@ -40,18 +40,29 @@ namespace UKHO.Search.Ingestion.Tests.Rules
         [Fact]
         public void Resolve_properties_bracket_name_returns_value()
         {
-            var payload = CreateAddItem();
+            var payload = CreateIndexRequest();
             var resolver = new IngestionRulesPathResolver();
 
             resolver.Resolve(payload, "properties[\"abcdef\"]")
                     .ShouldBe(new[] { "a value" });
         }
 
-        private static AddItemRequest CreateAddItem()
+        [Fact]
+        public void Resolve_properties_bracket_name_normalizes_lookup_key_to_lowercase()
         {
-            return new AddItemRequest("doc-1", [
+            var payload = CreateIndexRequest();
+            var resolver = new IngestionRulesPathResolver();
+
+            resolver.Resolve(payload, "properties[\"AbCdEf\"]")
+                    .ShouldBe(new[] { "a value" });
+        }
+
+        private static IndexRequest CreateIndexRequest()
+        {
+            return new IndexRequest("doc-1", new IngestionPropertyList
+            {
                 new IngestionProperty { Name = "abcdef", Type = IngestionPropertyType.String, Value = "a value" }
-            ], ["token"], DateTimeOffset.UtcNow, new IngestionFileList
+            }, ["token"], DateTimeOffset.UtcNow, new IngestionFileList
             {
                 new IngestionFile("f1", 1, DateTimeOffset.UtcNow, "app/s63"),
                 new IngestionFile("f2", 1, DateTimeOffset.UtcNow, "text/plain")

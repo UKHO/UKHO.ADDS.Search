@@ -7,23 +7,21 @@ namespace UKHO.Search.Infrastructure.Ingestion.Elastic
     {
         public CreateIndexRequestDescriptor Configure(CreateIndexRequestDescriptor descriptor)
         {
-            return descriptor.Mappings(m => m.DynamicTemplates(new[]
-                                             {
-                                                 new KeyValuePair<string, DynamicTemplate>("facets_as_keyword", new DynamicTemplate
-                                                 {
-                                                     PathMatch = new[] { "facets.*" },
-                                                     Mapping = new KeywordProperty()
-                                                 })
-                                             })
-                                             .Properties(p => p.Object("source", o => o.Enabled(false))
+            return descriptor.Mappings(m => m.Properties(p => p.Object("source", o => o.Enabled(false))
                                                                .Keyword("documentId")
-                                                               .Keyword("documentType")
                                                                .Date("timestamp")
                                                                .Keyword("keywords")
+                                                               .Keyword("authority")
+                                                               .Keyword("region")
+                                                               .Keyword("format")
+                                                               .Keyword("majorVersion")
+                                                               .Keyword("minorVersion")
+                                                               .Keyword("category")
+                                                               .Keyword("series")
+                                                               .Keyword("instance")
                                                                .Text("searchText", t => t.Analyzer("english"))
                                                                .Text("content", t => t.Analyzer("english"))
-                                                                .GeoShape("geoPolygons")
-                                                                .Object("facets", o => o.Dynamic(DynamicMapping.True))));
+                                                                .GeoShape("geoPolygons")));
         }
     }
 }

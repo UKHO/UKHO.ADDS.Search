@@ -4,6 +4,8 @@ namespace UKHO.Search.Infrastructure.Ingestion.Rules.Actions
     {
         public int KeywordsAdded { get; set; }
 
+        public int AdditionalFieldValuesAdded { get; set; }
+
         public int SearchTextAdded { get; set; }
 
         public int ContentAdded { get; set; }
@@ -15,6 +17,7 @@ namespace UKHO.Search.Infrastructure.Ingestion.Rules.Actions
         public void Add(ActionApplySummary other)
         {
             KeywordsAdded += other.KeywordsAdded;
+            AdditionalFieldValuesAdded += other.AdditionalFieldValuesAdded;
             SearchTextAdded += other.SearchTextAdded;
             ContentAdded += other.ContentAdded;
             FacetValuesAdded += other.FacetValuesAdded;

@@ -17,68 +17,79 @@ namespace UKHO.Search.Ingestion.Tests.Rules
         public void Matching_rules_apply_all_actions_with_templating_and_dedupe()
         {
             using var temp = new TempRulesRoot();
-            temp.WriteRulesFile("""
+
+            temp.WriteRuleFile("file-share", "r1", """
                                 {
                                   "schemaVersion": "1.0",
-                                  "rules": {
-                                    "file-share": [
-                                      {
-                                        "id": "r1",
-                                        "if": { "id": "doc-1" },
-                                        "then": {
-                                          "keywords": { "add": [ "Key1", "$nope" ] },
-                                          "searchText": { "add": [ "First" ] },
-                                          "content": { "add": [ "C1" ] }
-                                        }
-                                      },
-                                      {
-                                        "id": "r2",
-                                        "if": { "id": "doc-1" },
-                                        "then": {
-                                          "searchText": { "add": [ "First", "Second" ] }
-                                        }
-                                      },
-                                      {
-                                        "id": "r3",
-                                        "if": { "files[*].mimeType": "app/s63" },
-                                        "then": {
-                                          "keywords": { "add": [ "mime-$val" ] }
-                                        }
-                                      },
-                                      {
-                                        "id": "r4",
-                                        "if": { "all": [ { "path": "properties[\"abcdef\"]", "exists": true } ] },
-                                        "then": {
-                                          "facets": {
-                                            "add": [
-                                              { "name": "facet 1", "value": "$path:properties[\"abcdef\"]" },
-                                              { "name": "facet 2", "values": [ "$path:files[*].mimeType" ] }
-                                            ]
-                                          }
-                                        }
-                                      },
-                                      {
-                                        "id": "r5",
-                                        "if": { "id": "doc-1" },
-                                        "then": {
-                                          "documentType": { "set": "exchange-$path:id" }
-                                        }
-                                      },
-                                      {
-                                        "id": "r6",
-                                        "if": { "all": [ { "path": "files[*].mimeType", "exists": true } ] },
-                                        "then": {
-                                          "keywords": { "add": [ "all-$val" ] }
-                                        }
-                                      }
-                                    ],
-                                    "other-provider": [
-                                      {
-                                        "id": "other",
-                                        "if": { "id": "doc-1" },
-                                        "then": { "keywords": { "add": [ "should-not-apply" ] } }
-                                      }
-                                    ]
+                                  "rule": {
+                                    "id": "r1",
+                                    "if": { "id": "doc-1" },
+                                    "then": {
+                                      "keywords": { "add": [ "Key1", "$nope" ] },
+                                      "searchText": { "add": [ "First" ] },
+                                      "content": { "add": [ "C1" ] }
+                                    }
+                                  }
+                                }
+                                """);
+
+            temp.WriteRuleFile("file-share", "r2", """
+                                {
+                                  "schemaVersion": "1.0",
+                                  "rule": {
+                                    "id": "r2",
+                                    "if": { "id": "doc-1" },
+                                    "then": {
+                                      "searchText": { "add": [ "First", "Second" ] }
+                                    }
+                                  }
+                                }
+                                """);
+
+            temp.WriteRuleFile("file-share", "r3", """
+                                {
+                                  "schemaVersion": "1.0",
+                                  "rule": {
+                                    "id": "r3",
+                                    "if": { "files[*].mimeType": "app/s63" },
+                                    "then": {
+                                      "keywords": { "add": [ "mime-$val" ] }
+                                    }
+                                  }
+                                }
+                                """);
+
+            temp.WriteRuleFile("file-share", "r4", """
+                                {
+                                  "schemaVersion": "1.0",
+                                  "rule": {
+                                    "id": "r4",
+                                    "if": { "all": [ { "path": "properties[\"abcdef\"]", "exists": true } ] },
+                                    "then": { }
+                                  }
+                                }
+                                """);
+
+            temp.WriteRuleFile("file-share", "r6", """
+                                {
+                                  "schemaVersion": "1.0",
+                                  "rule": {
+                                    "id": "r6",
+                                    "if": { "all": [ { "path": "files[*].mimeType", "exists": true } ] },
+                                    "then": {
+                                      "keywords": { "add": [ "all-$val" ] }
+                                    }
+                                  }
+                                }
+                                """);
+
+            temp.WriteRuleFile("other-provider", "other", """
+                                {
+                                  "schemaVersion": "1.0",
+                                  "rule": {
+                                    "id": "other",
+                                    "if": { "id": "doc-1" },
+                                    "then": { "keywords": { "add": [ "should-not-apply" ] } }
                                   }
                                 }
                                 """);
@@ -87,7 +98,7 @@ namespace UKHO.Search.Ingestion.Tests.Rules
             var engine = provider.GetRequiredService<IIngestionRulesEngine>();
 
             var request = CreateRequest();
-            var document = CanonicalDocument.CreateMinimal("doc-1", request.AddItem!.Properties, request.AddItem.Timestamp);
+            var document = CanonicalDocument.CreateMinimal("doc-1", request.IndexItem!, request.IndexItem.Timestamp);
 
             engine.Apply("file-share", request, document);
 
@@ -100,16 +111,35 @@ namespace UKHO.Search.Ingestion.Tests.Rules
 
             document.SearchText.ShouldBe("first second");
             document.Content.ShouldBe("c1");
+        }
 
-            document.Facets.ShouldContainKey("facet 1");
-            document.Facets["facet 1"]
-                    .ShouldBe(new[] { "a value" });
+        [Fact]
+        public void Matching_rule_can_set_minorVersion_using_toInt_path_with_spaced_property_key()
+        {
+            using var temp = new TempRulesRoot();
 
-            document.Facets.ShouldContainKey("facet 2");
-            document.Facets["facet 2"]
-                    .ShouldBe(new[] { "app/s63", "text/plain" });
+            temp.WriteRuleFile("file-share", "minorversion", """
+                                {
+                                  "schemaVersion": "1.0",
+                                  "rule": {
+                                    "id": "minorversion",
+                                    "if": { "id": "doc-1" },
+                                    "then": {
+                                      "minorVersion": { "add": [ "toInt($path:properties[\"week number\"])" ] }
+                                    }
+                                  }
+                                }
+                                """);
 
-            document.DocumentType.ShouldBe("exchange-doc-1");
+            using var provider = CreateProvider(temp.RootPath);
+            var engine = provider.GetRequiredService<IIngestionRulesEngine>();
+
+            var request = CreateRequestWithWeekNumber();
+            var document = CanonicalDocument.CreateMinimal("doc-1", request.IndexItem!, request.IndexItem.Timestamp);
+
+            engine.Apply("file-share", request, document);
+
+            document.MinorVersion.ShouldBe(new[] { 10 });
         }
 
         private static ServiceProvider CreateProvider(string contentRootPath)
@@ -125,7 +155,7 @@ namespace UKHO.Search.Ingestion.Tests.Rules
 
         private static IngestionRequest CreateRequest()
         {
-            var addItem = new AddItemRequest("doc-1", [
+            var indexRequest = new IndexRequest("doc-1", [
                 new IngestionProperty { Name = "abcdef", Type = IngestionPropertyType.String, Value = "a value" }
             ], ["token"], DateTimeOffset.UtcNow, new IngestionFileList
             {
@@ -133,7 +163,16 @@ namespace UKHO.Search.Ingestion.Tests.Rules
                 new IngestionFile("f2", 1, DateTimeOffset.UtcNow, "text/plain")
             });
 
-            return new IngestionRequest(IngestionRequestType.AddItem, addItem, null, null, null);
+            return new IngestionRequest(IngestionRequestType.IndexItem, indexRequest, null, null);
+        }
+
+        private static IngestionRequest CreateRequestWithWeekNumber()
+        {
+            var indexRequest = new IndexRequest("doc-1", [
+                new IngestionProperty { Name = "week number", Type = IngestionPropertyType.String, Value = "10" }
+            ], ["token"], DateTimeOffset.UtcNow, new IngestionFileList());
+
+            return new IngestionRequest(IngestionRequestType.IndexItem, indexRequest, null, null);
         }
     }
 }

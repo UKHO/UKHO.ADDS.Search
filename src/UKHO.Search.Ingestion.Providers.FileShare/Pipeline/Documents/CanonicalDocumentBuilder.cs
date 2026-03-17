@@ -10,15 +10,18 @@ namespace UKHO.Search.Ingestion.Providers.FileShare.Pipeline.Documents
             ArgumentException.ThrowIfNullOrWhiteSpace(documentId);
             ArgumentNullException.ThrowIfNull(request);
 
-            var (properties, timestamp) = request.AddItem is not null ? (request.AddItem.Properties, request.AddItem.Timestamp) : request.UpdateItem is not null ? (request.UpdateItem.Properties, request.UpdateItem.Timestamp) : throw new InvalidOperationException("Upsert requires AddItem or UpdateItem payload.");
-
-            var sourceCopy = properties.Count == 0 ? Array.Empty<IngestionProperty>() : properties.ToArray();
+            var source = request.IndexItem ?? throw new InvalidOperationException("Upsert requires IndexItem payload.");
+            var properties = source.Properties;
+            var sourceCopy = source with
+            {
+                Properties = properties.Count == 0 ? new IngestionPropertyList() : new IngestionPropertyList(properties)
+            };
 
             return new CanonicalDocument
             {
-                DocumentId = documentId,
+                Id = documentId,
                 Source = sourceCopy,
-                Timestamp = timestamp
+                Timestamp = source.Timestamp
             };
         }
     }

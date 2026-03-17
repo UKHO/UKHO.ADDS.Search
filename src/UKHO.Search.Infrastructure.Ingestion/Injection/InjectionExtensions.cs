@@ -31,12 +31,39 @@ namespace UKHO.Search.Infrastructure.Ingestion.Injection
 {
     public static class InjectionExtensions
     {
+        /// <summary>
+        /// Registers only the ingestion rules engine dependencies.
+        /// </summary>
+        /// <remarks>
+        /// This is intended for the Rules Workbench host (Blazor UI) which needs to evaluate rules
+        /// without wiring up the full ingestion pipeline (queues, Elasticsearch, file-share provider services).
+        /// The ingestion service host should continue to call <see cref="AddIngestionServices"/>.
+        /// </remarks>
+        public static IServiceCollection AddIngestionRulesEngine(this IServiceCollection collection)
+        {
+            // RulesWorkbench uses this to reuse the existing ingestion rules engine in an isolated way.
+             collection.AddSingleton<RuleFileLoader>();
+            collection.AddSingleton<IngestionRulesLoader>();
+            collection.AddSingleton<IngestionRulesPathValidator>();
+            collection.AddSingleton<IngestionRulesValidator>();
+            collection.AddSingleton<IngestionRulesCatalog>();
+            collection.AddSingleton<IIngestionRulesCatalog>(sp => sp.GetRequiredService<IngestionRulesCatalog>());
+            collection.AddSingleton<IPathResolver, IngestionRulesPathResolver>();
+            collection.AddSingleton<IngestionRulesPredicateEvaluator>();
+            collection.AddSingleton<IngestionRulesTemplateExpander>();
+            collection.AddSingleton<IngestionRulesActionApplier>();
+            collection.AddSingleton<IIngestionRulesEngine, IngestionRulesEngine>();
+
+            return collection;
+        }
+
         public static IServiceCollection AddIngestionServices(this IServiceCollection collection)
         {
             collection.AddFileShareProvider();
 
             collection.AddScoped<IIngestionProviderContext, IngestionProviderContext>();
 
+             collection.AddSingleton<RuleFileLoader>();
             collection.AddSingleton<IngestionRulesLoader>();
             collection.AddSingleton<IngestionRulesPathValidator>();
             collection.AddSingleton<IngestionRulesValidator>();

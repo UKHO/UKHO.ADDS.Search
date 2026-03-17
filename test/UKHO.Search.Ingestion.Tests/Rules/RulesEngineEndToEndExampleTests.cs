@@ -17,17 +17,18 @@ namespace UKHO.Search.Ingestion.Tests.Rules
         public void Mime_type_app_s63_enriches_keywords_and_search_text()
         {
             using var temp = new TempRulesRoot();
-            temp.WriteRulesFile(GetExampleRulesJson());
+            temp.WriteRuleFile("file-share", "mime-app-s63", GetMimeAppS63RuleJson());
+            temp.WriteRuleFile("file-share", "prop-abcdef-keywords", GetPropAbcdefKeywordsRuleJson());
 
             using var provider = CreateProvider(temp.RootPath);
             var engine = provider.GetRequiredService<IIngestionRulesEngine>();
 
-            var request = CreateRequest("doc-1", Array.Empty<IngestionProperty>(), new IngestionFileList
+            var request = CreateRequest("doc-1", new IngestionPropertyList(), new IngestionFileList
             {
                 new IngestionFile("f1", 1, DateTimeOffset.UtcNow, "app/s63")
             });
 
-            var document = CanonicalDocument.CreateMinimal("doc-1", request.AddItem!.Properties, request.AddItem.Timestamp);
+            var document = CanonicalDocument.CreateMinimal("doc-1", request.IndexItem!, request.IndexItem.Timestamp);
             engine.Apply("file-share", request, document);
 
             document.Keywords.ShouldContain("exchange-set");
@@ -38,45 +39,23 @@ namespace UKHO.Search.Ingestion.Tests.Rules
         public void Property_abcdef_equals_a_value_adds_keywords()
         {
             using var temp = new TempRulesRoot();
-            temp.WriteRulesFile(GetExampleRulesJson());
+            temp.WriteRuleFile("file-share", "mime-app-s63", GetMimeAppS63RuleJson());
+            temp.WriteRuleFile("file-share", "prop-abcdef-keywords", GetPropAbcdefKeywordsRuleJson());
 
             using var provider = CreateProvider(temp.RootPath);
             var engine = provider.GetRequiredService<IIngestionRulesEngine>();
 
-            var request = CreateRequest("doc-2", [
+            var request = CreateRequest("doc-2", new IngestionPropertyList
+            {
                 new IngestionProperty { Name = "abcdef", Type = IngestionPropertyType.String, Value = "a value" }
-            ], new IngestionFileList());
+            }, new IngestionFileList());
 
-            var document = CanonicalDocument.CreateMinimal("doc-2", request.AddItem!.Properties, request.AddItem.Timestamp);
+            var document = CanonicalDocument.CreateMinimal("doc-2", request.IndexItem!, request.IndexItem.Timestamp);
             engine.Apply("file-share", request, document);
 
             document.Keywords.ShouldContain("key1");
             document.Keywords.ShouldContain("key2");
         }
-
-        [Fact]
-        public void Property_abcdef_exists_adds_facet_with_path_value()
-        {
-            using var temp = new TempRulesRoot();
-            temp.WriteRulesFile(GetExampleRulesJson());
-
-            using var provider = CreateProvider(temp.RootPath);
-            var engine = provider.GetRequiredService<IIngestionRulesEngine>();
-
-            var request = CreateRequest("doc-3", [
-                new IngestionProperty { Name = "abcdef", Type = IngestionPropertyType.String, Value = "another" }
-            ], new IngestionFileList());
-
-            var document = CanonicalDocument.CreateMinimal("doc-3", request.AddItem!.Properties, request.AddItem.Timestamp);
-            engine.Apply("file-share", request, document);
-
-            document.Facets.ShouldContainKey("facet 1");
-            document.Facets["facet 1"]
-                    .ShouldBe(new[] { "another" });
-            document.Keywords.ShouldNotContain("key1");
-            document.Keywords.ShouldNotContain("key2");
-        }
-
         private static ServiceProvider CreateProvider(string contentRootPath)
         {
             var services = new ServiceCollection();
@@ -88,61 +67,49 @@ namespace UKHO.Search.Ingestion.Tests.Rules
             return services.BuildServiceProvider();
         }
 
-        private static IngestionRequest CreateRequest(string id, IReadOnlyList<IngestionProperty> properties, IngestionFileList files)
+        private static IngestionRequest CreateRequest(string id, IngestionPropertyList properties, IngestionFileList files)
         {
-            var addItem = new AddItemRequest(id, properties, ["token"], DateTimeOffset.UtcNow, files);
+            var indexRequest = new IndexRequest(id, properties, ["token"], DateTimeOffset.UtcNow, files);
 
-            return new IngestionRequest(IngestionRequestType.AddItem, addItem, null, null, null);
+            return new IngestionRequest(IngestionRequestType.IndexItem, indexRequest, null, null);
         }
 
-        private static string GetExampleRulesJson()
+        private static string GetMimeAppS63RuleJson()
         {
             return """
                    {
                      "schemaVersion": "1.0",
-                     "rules": {
-                       "file-share": [
-                         {
-                           "id": "mime-app-s63",
-                           "description": "When any file is app/s63, enrich as exchange set",
-                           "enabled": true,
-                           "if": {
-                             "files[*].mimeType": "app/s63"
-                           },
-                           "then": {
-                             "keywords": { "add": ["exchange-set"] },
-                             "searchText": { "add": ["exchange set", "exchangeset"] }
-                           }
-                         },
-                         {
-                           "id": "prop-abcdef-keywords",
-                           "description": "When properties.abcdef equals 'a value', add key1/key2",
-                           "enabled": true,
-                           "if": {
-                             "properties[\"abcdef\"]": "a value"
-                           },
-                           "then": {
-                             "keywords": { "add": ["key1", "key2"] }
-                           }
-                         },
-                         {
-                           "id": "prop-abcdef-facet",
-                           "description": "When properties.abcdef exists, add facet 1 with that value",
-                           "enabled": true,
-                           "if": {
-                             "all": [
-                               { "path": "properties[\"abcdef\"]", "exists": true }
-                             ]
-                           },
-                           "then": {
-                             "facets": {
-                               "add": [
-                                 { "name": "facet 1", "value": "$path:properties[\"abcdef\"]" }
-                               ]
-                             }
-                           }
-                         }
-                       ]
+                     "rule": {
+                       "id": "mime-app-s63",
+                       "description": "When any file is app/s63, enrich as exchange set",
+                       "enabled": true,
+                       "if": {
+                         "files[*].mimeType": "app/s63"
+                       },
+                       "then": {
+                         "keywords": { "add": ["exchange-set"] },
+                         "searchText": { "add": ["exchange set", "exchangeset"] }
+                       }
+                     }
+                   }
+                   """;
+        }
+
+        private static string GetPropAbcdefKeywordsRuleJson()
+        {
+            return """
+                   {
+                     "schemaVersion": "1.0",
+                     "rule": {
+                       "id": "prop-abcdef-keywords",
+                       "description": "When properties.abcdef equals 'a value', add key1/key2",
+                       "enabled": true,
+                       "if": {
+                         "properties[\"abcdef\"]": "a value"
+                       },
+                       "then": {
+                         "keywords": { "add": ["key1", "key2"] }
+                       }
                      }
                    }
                    """;

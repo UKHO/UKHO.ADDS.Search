@@ -1,0 +1,39 @@
+﻿@page "/"
+
+@rendermode InteractiveServer
+
+@using RulesWorkbench.Services
+@inject RulesSnapshotStore RulesSnapshotStore
+
+<PageTitle>Home</PageTitle>
+
+<h1>Rule Workbench</h1>
+
+@if (_snapshot is null)
+{
+    <p>Loading rules…</p>
+}
+else if (!_snapshot.IsLoaded)
+{
+    <p><strong>Rules failed to load.</strong></p>
+    <p>@_snapshot.Error?.Message</p>
+    @if (!string.IsNullOrWhiteSpace(_snapshot.Error?.Details))
+    {
+        <pre>@_snapshot.Error!.Details</pre>
+    }
+}
+else
+{
+    <p><strong>Provider:</strong> file-share</p>
+    <p><strong>Rules loaded:</strong> @_snapshot.RuleCount</p>
+}
+
+@code
+{
+    private FileShareRulesSnapshot? _snapshot;
+
+    protected override void OnInitialized()
+    {
+        _snapshot = RulesSnapshotStore.LoadFileShareRules();
+    }
+}

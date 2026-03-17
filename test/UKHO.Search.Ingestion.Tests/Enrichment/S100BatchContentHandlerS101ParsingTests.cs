@@ -18,11 +18,9 @@ namespace UKHO.Search.Ingestion.Tests.Enrichment
 
             var handler = new S100BatchContentHandler(NullLogger<S100BatchContentHandler>.Instance);
             var request = CreateAddRequest("batch-s101");
-            var document = CanonicalDocument.CreateMinimal("doc-1", request.AddItem!.Properties, request.AddItem.Timestamp);
+            var document = CanonicalDocument.CreateMinimal("doc-1", request.IndexItem!, request.IndexItem.Timestamp);
 
             await handler.HandleFiles(new[] { catalogPath }, request, document, CancellationToken.None);
-
-            document.DocumentType.ShouldBe("S-101");
 
             document.Keywords.ShouldContain("s-101");
             document.Keywords.ShouldContain("s101");
@@ -41,11 +39,9 @@ namespace UKHO.Search.Ingestion.Tests.Enrichment
 
             var handler = new S100BatchContentHandler(NullLogger<S100BatchContentHandler>.Instance);
             var request = CreateAddRequest("batch-not-s101");
-            var document = CanonicalDocument.CreateMinimal("doc-1", request.AddItem!.Properties, request.AddItem.Timestamp);
+            var document = CanonicalDocument.CreateMinimal("doc-1", request.IndexItem!, request.IndexItem.Timestamp);
 
             await handler.HandleFiles(new[] { catalogPath }, request, document, CancellationToken.None);
-
-            document.DocumentType.ShouldBe("S-102");
 
             document.Keywords.ShouldBeEmpty();
             document.SearchText.ShouldBeEmpty();
@@ -60,7 +56,7 @@ namespace UKHO.Search.Ingestion.Tests.Enrichment
 
             var handler = new S100BatchContentHandler(NullLogger<S100BatchContentHandler>.Instance);
             var request = CreateAddRequest("batch-invalid-poslist");
-            var document = CanonicalDocument.CreateMinimal("doc-1", request.AddItem!.Properties, request.AddItem.Timestamp);
+            var document = CanonicalDocument.CreateMinimal("doc-1", request.IndexItem!, request.IndexItem.Timestamp);
 
             await handler.HandleFiles(new[] { catalogPath }, request, document, CancellationToken.None);
 
@@ -73,14 +69,13 @@ namespace UKHO.Search.Ingestion.Tests.Enrichment
         private static IngestionRequest CreateAddRequest(string id)
         {
             return new IngestionRequest(
-                IngestionRequestType.AddItem,
-                new AddItemRequest
+                IngestionRequestType.IndexItem,
+                new IndexRequest
                 {
                     Id = id,
                     Timestamp = DateTimeOffset.UtcNow,
-                    Properties = Array.Empty<IngestionProperty>()
+                    Properties = new IngestionPropertyList()
                 },
-                updateItem: null,
                 deleteItem: null,
                 updateAcl: null);
         }

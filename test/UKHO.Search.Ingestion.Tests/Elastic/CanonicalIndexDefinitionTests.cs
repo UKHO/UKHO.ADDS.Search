@@ -44,6 +44,39 @@ namespace UKHO.Search.Ingestion.Tests.Elastic
                       .GetString()
                       .ShouldBe("keyword");
 
+            properties.GetProperty("authority")
+                      .GetProperty("type")
+                      .GetString()
+                      .ShouldBe("keyword");
+            properties.GetProperty("region")
+                      .GetProperty("type")
+                      .GetString()
+                      .ShouldBe("keyword");
+            properties.GetProperty("format")
+                      .GetProperty("type")
+                      .GetString()
+                      .ShouldBe("keyword");
+            properties.GetProperty("majorVersion")
+                      .GetProperty("type")
+                      .GetString()
+                      .ShouldBe("keyword");
+            properties.GetProperty("minorVersion")
+                      .GetProperty("type")
+                      .GetString()
+                      .ShouldBe("keyword");
+            properties.GetProperty("category")
+                      .GetProperty("type")
+                      .GetString()
+                      .ShouldBe("keyword");
+            properties.GetProperty("series")
+                      .GetProperty("type")
+                      .GetString()
+                      .ShouldBe("keyword");
+            properties.GetProperty("instance")
+                      .GetProperty("type")
+                      .GetString()
+                      .ShouldBe("keyword");
+
             var searchText = properties.GetProperty("searchText");
             searchText.GetProperty("type")
                       .GetString()
@@ -64,44 +97,6 @@ namespace UKHO.Search.Ingestion.Tests.Elastic
                       .GetProperty("type")
                       .GetString()
                       .ShouldBe("geo_shape");
-
-            // 'object' mappings don't always emit an explicit 'type' property, so just assert the field is present.
-            properties.TryGetProperty("facets", out var _)
-                      .ShouldBeTrue();
-
-            if (!mappings.TryGetProperty("dynamic_templates", out var dynamicTemplates) && !mappings.TryGetProperty("DynamicTemplates", out dynamicTemplates))
-            {
-                throw new InvalidOperationException($"Expected create-index request JSON to include 'mappings.dynamic_templates'. JSON: {json}");
-            }
-
-            dynamicTemplates.ValueKind.ShouldBe(JsonValueKind.Array);
-            dynamicTemplates.GetArrayLength()
-                            .ShouldBeGreaterThan(0);
-
-            // Verify we have a dynamic template that maps facets.* as keyword
-            var facetsTemplate = dynamicTemplates.EnumerateArray()
-                                                 .SelectMany(t => t.EnumerateObject())
-                                                 .FirstOrDefault(p => string.Equals(p.Name, "facets_as_keyword", StringComparison.Ordinal));
-            facetsTemplate.Value.ValueKind.ShouldBe(JsonValueKind.Object);
-
-            var pathMatch = facetsTemplate.Value.GetProperty("path_match");
-            if (pathMatch.ValueKind == JsonValueKind.String)
-            {
-                pathMatch.GetString()
-                         .ShouldBe("facets.*");
-            }
-            else
-            {
-                pathMatch.ValueKind.ShouldBe(JsonValueKind.Array);
-                pathMatch.EnumerateArray()
-                         .Select(x => x.GetString())
-                         .ShouldContain("facets.*");
-            }
-
-            facetsTemplate.Value.GetProperty("mapping")
-                          .GetProperty("type")
-                          .GetString()
-                          .ShouldBe("keyword");
         }
 
         private static string Serialize(ElasticsearchClient client, CreateIndexRequestDescriptor descriptor)

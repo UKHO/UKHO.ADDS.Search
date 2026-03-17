@@ -32,24 +32,43 @@ namespace UKHO.Search.Ingestion.Tests
         {
             var envelope = new IngestionRequest
             {
-                RequestType = IngestionRequestType.UpdateItem,
-                UpdateItem = new UpdateItemRequest
+                RequestType = IngestionRequestType.IndexItem,
+                IndexItem = new IndexRequest
                 {
                     Id = "ABC123",
                     SecurityTokens = ["token-a"],
                     Timestamp = new DateTimeOffset(2026, 3, 5, 10, 15, 30, TimeSpan.Zero),
                     Files = new IngestionFileList(),
-                    Properties = [new IngestionProperty { Name = "Title", Type = IngestionPropertyType.String, Value = "Updated" }]
+                    Properties = new IngestionPropertyList
+                    {
+                        new IngestionProperty { Name = "Title", Type = IngestionPropertyType.String, Value = "Updated" }
+                    }
                 }
             };
 
             var json = JsonSerializer.Serialize(envelope, _options);
             var hydrated = JsonSerializer.Deserialize<IngestionRequest>(json, _options);
             hydrated.ShouldNotBeNull();
-            hydrated.RequestType.ShouldBe(IngestionRequestType.UpdateItem);
-            hydrated.UpdateItem.ShouldNotBeNull();
-            hydrated.UpdateItem!.Id.ShouldBe("ABC123");
-            hydrated.UpdateItem.SecurityTokens.ShouldBe(["token-a"]);
+            hydrated.RequestType.ShouldBe(IngestionRequestType.IndexItem);
+            hydrated.IndexItem.ShouldNotBeNull();
+            hydrated.IndexItem!.Id.ShouldBe("ABC123");
+            hydrated.IndexItem.SecurityTokens.ShouldBe(["token-a"]);
+        }
+
+        [Fact]
+        public void IngestionRequestEnvelope_Rejects_Legacy_AddItemPayloadProperty()
+        {
+            var json = "{" + "\"RequestType\":\"IndexItem\"," + "\"AddItem\":{\"Id\":\"ABC123\",\"Timestamp\":\"2026-03-05T10:15:30+00:00\",\"Files\":[],\"Properties\":[],\"SecurityTokens\":[\"t\"]}" + "}";
+
+            Should.Throw<JsonException>(() => JsonSerializer.Deserialize<IngestionRequest>(json, _options));
+        }
+
+        [Fact]
+        public void IngestionRequestEnvelope_Rejects_Legacy_UpdateItemPayloadProperty()
+        {
+            var json = "{" + "\"RequestType\":\"IndexItem\"," + "\"UpdateItem\":{\"Id\":\"ABC123\",\"Timestamp\":\"2026-03-05T10:15:30+00:00\",\"Files\":[],\"Properties\":[],\"SecurityTokens\":[\"t\"]}" + "}";
+
+            Should.Throw<JsonException>(() => JsonSerializer.Deserialize<IngestionRequest>(json, _options));
         }
 
         [Fact]
@@ -75,101 +94,101 @@ namespace UKHO.Search.Ingestion.Tests
         }
 
         [Fact]
-        public void AddItemRequest_Rejects_EmptySecurityTokens()
+        public void IndexRequest_Rejects_EmptySecurityTokens()
         {
             var json = "{" + "\"Id\":\"ABC123\"," + "\"Timestamp\":\"2026-03-05T10:15:30+00:00\"," + "\"Files\":[]," + "\"Properties\":[]," + "\"SecurityTokens\":[]" + "}";
-            Should.Throw<JsonException>(() => JsonSerializer.Deserialize<AddItemRequest>(json, _options));
+            Should.Throw<JsonException>(() => JsonSerializer.Deserialize<IndexRequest>(json, _options));
         }
 
         [Fact]
-        public void UpdateItemRequest_Rejects_EmptySecurityTokens()
+        public void IndexRequest_Rejects_EmptySecurityTokens_WhenUsedAsUpdateItemPayload()
         {
             var json = "{" + "\"Id\":\"ABC123\"," + "\"Timestamp\":\"2026-03-05T10:15:30+00:00\"," + "\"Files\":[]," + "\"Properties\":[]," + "\"SecurityTokens\":[]" + "}";
-            Should.Throw<JsonException>(() => JsonSerializer.Deserialize<UpdateItemRequest>(json, _options));
+            Should.Throw<JsonException>(() => JsonSerializer.Deserialize<IndexRequest>(json, _options));
         }
 
         [Fact]
-        public void AddItemRequest_Accepts_EmptyFiles()
+        public void IndexRequest_Accepts_EmptyFiles()
         {
             var json = "{" + "\"Id\":\"ABC123\"," + "\"Timestamp\":\"2026-03-05T10:15:30+00:00\"," + "\"Files\":[]," + "\"Properties\":[]," + "\"SecurityTokens\":[\"t\"]" + "}";
-            var hydrated = JsonSerializer.Deserialize<AddItemRequest>(json, _options);
+            var hydrated = JsonSerializer.Deserialize<IndexRequest>(json, _options);
             hydrated.ShouldNotBeNull();
             hydrated!.Timestamp.ShouldBe(new DateTimeOffset(2026, 3, 5, 10, 15, 30, TimeSpan.Zero));
             hydrated.Files.Count.ShouldBe(0);
         }
 
         [Fact]
-        public void AddItemRequest_Rejects_MissingFiles()
+        public void IndexRequest_Rejects_MissingFiles()
         {
             var json = "{" + "\"Id\":\"ABC123\"," + "\"Timestamp\":\"2026-03-05T10:15:30+00:00\"," + "\"Properties\":[]," + "\"SecurityTokens\":[\"t\"]" + "}";
-            Should.Throw<JsonException>(() => JsonSerializer.Deserialize<AddItemRequest>(json, _options));
+            Should.Throw<JsonException>(() => JsonSerializer.Deserialize<IndexRequest>(json, _options));
         }
 
         [Fact]
-        public void AddItemRequest_Rejects_NullFiles()
+        public void IndexRequest_Rejects_NullFiles()
         {
             var json = "{" + "\"Id\":\"ABC123\"," + "\"Timestamp\":\"2026-03-05T10:15:30+00:00\"," + "\"Files\":null," + "\"Properties\":[]," + "\"SecurityTokens\":[\"t\"]" + "}";
-            Should.Throw<JsonException>(() => JsonSerializer.Deserialize<AddItemRequest>(json, _options));
+            Should.Throw<JsonException>(() => JsonSerializer.Deserialize<IndexRequest>(json, _options));
         }
 
         [Fact]
-        public void AddItemRequest_Rejects_MissingTimestamp()
+        public void IndexRequest_Rejects_MissingTimestamp()
         {
             var json = "{" + "\"Id\":\"ABC123\"," + "\"Files\":[]," + "\"Properties\":[]," + "\"SecurityTokens\":[\"t\"]" + "}";
-            Should.Throw<JsonException>(() => JsonSerializer.Deserialize<AddItemRequest>(json, _options));
+            Should.Throw<JsonException>(() => JsonSerializer.Deserialize<IndexRequest>(json, _options));
         }
 
         [Fact]
-        public void UpdateItemRequest_Accepts_EmptyFiles()
+        public void IndexRequest_Accepts_EmptyFiles_WhenUsedAsUpdateItemPayload()
         {
             var json = "{" + "\"Id\":\"ABC123\"," + "\"Timestamp\":\"2026-03-05T10:15:30+00:00\"," + "\"Files\":[]," + "\"Properties\":[]," + "\"SecurityTokens\":[\"t\"]" + "}";
-            var hydrated = JsonSerializer.Deserialize<UpdateItemRequest>(json, _options);
+            var hydrated = JsonSerializer.Deserialize<IndexRequest>(json, _options);
             hydrated.ShouldNotBeNull();
             hydrated!.Timestamp.ShouldBe(new DateTimeOffset(2026, 3, 5, 10, 15, 30, TimeSpan.Zero));
             hydrated.Files.Count.ShouldBe(0);
         }
 
         [Fact]
-        public void UpdateItemRequest_Rejects_MissingFiles()
+        public void IndexRequest_Rejects_MissingFiles_WhenUsedAsUpdateItemPayload()
         {
             var json = "{" + "\"Id\":\"ABC123\"," + "\"Timestamp\":\"2026-03-05T10:15:30+00:00\"," + "\"Properties\":[]," + "\"SecurityTokens\":[\"t\"]" + "}";
-            Should.Throw<JsonException>(() => JsonSerializer.Deserialize<UpdateItemRequest>(json, _options));
+            Should.Throw<JsonException>(() => JsonSerializer.Deserialize<IndexRequest>(json, _options));
         }
 
         [Fact]
-        public void UpdateItemRequest_Rejects_NullFiles()
+        public void IndexRequest_Rejects_NullFiles_WhenUsedAsUpdateItemPayload()
         {
             var json = "{" + "\"Id\":\"ABC123\"," + "\"Timestamp\":\"2026-03-05T10:15:30+00:00\"," + "\"Files\":null," + "\"Properties\":[]," + "\"SecurityTokens\":[\"t\"]" + "}";
-            Should.Throw<JsonException>(() => JsonSerializer.Deserialize<UpdateItemRequest>(json, _options));
+            Should.Throw<JsonException>(() => JsonSerializer.Deserialize<IndexRequest>(json, _options));
         }
 
         [Fact]
-        public void UpdateItemRequest_Rejects_MissingTimestamp()
+        public void IndexRequest_Rejects_MissingTimestamp_WhenUsedAsUpdateItemPayload()
         {
             var json = "{" + "\"Id\":\"ABC123\"," + "\"Files\":[]," + "\"Properties\":[]," + "\"SecurityTokens\":[\"t\"]" + "}";
-            Should.Throw<JsonException>(() => JsonSerializer.Deserialize<UpdateItemRequest>(json, _options));
+            Should.Throw<JsonException>(() => JsonSerializer.Deserialize<IndexRequest>(json, _options));
         }
 
         [Fact]
         public void IngestionRequestEnvelope_GoldenJson_AddItem_Deserializes()
         {
-            var json = "{" + "\"RequestType\":\"AddItem\"," + "\"AddItem\":{" + "\"Id\":\"ABC123\"," + "\"Timestamp\":\"2026-03-05T10:15:30+00:00\"," + "\"Files\":[{" + "\"Filename\":\"a.txt\"," + "\"Size\":123," + "\"Timestamp\":\"2026-03-05T10:15:31+00:00\"," + "\"MimeType\":\"text/plain\"" + "}]," + "\"Properties\":[{" + "\"Name\":\"Title\"," + "\"Type\":\"string\"," + "\"Value\":\"Hello\"" +
+            var json = "{" + "\"RequestType\":\"IndexItem\"," + "\"IndexItem\":{" + "\"Id\":\"ABC123\"," + "\"Timestamp\":\"2026-03-05T10:15:30+00:00\"," + "\"Files\":[{" + "\"Filename\":\"a.txt\"," + "\"Size\":123," + "\"Timestamp\":\"2026-03-05T10:15:31+00:00\"," + "\"MimeType\":\"text/plain\"" + "}]," + "\"Properties\":[{" + "\"Name\":\"Title\"," + "\"Type\":\"string\"," + "\"Value\":\"Hello\"" +
                 "}]," + "\"SecurityTokens\":[\"t\"]" + "}" + "}";
 
             var hydrated = JsonSerializer.Deserialize<IngestionRequest>(json, _options);
             hydrated.ShouldNotBeNull();
-            hydrated!.RequestType.ShouldBe(IngestionRequestType.AddItem);
-            hydrated.AddItem.ShouldNotBeNull();
+            hydrated!.RequestType.ShouldBe(IngestionRequestType.IndexItem);
+            hydrated.IndexItem.ShouldNotBeNull();
 
-            hydrated.AddItem!.Timestamp.ShouldBe(new DateTimeOffset(2026, 3, 5, 10, 15, 30, TimeSpan.Zero));
-            hydrated.AddItem.Files.Count.ShouldBe(1);
-            hydrated.AddItem.Files[0]
+            hydrated.IndexItem!.Timestamp.ShouldBe(new DateTimeOffset(2026, 3, 5, 10, 15, 30, TimeSpan.Zero));
+            hydrated.IndexItem.Files.Count.ShouldBe(1);
+            hydrated.IndexItem.Files[0]
                     .Filename.ShouldBe("a.txt");
-            hydrated.AddItem.Files[0]
+            hydrated.IndexItem.Files[0]
                     .Size.ShouldBe(123);
-            hydrated.AddItem.Files[0]
+            hydrated.IndexItem.Files[0]
                     .Timestamp.ShouldBe(new DateTimeOffset(2026, 3, 5, 10, 15, 31, TimeSpan.Zero));
-            hydrated.AddItem.Files[0]
+            hydrated.IndexItem.Files[0]
                     .MimeType.ShouldBe("text/plain");
         }
 
@@ -178,8 +197,8 @@ namespace UKHO.Search.Ingestion.Tests
         {
             var envelope = new IngestionRequest
             {
-                RequestType = IngestionRequestType.AddItem,
-                AddItem = new AddItemRequest
+                RequestType = IngestionRequestType.IndexItem,
+                IndexItem = new IndexRequest
                 {
                     Id = "ABC123",
                     Timestamp = new DateTimeOffset(2026, 3, 5, 10, 15, 30, TimeSpan.Zero),
@@ -193,7 +212,7 @@ namespace UKHO.Search.Ingestion.Tests
                             MimeType = "text/plain"
                         }
                     },
-                    Properties = Array.Empty<IngestionProperty>(),
+                    Properties = new IngestionPropertyList(),
                     SecurityTokens = ["t"]
                 }
             };
@@ -318,7 +337,7 @@ namespace UKHO.Search.Ingestion.Tests
         [Fact]
         public void RoundTrip_AllSupportedTypes_Succeeds()
         {
-            var addItem = new AddItemRequest
+            var addItem = new IndexRequest
             {
                 Id = "123456ID",
                 SecurityTokens = ["token-a"],
@@ -363,8 +382,8 @@ namespace UKHO.Search.Ingestion.Tests
 
             var envelope = new IngestionRequest
             {
-                RequestType = IngestionRequestType.AddItem,
-                AddItem = addItem
+                RequestType = IngestionRequestType.IndexItem,
+                IndexItem = addItem
             };
 
             var json = JsonSerializer.Serialize(envelope, _options);
@@ -373,10 +392,10 @@ namespace UKHO.Search.Ingestion.Tests
             var hydratedEnvelope = JsonSerializer.Deserialize<IngestionRequest>(json, _options);
             hydratedEnvelope.ShouldNotBeNull();
 
-            hydratedEnvelope.RequestType.ShouldBe(IngestionRequestType.AddItem);
-            hydratedEnvelope.AddItem.ShouldNotBeNull();
+            hydratedEnvelope.RequestType.ShouldBe(IngestionRequestType.IndexItem);
+            hydratedEnvelope.IndexItem.ShouldNotBeNull();
 
-            var hydrated = hydratedEnvelope.AddItem!;
+            var hydrated = hydratedEnvelope.IndexItem!;
 
             hydrated.Properties.Count.ShouldBe(addItem.Properties.Count);
 

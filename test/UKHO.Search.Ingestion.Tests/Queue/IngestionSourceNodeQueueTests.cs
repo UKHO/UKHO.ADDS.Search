@@ -168,7 +168,7 @@ namespace UKHO.Search.Ingestion.Tests.Queue
                                                           })
                                                           .Build();
 
-            var request = new IngestionRequest(IngestionRequestType.UpdateItem, null, new UpdateItemRequest("doc-1", Array.Empty<IngestionProperty>(), new[] { "t1" }, DateTimeOffset.UnixEpoch, new IngestionFileList()), null, null);
+            var request = new IngestionRequest(IngestionRequestType.IndexItem, new IndexRequest("doc-1", Array.Empty<IngestionProperty>(), new[] { "t1" }, DateTimeOffset.UnixEpoch, new IngestionFileList()), null, null);
 
             var messageBody = JsonSerializer.Serialize(request, IngestionJsonSerializerOptions.Create());
 

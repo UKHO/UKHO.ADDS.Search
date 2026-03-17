@@ -23,6 +23,8 @@ namespace AppHost
             var runModeParameter = builder.AddParameter("runmode");
             var runModeValue = await runModeParameter.Resource.GetValueAsync(CancellationToken.None);
 
+            var ingestionModeParameter = builder.AddParameter("ingestionMode");
+
             var runMode = Enum.TryParse<RunMode>(runModeValue, true, out var parsedRunMode) ? parsedRunMode : RunMode.Services;
 
             var storage = builder.AddAzureStorage(ServiceNames.Storage)
@@ -42,6 +44,7 @@ namespace AppHost
 
             var sqlServer = builder.AddSqlServer(ServiceNames.SqlServer)
                                    .WithLifetime(ContainerLifetime.Persistent)
+                                   .WithDataVolume()
                                    .AddDatabase(StorageNames.FileShareEmulatorDatabase);
 
             switch (runMode)
@@ -65,6 +68,7 @@ namespace AppHost
 
                     var ingestionService = builder.AddProject<IngestionServiceHost>(ServiceNames.Ingestion)
                                                   .WithExternalHttpEndpoints()
+                                                   .WithEnvironment("ingestionmode", ingestionModeParameter)
                                                   .WithReference(storageQueue)
                                                   .WithReference(storageTable)
                                                   .WithReference(storageBlob)
@@ -95,8 +99,15 @@ namespace AppHost
                                                    .WaitFor(elasticsearch)
                                                    .WithScalar("Emulator API");
 
-                    // Configuration
-                    if (builder.ExecutionContext.IsRunMode)
+                    var rulesWorkbench = builder.AddProject<RulesWorkbench>(ServiceNames.RulesWorkbench)
+                                                .WithExternalHttpEndpoints()
+                                                .WithReference(sqlServer)
+                                                .WithReference(storageBlob)
+                                                .WaitFor(sqlServer)
+                                                .WaitFor(storageBlob);
+
+                        // Configuration
+                        if (builder.ExecutionContext.IsRunMode)
                     {
                         builder.AddConfigurationEmulator(ServiceConfiguration.ServiceGroupName, [ingestionService, queryService!], [fileShareEmulator], @"../../../configuration/configuration.json", @"../../../configuration/external-services.json");
                     }
@@ -112,6 +123,7 @@ namespace AppHost
                 {
                     builder.AddProject<FileShareImageBuilder>(ServiceNames.FileShareBuilder)
                            .WithEnvironment("environment", environmentParameter)
+                           .WithEnvironment("ingestionmode", ingestionModeParameter)
                            .WithReference(sqlServer)
                            .WaitFor(sqlServer)
                            .WithExplicitStart();

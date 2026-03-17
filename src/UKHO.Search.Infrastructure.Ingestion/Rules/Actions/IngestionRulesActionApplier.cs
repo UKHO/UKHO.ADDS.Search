@@ -22,12 +22,95 @@ namespace UKHO.Search.Infrastructure.Ingestion.Rules.Actions
             var context = new TemplateContext(payload, _pathResolver, matchedValues);
 
             ApplyKeywords(then, document, context, summary);
+            ApplyAdditionalFields(then, document, context, summary);
             ApplySearchText(then, document, context, summary);
             ApplyContent(then, document, context, summary);
-            ApplyFacets(then, document, context, summary);
-            ApplyDocumentType(then, document, context, summary);
 
             return summary;
+        }
+
+        private void ApplyAdditionalFields(ThenDto then, CanonicalDocument document, TemplateContext context, ActionApplySummary summary)
+        {
+            ApplyStringAdds(then.Authority?.Add, document.Authority, document.AddAuthority, context, summary);
+            ApplyStringAdds(then.Region?.Add, document.Region, document.AddRegion, context, summary);
+            ApplyStringAdds(then.Format?.Add, document.Format, document.AddFormat, context, summary);
+            ApplyStringAdds(then.Category?.Add, document.Category, document.AddCategory, context, summary);
+            ApplyStringAdds(then.Series?.Add, document.Series, document.AddSeries, context, summary);
+            ApplyStringAdds(then.Instance?.Add, document.Instance, document.AddInstance, context, summary);
+
+            ApplyIntAdds(then.MajorVersion, document.MajorVersion, document.AddMajorVersion, context, summary);
+            ApplyIntAdds(then.MinorVersion, document.MinorVersion, document.AddMinorVersion, context, summary);
+        }
+
+        private void ApplyStringAdds(
+            IEnumerable<string>? add,
+            SortedSet<string> existing,
+            Action<string?> addToDocument,
+            TemplateContext context,
+            ActionApplySummary summary)
+        {
+            if (add is null)
+            {
+                return;
+            }
+
+            foreach (var template in add)
+            {
+                foreach (var value in _templateExpander.Expand(template, context))
+                {
+                    var normalized = NormalizeToken(value);
+                    if (normalized is null)
+                    {
+                        continue;
+                    }
+
+                    if (existing.Contains(normalized))
+                    {
+                        continue;
+                    }
+
+                    addToDocument(normalized);
+                    summary.AdditionalFieldValuesAdded++;
+                }
+            }
+        }
+
+        private void ApplyIntAdds(
+            IntAddActionDto? action,
+            SortedSet<int> existing,
+            Action<int?> addToDocument,
+            TemplateContext context,
+            ActionApplySummary summary)
+        {
+            if (action is null)
+            {
+                return;
+            }
+
+            foreach (var value in action.GetAddValues())
+            {
+                if (existing.Contains(value))
+                {
+                    continue;
+                }
+
+                addToDocument(value);
+                summary.AdditionalFieldValuesAdded++;
+            }
+
+            foreach (var template in action.GetAddTemplates())
+            {
+                foreach (var value in _templateExpander.ExpandToInt(template, context))
+                {
+                    if (existing.Contains(value))
+                    {
+                        continue;
+                    }
+
+                    addToDocument(value);
+                    summary.AdditionalFieldValuesAdded++;
+                }
+            }
         }
 
         private void ApplyKeywords(ThenDto then, CanonicalDocument document, TemplateContext context, ActionApplySummary summary)
@@ -115,104 +198,6 @@ namespace UKHO.Search.Infrastructure.Ingestion.Rules.Actions
                     summary.ContentAdded++;
                 }
             }
-        }
-
-        private void ApplyFacets(ThenDto then, CanonicalDocument document, TemplateContext context, ActionApplySummary summary)
-        {
-            var add = then.Facets?.Add;
-            if (add is null)
-            {
-                return;
-            }
-
-            foreach (var facet in add)
-            {
-                if (facet is null)
-                {
-                    continue;
-                }
-
-                var facetNames = _templateExpander.Expand(facet.Name, context);
-                if (facetNames.Count == 0)
-                {
-                    continue;
-                }
-
-                var valuesToAdd = new List<string>();
-
-                if (facet.Value is not null)
-                {
-                    valuesToAdd.AddRange(_templateExpander.Expand(facet.Value, context));
-                }
-
-                if (facet.Values is not null)
-                {
-                    foreach (var valueTemplate in facet.Values)
-                    {
-                        valuesToAdd.AddRange(_templateExpander.Expand(valueTemplate, context));
-                    }
-                }
-
-                if (valuesToAdd.Count == 0)
-                {
-                    continue;
-                }
-
-                foreach (var facetName in facetNames)
-                {
-                    var normalizedName = NormalizeToken(facetName);
-                    if (normalizedName is null)
-                    {
-                        continue;
-                    }
-
-                    foreach (var value in valuesToAdd)
-                    {
-                        var normalizedValue = NormalizeToken(value);
-                        if (normalizedValue is null)
-                        {
-                            continue;
-                        }
-
-                        if (document.Facets.TryGetValue(normalizedName, out var existing) && existing.Contains(normalizedValue))
-                        {
-                            continue;
-                        }
-
-                        document.AddFacetValue(normalizedName, normalizedValue);
-                        summary.FacetValuesAdded++;
-                    }
-                }
-            }
-        }
-
-        private void ApplyDocumentType(ThenDto then, CanonicalDocument document, TemplateContext context, ActionApplySummary summary)
-        {
-            var template = then.DocumentType?.Set;
-            if (template is null)
-            {
-                return;
-            }
-
-            var values = _templateExpander.Expand(template, context);
-            if (values.Count == 0)
-            {
-                return;
-            }
-
-            if (values.Count > 1)
-            {
-                throw new InvalidOperationException("documentType.set must resolve to exactly one value.");
-            }
-
-            var normalized = NormalizeToken(values[0]);
-            if (normalized is null)
-            {
-                return;
-            }
-
-            document.DocumentType = normalized;
-            summary.DocumentTypeSet = 1;
         }
 
         private static bool ContainsPhrase(string existing, string phrase)

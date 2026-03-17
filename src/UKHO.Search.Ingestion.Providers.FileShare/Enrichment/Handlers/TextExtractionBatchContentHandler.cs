@@ -41,7 +41,7 @@ namespace UKHO.Search.Ingestion.Providers.FileShare.Enrichment.Handlers
                 return;
             }
 
-            var batchId = request.AddItem?.Id ?? request.UpdateItem?.Id;
+            var batchId = request.IndexItem?.Id;
 
             foreach (var filePath in paths)
             {

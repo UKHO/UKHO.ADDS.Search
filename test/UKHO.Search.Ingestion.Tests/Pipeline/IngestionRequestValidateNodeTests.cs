@@ -23,9 +23,8 @@ namespace UKHO.Search.Ingestion.Tests.Pipeline
 
             var invalid = new IngestionRequest
             {
-                RequestType = IngestionRequestType.AddItem,
-                AddItem = null,
-                UpdateItem = null,
+                RequestType = IngestionRequestType.IndexItem,
+                IndexItem = null,
                 DeleteItem = null,
                 UpdateAcl = null
             };
@@ -56,8 +55,8 @@ namespace UKHO.Search.Ingestion.Tests.Pipeline
 
             await node.StartAsync(CancellationToken.None);
 
-            var add = new AddItemRequest("doc-1", Array.Empty<IngestionProperty>(), new[] { "t1" }, DateTimeOffset.UnixEpoch, new IngestionFileList());
-            var request = new IngestionRequest(IngestionRequestType.AddItem, add, null, null, null);
+            var add = new IndexRequest("doc-1", Array.Empty<IngestionProperty>(), new[] { "t1" }, DateTimeOffset.UnixEpoch, new IngestionFileList());
+            var request = new IngestionRequest(IngestionRequestType.IndexItem, add, null, null);
 
             await input.Writer.WriteAsync(new Envelope<IngestionRequest>("doc-1", request));
             input.Writer.TryComplete();

@@ -61,7 +61,7 @@ namespace UKHO.Search.Ingestion.Tests
         private static int GetSequence(IndexOperation operation)
         {
             var upsert = operation.ShouldBeOfType<UpsertOperation>();
-            var properties = upsert.Document.Source;
+            var properties = upsert.Document.Source.Properties;
             var seq = properties.FirstOrDefault(p => string.Equals(p.Name, "sequence", StringComparison.Ordinal));
             seq.ShouldNotBeNull();
             seq!.Type.ShouldBe(IngestionPropertyType.Integer);

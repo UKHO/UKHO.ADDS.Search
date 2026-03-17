@@ -6,15 +6,14 @@ namespace UKHO.Search.Ingestion.Requests
     public sealed record IngestionRequest
     {
         [JsonConstructor]
-        public IngestionRequest(IngestionRequestType requestType, AddItemRequest? addItem, UpdateItemRequest? updateItem, DeleteItemRequest? deleteItem, UpdateAclRequest? updateAcl)
+        public IngestionRequest(IngestionRequestType requestType, IndexRequest? indexItem, DeleteItemRequest? deleteItem, UpdateAclRequest? updateAcl)
         {
             RequestType = requestType;
-            AddItem = addItem;
-            UpdateItem = updateItem;
+            IndexItem = indexItem;
             DeleteItem = deleteItem;
             UpdateAcl = updateAcl;
 
-            ValidateOneOf(RequestType, AddItem, UpdateItem, DeleteItem, UpdateAcl);
+            ValidateOneOf(RequestType, IndexItem, DeleteItem, UpdateAcl);
         }
 
         public IngestionRequest()
@@ -24,13 +23,9 @@ namespace UKHO.Search.Ingestion.Requests
         [JsonPropertyName("RequestType")]
         public IngestionRequestType RequestType { get; init; }
 
-        [JsonPropertyName("AddItem")]
+        [JsonPropertyName("IndexItem")]
         [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
-        public AddItemRequest? AddItem { get; init; }
-
-        [JsonPropertyName("UpdateItem")]
-        [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
-        public UpdateItemRequest? UpdateItem { get; init; }
+        public IndexRequest? IndexItem { get; init; }
 
         [JsonPropertyName("DeleteItem")]
         [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
@@ -40,15 +35,10 @@ namespace UKHO.Search.Ingestion.Requests
         [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
         public UpdateAclRequest? UpdateAcl { get; init; }
 
-        private static void ValidateOneOf(IngestionRequestType requestType, AddItemRequest? addItem, UpdateItemRequest? updateItem, DeleteItemRequest? deleteItem, UpdateAclRequest? updateAcl)
+        private static void ValidateOneOf(IngestionRequestType requestType, IndexRequest? indexItem, DeleteItemRequest? deleteItem, UpdateAclRequest? updateAcl)
         {
             var setCount = 0;
-            if (addItem is not null)
-            {
-                setCount++;
-            }
-
-            if (updateItem is not null)
+            if (indexItem is not null)
             {
                 setCount++;
             }
@@ -65,13 +55,12 @@ namespace UKHO.Search.Ingestion.Requests
 
             if (setCount != 1)
             {
-                throw new JsonException("IngestionRequest must contain exactly one of AddItem, UpdateItem, DeleteItem, UpdateAcl.");
+                throw new JsonException("IngestionRequest must contain exactly one of IndexItem, DeleteItem, UpdateAcl.");
             }
 
             var matches = requestType switch
             {
-                IngestionRequestType.AddItem => addItem is not null,
-                IngestionRequestType.UpdateItem => updateItem is not null,
+                IngestionRequestType.IndexItem => indexItem is not null,
                 IngestionRequestType.DeleteItem => deleteItem is not null,
                 IngestionRequestType.UpdateAcl => updateAcl is not null,
                 var _ => throw new JsonException($"Unsupported IngestionRequestType '{requestType}'.")

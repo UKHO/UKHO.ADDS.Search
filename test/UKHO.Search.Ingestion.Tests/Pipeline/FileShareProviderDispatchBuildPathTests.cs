@@ -27,8 +27,8 @@ namespace UKHO.Search.Ingestion.Tests.Pipeline
 
             var p1 = new IngestionProperty { Name = "Category", Type = IngestionPropertyType.String, Value = "A" };
             var properties = new List<IngestionProperty> { p1 };
-            var add = new AddItemRequest("doc-1", properties, new[] { "t1" }, DateTimeOffset.UnixEpoch, new IngestionFileList());
-            var request = new IngestionRequest(IngestionRequestType.AddItem, add, null, null, null);
+            var add = new IndexRequest("doc-1", properties, new[] { "t1" }, DateTimeOffset.UnixEpoch, new IngestionFileList());
+            var request = new IngestionRequest(IngestionRequestType.IndexItem, add, null, null);
 
             await input.Writer.WriteAsync(new Envelope<IngestionRequest>("doc-1", request));
             input.Writer.TryComplete();
@@ -42,12 +42,12 @@ namespace UKHO.Search.Ingestion.Tests.Pipeline
 
             var upsert = envelope.Payload.Operation.ShouldBeOfType<UpsertOperation>();
             upsert.DocumentId.ShouldBe("doc-1");
-            upsert.Document.DocumentId.ShouldBe("doc-1");
-            upsert.Document.DocumentType.ShouldBeEmpty();
-            upsert.Document.Source.ShouldNotBeSameAs(add.Properties);
-            upsert.Document.Source.Count.ShouldBe(1);
-            upsert.Document.Source[0]
-                  .ShouldBeSameAs(p1);
+            upsert.Document.Id.ShouldBe("doc-1");
+            upsert.Document.Source.Properties.ShouldNotBeSameAs(add.Properties);
+            upsert.Document.Source.Properties.Count.ShouldBe(1);
+            upsert.Document.Source.Properties[0].Name.ShouldBe("category");
+            upsert.Document.Source.Properties[0].Type.ShouldBe(IngestionPropertyType.String);
+            upsert.Document.Source.Properties[0].Value.ShouldBe("A");
             upsert.Document.Timestamp.ShouldBe(add.Timestamp);
         }
     }

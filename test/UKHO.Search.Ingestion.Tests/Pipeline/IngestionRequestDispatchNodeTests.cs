@@ -29,8 +29,8 @@ namespace UKHO.Search.Ingestion.Tests.Pipeline
             var p1 = new IngestionProperty { Name = "Category", Type = IngestionPropertyType.String, Value = "A" };
             var properties = new List<IngestionProperty> { p1 };
             var addTimestamp = new DateTimeOffset(2024, 01, 02, 03, 04, 05, TimeSpan.Zero);
-            var add = new AddItemRequest("doc-1", properties, new[] { "t1" }, addTimestamp, new IngestionFileList());
-            var request = new IngestionRequest(IngestionRequestType.AddItem, add, null, null, null);
+            var add = new IndexRequest("doc-1", properties, new[] { "t1" }, addTimestamp, new IngestionFileList());
+            var request = new IngestionRequest(IngestionRequestType.IndexItem, add, null, null);
 
             await input.Writer.WriteAsync(new Envelope<IngestionRequest>("doc-1", request));
             input.Writer.TryComplete();
@@ -40,17 +40,17 @@ namespace UKHO.Search.Ingestion.Tests.Pipeline
             output.Reader.TryRead(out var envelope)
                   .ShouldBeTrue();
 
-            envelope.Payload.Request.RequestType.ShouldBe(IngestionRequestType.AddItem);
+            envelope.Payload.Request.RequestType.ShouldBe(IngestionRequestType.IndexItem);
 
             var upsert = envelope.Payload.Operation.ShouldBeOfType<UpsertOperation>();
             upsert.DocumentId.ShouldBe("doc-1");
-            upsert.Document.DocumentId.ShouldBe("doc-1");
-            upsert.Document.DocumentType.ShouldBeEmpty();
+            upsert.Document.Id.ShouldBe("doc-1");
 
-            upsert.Document.Source.ShouldNotBeSameAs(add.Properties);
-            upsert.Document.Source.Count.ShouldBe(1);
-            upsert.Document.Source[0]
-                  .ShouldBeSameAs(p1);
+            upsert.Document.Source.Properties.ShouldNotBeSameAs(add.Properties);
+            upsert.Document.Source.Properties.Count.ShouldBe(1);
+            upsert.Document.Source.Properties[0].Name.ShouldBe("category");
+            upsert.Document.Source.Properties[0].Type.ShouldBe(IngestionPropertyType.String);
+            upsert.Document.Source.Properties[0].Value.ShouldBe("A");
             upsert.Document.Timestamp.ShouldBe(addTimestamp);
         }
 
@@ -70,8 +70,8 @@ namespace UKHO.Search.Ingestion.Tests.Pipeline
             var p1 = new IngestionProperty { Name = "Department", Type = IngestionPropertyType.String, Value = "Hydro" };
             var properties = new List<IngestionProperty> { p1 };
             var updateTimestamp = new DateTimeOffset(2025, 02, 03, 04, 05, 06, TimeSpan.Zero);
-            var update = new UpdateItemRequest("doc-1", properties, new[] { "t1" }, updateTimestamp, new IngestionFileList());
-            var request = new IngestionRequest(IngestionRequestType.UpdateItem, null, update, null, null);
+            var update = new IndexRequest("doc-1", properties, new[] { "t1" }, updateTimestamp, new IngestionFileList());
+            var request = new IngestionRequest(IngestionRequestType.IndexItem, update, null, null);
 
             await input.Writer.WriteAsync(new Envelope<IngestionRequest>("doc-1", request));
             input.Writer.TryComplete();
@@ -81,17 +81,17 @@ namespace UKHO.Search.Ingestion.Tests.Pipeline
             output.Reader.TryRead(out var envelope)
                   .ShouldBeTrue();
 
-            envelope.Payload.Request.RequestType.ShouldBe(IngestionRequestType.UpdateItem);
+            envelope.Payload.Request.RequestType.ShouldBe(IngestionRequestType.IndexItem);
 
             var upsert = envelope.Payload.Operation.ShouldBeOfType<UpsertOperation>();
             upsert.DocumentId.ShouldBe("doc-1");
-            upsert.Document.DocumentId.ShouldBe("doc-1");
-            upsert.Document.DocumentType.ShouldBeEmpty();
+            upsert.Document.Id.ShouldBe("doc-1");
 
-            upsert.Document.Source.ShouldNotBeSameAs(update.Properties);
-            upsert.Document.Source.Count.ShouldBe(1);
-            upsert.Document.Source[0]
-                  .ShouldBeSameAs(p1);
+            upsert.Document.Source.Properties.ShouldNotBeSameAs(update.Properties);
+            upsert.Document.Source.Properties.Count.ShouldBe(1);
+            upsert.Document.Source.Properties[0].Name.ShouldBe("department");
+            upsert.Document.Source.Properties[0].Type.ShouldBe(IngestionPropertyType.String);
+            upsert.Document.Source.Properties[0].Value.ShouldBe("Hydro");
             upsert.Document.Timestamp.ShouldBe(updateTimestamp);
         }
 
@@ -109,7 +109,7 @@ namespace UKHO.Search.Ingestion.Tests.Pipeline
             await node.StartAsync(CancellationToken.None);
 
             var delete = new DeleteItemRequest("doc-1");
-            var request = new IngestionRequest(IngestionRequestType.DeleteItem, null, null, delete, null);
+            var request = new IngestionRequest(IngestionRequestType.DeleteItem, null, delete, null);
 
             await input.Writer.WriteAsync(new Envelope<IngestionRequest>("doc-1", request));
             input.Writer.TryComplete();
@@ -137,9 +137,8 @@ namespace UKHO.Search.Ingestion.Tests.Pipeline
 
             var invalid = new IngestionRequest
             {
-                RequestType = IngestionRequestType.AddItem,
-                AddItem = null,
-                UpdateItem = null,
+                RequestType = IngestionRequestType.IndexItem,
+                IndexItem = null,
                 DeleteItem = null,
                 UpdateAcl = null
             };
@@ -178,7 +177,7 @@ namespace UKHO.Search.Ingestion.Tests.Pipeline
             context.AddBreadcrumb("upstream");
 
             var delete = new DeleteItemRequest("doc-1");
-            var request = new IngestionRequest(IngestionRequestType.DeleteItem, null, null, delete, null);
+            var request = new IngestionRequest(IngestionRequestType.DeleteItem, null, delete, null);
 
             var envelope = new Envelope<IngestionRequest>("doc-1", request)
             {
