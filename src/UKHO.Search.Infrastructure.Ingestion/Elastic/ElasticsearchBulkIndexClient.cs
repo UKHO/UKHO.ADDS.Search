@@ -159,8 +159,15 @@ namespace UKHO.Search.Infrastructure.Ingestion.Elastic
 
                     // These fields should be mapped explicitly (not default dynamic 'text' with '.keyword' multi-fields).
                     EnsureHasType(fields, "documentId", "keyword");
-                    EnsureHasType(fields, "documentType", "keyword");
                     EnsureHasType(fields, "keywords", "keyword");
+                    EnsureHasType(fields, "authority", "keyword");
+                    EnsureHasType(fields, "region", "keyword");
+                    EnsureHasType(fields, "format", "keyword");
+                    EnsureHasType(fields, "majorVersion", "keyword");
+                    EnsureHasType(fields, "minorVersion", "keyword");
+                    EnsureHasType(fields, "category", "keyword");
+                    EnsureHasType(fields, "series", "keyword");
+                    EnsureHasType(fields, "instance", "keyword");
                     EnsureHasType(fields, "searchText", "text");
                     EnsureHasType(fields, "content", "text");
 
