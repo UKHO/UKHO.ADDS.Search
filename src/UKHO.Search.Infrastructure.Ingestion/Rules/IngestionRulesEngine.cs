@@ -23,13 +23,18 @@ namespace UKHO.Search.Infrastructure.Ingestion.Rules
 
         public void Apply(string providerName, IngestionRequest request, CanonicalDocument document)
         {
+            _ = ApplyWithReport(providerName, request, document);
+        }
+
+        public IngestionRulesApplyReport ApplyWithReport(string providerName, IngestionRequest request, CanonicalDocument document)
+        {
             ArgumentException.ThrowIfNullOrWhiteSpace(providerName);
             ArgumentNullException.ThrowIfNull(request);
             ArgumentNullException.ThrowIfNull(document);
 
             if (!_catalog.TryGetProviderRules(providerName, out var rules))
             {
-                return;
+                return IngestionRulesApplyReport.Empty;
             }
 
             object? payload = request.IndexItem;
@@ -37,10 +42,11 @@ namespace UKHO.Search.Infrastructure.Ingestion.Rules
             if (payload is null)
             {
                 _logger.LogDebug("Rules engine ignored request type '{RequestType}' for provider '{ProviderName}' (no IndexItem payload).", request.RequestType, providerName);
-                return;
+                return IngestionRulesApplyReport.Empty;
             }
 
             var matchedRuleIds = new List<string>();
+            var matchedRules = new List<IngestionRulesMatchedRule>();
             var summary = new ActionApplySummary();
 
             foreach (var rule in rules)
@@ -57,11 +63,62 @@ namespace UKHO.Search.Infrastructure.Ingestion.Rules
                 }
 
                 matchedRuleIds.Add(rule.Id);
-                summary.Add(_actionApplier.Apply(rule.Then, payload, document, match.MatchedValues));
+                var ruleSummary = _actionApplier.Apply(rule.Then, payload, document, match.MatchedValues);
+                summary.Add(ruleSummary);
+                matchedRules.Add(new IngestionRulesMatchedRule
+                {
+                    RuleId = rule.Id,
+                    Description = rule.Description,
+                    Summary = FormatRuleSummary(ruleSummary),
+                });
             }
 
             _logger.LogDebug("Ingestion rules applied. ProviderName={ProviderName} MatchedRuleIds={MatchedRuleIds} KeywordsAdded={KeywordsAdded} SearchTextAdded={SearchTextAdded} ContentAdded={ContentAdded} FacetValuesAdded={FacetValuesAdded} DocumentTypeSet={DocumentTypeSet}", providerName, matchedRuleIds, summary.KeywordsAdded, summary.SearchTextAdded, summary.ContentAdded,
                 summary.FacetValuesAdded, summary.DocumentTypeSet);
+
+            return new IngestionRulesApplyReport
+            {
+                MatchedRules = matchedRules,
+            };
+        }
+
+        private static string FormatRuleSummary(ActionApplySummary summary)
+        {
+            var parts = new List<string>();
+
+            if (summary.KeywordsAdded > 0)
+            {
+                parts.Add($"Keywords +{summary.KeywordsAdded}");
+            }
+
+            if (summary.AdditionalFieldValuesAdded > 0)
+            {
+                parts.Add($"Fields +{summary.AdditionalFieldValuesAdded}");
+            }
+
+            if (summary.SearchTextAdded > 0)
+            {
+                parts.Add($"SearchText +{summary.SearchTextAdded}");
+            }
+
+            if (summary.ContentAdded > 0)
+            {
+                parts.Add($"Content +{summary.ContentAdded}");
+            }
+
+            if (summary.FacetValuesAdded > 0)
+            {
+                parts.Add($"Facets +{summary.FacetValuesAdded}");
+            }
+
+            if (summary.DocumentTypeSet > 0)
+            {
+                parts.Add($"DocumentType set {summary.DocumentTypeSet} time(s)");
+            }
+
+            return parts.Count == 0
+                ? "No document changes."
+                : string.Join(", ", parts);
         }
     }
 }

@@ -1,6 +1,7 @@
 using System.Text.Json.Serialization;
 using UKHO.Search.Geo;
 using UKHO.Search.Ingestion.Requests;
+using UKHO.Search.Query;
 
 namespace UKHO.Search.Ingestion.Pipeline.Documents
 {
@@ -50,7 +51,7 @@ namespace UKHO.Search.Ingestion.Pipeline.Documents
 
         public void AddKeyword(string? keyword)
         {
-            var normalized = NormalizeToken(keyword);
+            var normalized = NormalizeStringValue(keyword);
             if (normalized is null)
             {
                 return;
@@ -64,19 +65,9 @@ namespace UKHO.Search.Ingestion.Pipeline.Documents
             AddNormalizedStringValue(Authority, authority);
         }
 
-        public void SetAuthority(string? authority)
-        {
-            AddAuthority(authority);
-        }
-
         public void AddRegion(string? region)
         {
             AddNormalizedStringValue(Region, region);
-        }
-
-        public void SetRegion(string? region)
-        {
-            AddRegion(region);
         }
 
         public void AddFormat(string? format)
@@ -84,19 +75,9 @@ namespace UKHO.Search.Ingestion.Pipeline.Documents
             AddNormalizedStringValue(Format, format);
         }
 
-        public void SetFormat(string? format)
-        {
-            AddFormat(format);
-        }
-
         public void AddMajorVersion(int? majorVersion)
         {
             AddIntValue(MajorVersion, majorVersion);
-        }
-
-        public void SetMajorVersion(int? majorVersion)
-        {
-            AddMajorVersion(majorVersion);
         }
 
         public void AddMinorVersion(int? minorVersion)
@@ -104,19 +85,9 @@ namespace UKHO.Search.Ingestion.Pipeline.Documents
             AddIntValue(MinorVersion, minorVersion);
         }
 
-        public void SetMinorVersion(int? minorVersion)
-        {
-            AddMinorVersion(minorVersion);
-        }
-
         public void AddCategory(string? category)
         {
             AddNormalizedStringValue(Category, category);
-        }
-
-        public void SetCategory(string? category)
-        {
-            AddCategory(category);
         }
 
         public void AddSeries(string? series)
@@ -124,29 +95,9 @@ namespace UKHO.Search.Ingestion.Pipeline.Documents
             AddNormalizedStringValue(Series, series);
         }
 
-        public void SetSeries(string? series)
-        {
-            AddSeries(series);
-        }
-
         public void AddInstance(string? instance)
         {
             AddNormalizedStringValue(Instance, instance);
-        }
-
-        public void SetInstance(string? instance)
-        {
-            AddInstance(instance);
-        }
-
-        public void SetKeyword(string? keyword)
-        {
-            AddKeyword(keyword);
-        }
-
-        public void AddKeywordToken(string? keyword)
-        {
-            AddKeyword(keyword);
         }
 
         public void AddKeywords(IEnumerable<string?>? keywords)
@@ -169,18 +120,19 @@ namespace UKHO.Search.Ingestion.Pipeline.Documents
                 return;
             }
 
-            var split = tokens.Split((char[]?)null, StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries);
-            AddKeywords(split);
-        }
-
-        public void SetKeywordsFromTokens(string? tokens)
-        {
-            AddKeywordsFromTokens(tokens);
+            var tokenNormalizer = new TokenNormalizer();
+            foreach (var token in SplitKeywordTokens(tokens))
+            {
+                foreach (var normalizedToken in tokenNormalizer.NormalizeToken(token))
+                {
+                    AddKeyword(normalizedToken);
+                }
+            }
         }
 
         public void AddSearchText(string? text)
         {
-            var normalized = NormalizeToken(text);
+            var normalized = NormalizeStringValue(text);
             if (normalized is null)
             {
                 return;
@@ -195,14 +147,9 @@ namespace UKHO.Search.Ingestion.Pipeline.Documents
             SearchText = string.Concat(SearchText, " ", normalized);
         }
 
-        public void SetSearchText(string? text)
-        {
-            AddSearchText(text);
-        }
-
         public void AddContent(string? text)
         {
-            var normalized = NormalizeToken(text);
+            var normalized = NormalizeStringValue(text);
             if (normalized is null)
             {
                 return;
@@ -215,11 +162,6 @@ namespace UKHO.Search.Ingestion.Pipeline.Documents
             }
 
             Content = string.Concat(Content, " ", normalized);
-        }
-
-        public void SetContent(string? text)
-        {
-            AddContent(text);
         }
 
         public static CanonicalDocument CreateMinimal(string id, IndexRequest source, DateTimeOffset timestamp)
@@ -254,7 +196,40 @@ namespace UKHO.Search.Ingestion.Pipeline.Documents
             }
         }
 
-        private static string? NormalizeToken(string? value)
+        private static IEnumerable<string> SplitKeywordTokens(string tokens)
+        {
+            var startIndex = -1;
+            for (var index = 0; index < tokens.Length; index++)
+            {
+                if (IsKeywordTokenDelimiter(tokens[index]))
+                {
+                    if (startIndex >= 0)
+                    {
+                        yield return tokens[startIndex..index];
+                        startIndex = -1;
+                    }
+
+                    continue;
+                }
+
+                if (startIndex < 0)
+                {
+                    startIndex = index;
+                }
+            }
+
+            if (startIndex >= 0)
+            {
+                yield return tokens[startIndex..];
+            }
+        }
+
+        private static bool IsKeywordTokenDelimiter(char value)
+        {
+            return char.IsWhiteSpace(value) || value is ',' or ';';
+        }
+
+        private static string? NormalizeStringValue(string? value)
         {
             if (string.IsNullOrWhiteSpace(value))
             {
@@ -267,7 +242,7 @@ namespace UKHO.Search.Ingestion.Pipeline.Documents
 
         private static void AddNormalizedStringValue(SortedSet<string> target, string? value)
         {
-            var normalized = NormalizeToken(value);
+            var normalized = NormalizeStringValue(value);
             if (normalized is null)
             {
                 return;

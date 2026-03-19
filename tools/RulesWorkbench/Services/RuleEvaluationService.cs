@@ -21,17 +21,14 @@ namespace RulesWorkbench.Services
         private readonly IIngestionRulesEngine _engine;
         private readonly IIngestionRulesCatalog _catalog;
         private readonly ILogger<RuleEvaluationService> _logger;
-        private readonly RulesSnapshotStore _rulesSnapshotStore;
 
         public RuleEvaluationService(
             IIngestionRulesEngine engine,
             IIngestionRulesCatalog catalog,
-            RulesSnapshotStore rulesSnapshotStore,
             ILogger<RuleEvaluationService> logger)
         {
             _engine = engine;
             _catalog = catalog;
-            _rulesSnapshotStore = rulesSnapshotStore;
             _logger = logger;
         }
 
@@ -67,10 +64,7 @@ namespace RulesWorkbench.Services
             {
                 _logger.LogInformation("Running rules evaluation. ProviderName={ProviderName} RequestId={RequestId}", ProviderName, indexRequest.Id);
 
-                _engine.Apply(ProviderName, request, document);
-
-                // TODO (F1 follow-up): capture matched/fired rule IDs and action summaries.
-                // Engine only logs matched IDs today.
+                var engineReport = _engine.ApplyWithReport(ProviderName, request, document);
 
                 var docJson = JsonSerializer.Serialize(document, JsonOptions);
 
@@ -80,7 +74,14 @@ namespace RulesWorkbench.Services
                     FinalDocumentJson = docJson,
                     ValidationErrors = validationErrors,
                     RuntimeWarnings = new List<string>(),
-                    MatchedRules = new List<RuleEvaluationMatchedRuleDto>()
+                    MatchedRules = engineReport.MatchedRules
+                        .Select(x => new RuleEvaluationMatchedRuleDto
+                        {
+                            RuleId = x.RuleId,
+                            Description = x.Description,
+                            Summary = x.Summary,
+                        })
+                        .ToList()
                 });
             }
             catch (Exception ex) when (ex is not OperationCanceledException)

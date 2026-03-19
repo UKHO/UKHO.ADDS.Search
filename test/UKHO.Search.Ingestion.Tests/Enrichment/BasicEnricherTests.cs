@@ -119,5 +119,22 @@ namespace UKHO.Search.Ingestion.Tests.Enrichment
 
             document.Keywords.ShouldBe(new[] { "alpha" });
         }
+
+        [Fact]
+        public async Task Hyphenated_numeric_s_tokens_expand_to_support_search_recall()
+        {
+            var enricher = new BasicEnricher();
+
+            var add = new IndexRequest("doc-1", [
+                new IngestionProperty { Name = "Specification", Type = IngestionPropertyType.String, Value = "S-100" }
+            ], ["t1"], DateTimeOffset.UnixEpoch, new IngestionFileList());
+
+            var request = new IngestionRequest(IngestionRequestType.IndexItem, add, null, null);
+            var document = CanonicalDocument.CreateMinimal("doc-1", request.IndexItem!, request.IndexItem.Timestamp);
+
+            await enricher.TryBuildEnrichmentAsync(request, document);
+
+            document.Keywords.ShouldBe(new[] { "s-100", "s100" });
+        }
     }
 }

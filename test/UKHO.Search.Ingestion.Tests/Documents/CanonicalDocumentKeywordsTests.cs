@@ -42,13 +42,24 @@ namespace UKHO.Search.Ingestion.Tests.Documents
         }
 
         [Fact]
-        public void AddKeywordsFromTokens_splits_on_whitespace_normalizes_and_dedupes()
+        public void AddKeywords_is_a_simple_additive_wrapper_without_alias_expansion()
         {
             var doc = CreateDoc();
 
-            doc.AddKeywordsFromTokens("One  TWO\nThree\tTwo");
+            doc.AddKeywords(new[] { "S-100" });
 
-            doc.Keywords.ShouldBe(new[] { "one", "three", "two" });
+            doc.Keywords.ShouldBe(new[] { "s-100" });
+            doc.Keywords.ShouldNotContain("s100");
+        }
+
+        [Fact]
+        public void AddKeywordsFromTokens_preserves_hyphenated_tokens_ignores_repeated_delimiters_and_adds_aliases()
+        {
+            var doc = CreateDoc();
+
+            doc.AddKeywordsFromTokens("One,, TWO; s-100 \nThree\t;S-100");
+
+            doc.Keywords.ShouldBe(new[] { "one", "s-100", "s100", "three", "two" });
         }
 
         private static CanonicalDocument CreateDoc()

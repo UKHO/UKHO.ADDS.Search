@@ -12,7 +12,7 @@ namespace UKHO.Search.Ingestion.Tests.Documents
         {
             var doc = CreateDoc();
 
-            doc.SetAuthority("Bravo");
+            doc.AddAuthority("Bravo");
             doc.AddAuthority("alpha");
             doc.AddAuthority("ALPHA");
             doc.AddAuthority("  ");
@@ -26,7 +26,7 @@ namespace UKHO.Search.Ingestion.Tests.Documents
         {
             var doc = CreateDoc();
 
-            doc.SetRegion("Zulu");
+            doc.AddRegion("Zulu");
             doc.AddRegion("echo");
             doc.AddRegion("ECHO");
 
@@ -38,7 +38,7 @@ namespace UKHO.Search.Ingestion.Tests.Documents
         {
             var doc = CreateDoc();
 
-            doc.SetFormat("Pdf");
+            doc.AddFormat("Pdf");
             doc.AddFormat("epub");
             doc.AddFormat("PDF");
 
@@ -50,7 +50,7 @@ namespace UKHO.Search.Ingestion.Tests.Documents
         {
             var doc = CreateDoc();
 
-            doc.SetCategory("Charts");
+            doc.AddCategory("Charts");
             doc.AddCategory("aids");
             doc.AddCategory("CHARTS");
 
@@ -62,7 +62,7 @@ namespace UKHO.Search.Ingestion.Tests.Documents
         {
             var doc = CreateDoc();
 
-            doc.SetSeries("B");
+            doc.AddSeries("B");
             doc.AddSeries("a");
             doc.AddSeries("A");
 
@@ -74,7 +74,7 @@ namespace UKHO.Search.Ingestion.Tests.Documents
         {
             var doc = CreateDoc();
 
-            doc.SetInstance("2");
+            doc.AddInstance("2");
             doc.AddInstance("1");
             doc.AddInstance("2");
 
@@ -86,7 +86,7 @@ namespace UKHO.Search.Ingestion.Tests.Documents
         {
             var doc = CreateDoc();
 
-            doc.SetMajorVersion(2);
+            doc.AddMajorVersion(2);
             doc.AddMajorVersion(1);
             doc.AddMajorVersion(2);
             doc.AddMajorVersion(null);
@@ -99,7 +99,7 @@ namespace UKHO.Search.Ingestion.Tests.Documents
         {
             var doc = CreateDoc();
 
-            doc.SetMinorVersion(10);
+            doc.AddMinorVersion(10);
             doc.AddMinorVersion(2);
             doc.AddMinorVersion(10);
             doc.AddMinorVersion(null);

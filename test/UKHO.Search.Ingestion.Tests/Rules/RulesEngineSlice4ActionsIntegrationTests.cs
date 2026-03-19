@@ -23,7 +23,7 @@ namespace UKHO.Search.Ingestion.Tests.Rules
                                     "id": "r1",
                                     "if": { "id": "doc-1" },
                                     "then": {
-                                      "keywords": { "add": [ "Key1", "$nope" ] },
+                                      "keywords": { "add": [ "Key1", "S-100", "$nope" ] },
                                       "searchText": { "add": [ "First" ] },
                                       "content": { "add": [ "C1" ] }
                                     }
@@ -38,7 +38,8 @@ namespace UKHO.Search.Ingestion.Tests.Rules
                                     "id": "r2",
                                     "if": { "id": "doc-1" },
                                     "then": {
-                                      "searchText": { "add": [ "First", "Second" ] }
+                                      "searchText": { "add": [ "First", "Second" ] },
+                                      "content": { "add": [ "C1", "SecondContent" ] }
                                     }
                                   }
                                 }
@@ -101,6 +102,8 @@ namespace UKHO.Search.Ingestion.Tests.Rules
             engine.Apply("file-share", request, document);
 
             document.Keywords.ShouldContain("key1");
+            document.Keywords.ShouldContain("s-100");
+            document.Keywords.ShouldContain("s100");
             document.Keywords.ShouldContain("mime-app/s63");
             document.Keywords.ShouldContain("all-app/s63");
             document.Keywords.ShouldContain("all-text/plain");
@@ -108,7 +111,53 @@ namespace UKHO.Search.Ingestion.Tests.Rules
             document.Keywords.ShouldNotContain("should-not-apply");
 
             document.SearchText.ShouldBe("first second");
-            document.Content.ShouldBe("c1");
+            document.Content.ShouldBe("c1 secondcontent");
+        }
+
+        [Fact]
+        public void Matching_rules_lowercase_all_additive_string_fields_during_ingestion()
+        {
+            using var temp = new TempRulesRoot();
+
+            temp.WriteRuleFile("file-share", "lowercase-all-fields", """
+                                {
+                                  "schemaVersion": "1.0",
+                                  "rule": {
+                                    "id": "lowercase-all-fields",
+                                    "if": { "id": "doc-1" },
+                                    "then": {
+                                      "keywords": { "add": [ "S-100" ] },
+                                      "searchText": { "add": [ "Mixed Search" ] },
+                                      "content": { "add": [ "Mixed Content" ] },
+                                      "authority": { "add": [ "UKHO" ] },
+                                      "region": { "add": [ "Europe" ] },
+                                      "format": { "add": [ "PDF" ] },
+                                      "category": { "add": [ "Charts" ] },
+                                      "series": { "add": [ "SeriesA" ] },
+                                      "instance": { "add": [ "Instance1" ] }
+                                    }
+                                  }
+                                }
+                                """);
+
+            using var provider = CreateProvider(temp.RootPath);
+            var engine = provider.GetRequiredService<IIngestionRulesEngine>();
+
+            var request = CreateRequest();
+            var document = CanonicalDocument.CreateMinimal("doc-1", request.IndexItem!, request.IndexItem.Timestamp);
+
+            engine.Apply("file-share", request, document);
+
+            document.Keywords.ShouldContain("s-100");
+            document.Keywords.ShouldContain("s100");
+            document.SearchText.ShouldBe("mixed search");
+            document.Content.ShouldBe("mixed content");
+            document.Authority.ShouldBe(new[] { "ukho" });
+            document.Region.ShouldBe(new[] { "europe" });
+            document.Format.ShouldBe(new[] { "pdf" });
+            document.Category.ShouldBe(new[] { "charts" });
+            document.Series.ShouldBe(new[] { "seriesa" });
+            document.Instance.ShouldBe(new[] { "instance1" });
         }
 
         [Fact]

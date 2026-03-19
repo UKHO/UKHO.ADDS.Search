@@ -2,6 +2,7 @@ using Kreuzberg;
 using Microsoft.Extensions.Logging;
 using UKHO.Search.Ingestion.Pipeline.Documents;
 using UKHO.Search.Ingestion.Requests;
+using UKHO.Search.Query;
 
 namespace UKHO.Search.Ingestion.Providers.FileShare.Enrichment.Handlers
 {
@@ -9,6 +10,7 @@ namespace UKHO.Search.Ingestion.Providers.FileShare.Enrichment.Handlers
     {
         private readonly ILogger<TextExtractionBatchContentHandler> _logger;
         private readonly HashSet<string> _allowedExtensions;
+        private readonly TokenNormalizer _tokenNormalizer = new();
 
         public TextExtractionBatchContentHandler(IEnumerable<string> allowedExtensions, ILogger<TextExtractionBatchContentHandler> logger)
         {
@@ -63,10 +65,13 @@ namespace UKHO.Search.Ingestion.Providers.FileShare.Enrichment.Handlers
                         continue;
                     }
 
-                    document.SetContent(result.Content);
+                    document.AddContent(result.Content);
 
                     var keyword = Path.GetFileNameWithoutExtension(filePath);
-                    document.SetKeyword(keyword);
+                    foreach (var normalizedKeyword in _tokenNormalizer.NormalizeToken(keyword))
+                    {
+                        document.AddKeyword(normalizedKeyword);
+                    }
                 }
                 catch (Exception ex) when (ex is not OperationCanceledException)
                 {

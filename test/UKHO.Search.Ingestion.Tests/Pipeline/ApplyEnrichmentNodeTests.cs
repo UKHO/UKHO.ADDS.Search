@@ -1,9 +1,12 @@
 using Microsoft.Extensions.DependencyInjection;
+using Microsoft.Extensions.Logging.Abstractions;
 using Shouldly;
+using UKHO.Search.Configuration;
 using UKHO.Search.Ingestion.Pipeline;
 using UKHO.Search.Ingestion.Pipeline.Documents;
 using UKHO.Search.Ingestion.Pipeline.Nodes;
 using UKHO.Search.Ingestion.Pipeline.Operations;
+using UKHO.Search.Ingestion.Providers.FileShare.Enrichment;
 using UKHO.Search.Ingestion.Requests;
 using UKHO.Search.Ingestion.Rules;
 using UKHO.Search.Ingestion.Tests.TestEnrichers;
@@ -387,6 +390,124 @@ namespace UKHO.Search.Ingestion.Tests.Pipeline
                   .ShouldBeTrue();
             deadLetter.Reader.TryRead(out var _)
                       .ShouldBeFalse();
+        }
+
+        [Fact]
+        public async Task BestEffort_missing_zip_does_not_prevent_later_enrichers_from_running()
+        {
+            var input = BoundedChannelFactory.Create<Envelope<IngestionPipelineContext>>(1, true, true);
+            var output = BoundedChannelFactory.Create<Envelope<IndexOperation>>(1, true, true);
+            var deadLetter = BoundedChannelFactory.Create<Envelope<IndexOperation>>(1, true, true);
+
+            var calls = new List<string>();
+            var notFoundException = new InvalidOperationException("Failed to download ZIP from FileShare for batch 'doc-1': NotFoundHttpError { Message = \"The requested resource was not found\" }");
+
+            var enrichers = new IIngestionEnricher[]
+            {
+                new BatchContentEnricher(new ThrowingZipDownloader(notFoundException), Array.Empty<IBatchContentHandler>(), NullLogger<BatchContentEnricher>.Instance, new IngestionModeOptions(IngestionMode.BestEffort)),
+                new RecordingEnricherA(calls, 200)
+            };
+
+            await using var provider = CreateProvider(enrichers);
+            var node = new ApplyEnrichmentNode("enrich", input.Reader, output.Writer, deadLetter.Writer, provider.GetRequiredService<IServiceScopeFactory>());
+
+            await node.StartAsync(CancellationToken.None);
+
+            var request = new IngestionRequest(IngestionRequestType.IndexItem, new IndexRequest("doc-1", Array.Empty<IngestionProperty>(), new[] { "t1" }, DateTimeOffset.UnixEpoch, new IngestionFileList()), null, null);
+            var document = CanonicalDocument.CreateMinimal("doc-1", request.IndexItem!, request.IndexItem.Timestamp);
+
+            await input.Writer.WriteAsync(new Envelope<IngestionPipelineContext>("doc-1", new IngestionPipelineContext
+            {
+                Request = request,
+                Operation = new UpsertOperation("doc-1", document)
+            }));
+            input.Writer.TryComplete();
+
+            await node.Completion.WaitAsync(TimeSpan.FromSeconds(2));
+
+            output.Reader.TryRead(out var _)
+                  .ShouldBeTrue();
+
+            deadLetter.Reader.TryRead(out var _)
+                      .ShouldBeFalse();
+
+            calls.ShouldBe(new[] { nameof(RecordingEnricherA) });
+        }
+
+        [Fact]
+        public async Task BestEffort_missing_zip_does_not_stop_matching_rules_or_later_enrichers()
+        {
+            using var temp = new TempRulesRoot();
+
+            temp.WriteRuleFile("file-share", "r1", """
+                                                {
+                                                  "schemaVersion": "1.0",
+                                                  "rule": {
+                                                    "id": "r1",
+                                                    "if": { "id": "doc-1" },
+                                                    "then": {
+                                                      "keywords": { "add": [ "Rule1" ] },
+                                                      "searchText": { "add": [ "First" ] }
+                                                    }
+                                                  }
+                                                }
+                                                """);
+
+            temp.WriteRuleFile("file-share", "r2", """
+                                                {
+                                                  "schemaVersion": "1.0",
+                                                  "rule": {
+                                                    "id": "r2",
+                                                    "if": { "id": "doc-1" },
+                                                    "then": {
+                                                      "keywords": { "add": [ "Rule2" ] },
+                                                      "searchText": { "add": [ "Second" ] }
+                                                    }
+                                                  }
+                                                }
+                                                """);
+
+            var input = BoundedChannelFactory.Create<Envelope<IngestionPipelineContext>>(1, true, true);
+            var output = BoundedChannelFactory.Create<Envelope<IndexOperation>>(1, true, true);
+            var deadLetter = BoundedChannelFactory.Create<Envelope<IndexOperation>>(1, true, true);
+
+            var calls = new List<string>();
+            var notFoundException = new InvalidOperationException("Failed to download ZIP from FileShare for batch 'doc-1': NotFoundHttpError { Message = \"The requested resource was not found\" }");
+
+            await using var provider = IngestionRulesTestServiceProviderFactory.Create(temp.RootPath, configureServices: services =>
+            {
+                services.AddSingleton(new IngestionModeOptions(IngestionMode.BestEffort));
+                services.AddScoped<IFileShareZipDownloader>(_ => new ThrowingZipDownloader(notFoundException));
+                services.AddScoped<IIngestionEnricher>(_ => new RecordingEnricherA(calls, 250));
+            });
+
+            var node = new ApplyEnrichmentNode("enrich", input.Reader, output.Writer, deadLetter.Writer, provider.GetRequiredService<IServiceScopeFactory>(), providerName: "file-share");
+
+            await node.StartAsync(CancellationToken.None);
+
+            var request = new IngestionRequest(IngestionRequestType.IndexItem, new IndexRequest("doc-1", Array.Empty<IngestionProperty>(), new[] { "t1" }, DateTimeOffset.UnixEpoch, new IngestionFileList()), null, null);
+            var document = CanonicalDocument.CreateMinimal("doc-1", request.IndexItem!, request.IndexItem.Timestamp);
+
+            await input.Writer.WriteAsync(new Envelope<IngestionPipelineContext>("doc-1", new IngestionPipelineContext
+            {
+                Request = request,
+                Operation = new UpsertOperation("doc-1", document)
+            }));
+            input.Writer.TryComplete();
+
+            await node.Completion.WaitAsync(TimeSpan.FromSeconds(2));
+
+            output.Reader.TryRead(out var outEnvelope)
+                  .ShouldBeTrue();
+
+            deadLetter.Reader.TryRead(out var _)
+                      .ShouldBeFalse();
+
+            var upsert = outEnvelope.Payload.ShouldBeOfType<UpsertOperation>();
+            upsert.Document.Keywords.ShouldContain("rule1");
+            upsert.Document.Keywords.ShouldContain("rule2");
+            upsert.Document.SearchText.ShouldBe("first second");
+            calls.ShouldBe(new[] { nameof(RecordingEnricherA) });
         }
 
         [Fact]

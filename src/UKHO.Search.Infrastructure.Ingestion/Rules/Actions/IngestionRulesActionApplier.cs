@@ -2,6 +2,7 @@ using UKHO.Search.Infrastructure.Ingestion.Rules.Evaluation;
 using UKHO.Search.Infrastructure.Ingestion.Rules.Model;
 using UKHO.Search.Infrastructure.Ingestion.Rules.Templating;
 using UKHO.Search.Ingestion.Pipeline.Documents;
+using UKHO.Search.Query;
 
 namespace UKHO.Search.Infrastructure.Ingestion.Rules.Actions
 {
@@ -9,6 +10,7 @@ namespace UKHO.Search.Infrastructure.Ingestion.Rules.Actions
     {
         private readonly IPathResolver _pathResolver;
         private readonly IngestionRulesTemplateExpander _templateExpander;
+        private readonly TokenNormalizer _tokenNormalizer = new();
 
         public IngestionRulesActionApplier(IPathResolver pathResolver, IngestionRulesTemplateExpander templateExpander)
         {
@@ -125,19 +127,16 @@ namespace UKHO.Search.Infrastructure.Ingestion.Rules.Actions
             {
                 foreach (var value in _templateExpander.Expand(template, context))
                 {
-                    var normalized = NormalizeToken(value);
-                    if (normalized is null)
+                    foreach (var normalizedToken in _tokenNormalizer.NormalizeToken(value))
                     {
-                        continue;
-                    }
+                        if (document.Keywords.Contains(normalizedToken))
+                        {
+                            continue;
+                        }
 
-                    if (document.Keywords.Contains(normalized))
-                    {
-                        continue;
+                        document.AddKeyword(normalizedToken);
+                        summary.KeywordsAdded++;
                     }
-
-                    document.AddKeyword(normalized);
-                    summary.KeywordsAdded++;
                 }
             }
         }
@@ -165,7 +164,7 @@ namespace UKHO.Search.Infrastructure.Ingestion.Rules.Actions
                         continue;
                     }
 
-                    document.SetSearchText(normalized);
+                    document.AddSearchText(normalized);
                     summary.SearchTextAdded++;
                 }
             }
@@ -194,7 +193,7 @@ namespace UKHO.Search.Infrastructure.Ingestion.Rules.Actions
                         continue;
                     }
 
-                    document.SetContent(normalized);
+                    document.AddContent(normalized);
                     summary.ContentAdded++;
                 }
             }

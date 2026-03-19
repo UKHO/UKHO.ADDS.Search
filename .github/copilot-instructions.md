@@ -73,13 +73,15 @@ Rules:
 - When editing `.csproj` files, keep `PackageReference` entries in `ItemGroup` blocks that contain only `PackageReference` entries (do not mix `ProjectReference` and `PackageReference` in the same `ItemGroup`).
 
 ## Search Indexing Guidelines
-- For search indexing, normalize `Keywords`, `SearchText`, and `Facets` to lowercase (case-insensitive exact matching).
+- For search indexing, normalize `Keywords`, `SearchText`, and `Facets` to lowercase (case-insensitive exact matching). Everything going into an index must be lowercase.
 
 ## Rule Evaluation Guidelines
 - Differentiate ruleset validation vs runtime data: fail-fast only for invalid JSON/schema/operators/path syntax. If a given `AddItem`/`UpdateItem` payload is missing a referenced property/path at evaluation time, the rule/condition should simply not match, and any derived outputs should be skipped (expected often).
 
 ## RulesWorkbench Specifications
 - When updating specs for RulesWorkbench, editing is mandatory (existing behavior) and implement saving of VALID rules back to Azure App Configuration if it is a simple extension.
+- For RulesWorkbench rule-checker work, use the rule naming convention `bu-{businessunitname}-*` in lowercase, deriving the business unit name by joining the BusinessUnit table and lowercasing it.
+- Do not save the detected RulesWorkbench Checker preferences to the repository or user instructions; treat them as temporary/hardwired for now.
 
 ## Ingestion Rules
 - When authoring ingestion rules from the mapping spec, only explicitly mapped fixed keywords should be written into rule JSON; copying the remaining batch attribute values into keywords is handled by the ingestion service at runtime.

@@ -2,12 +2,14 @@ using System.Xml.Linq;
 using Microsoft.Extensions.Logging;
 using UKHO.Search.Geo;
 using UKHO.Search.Ingestion.Pipeline.Documents;
+using UKHO.Search.Query;
 
 namespace UKHO.Search.Ingestion.Providers.FileShare.Enrichment.Handlers.Enrichers
 {
     internal sealed class S101Enricher : IS100Enricher
     {
         private readonly ILogger<S101Enricher> _logger;
+        private readonly TokenNormalizer _tokenNormalizer = new();
 
         public S101Enricher(ILogger<S101Enricher> logger)
         {
@@ -32,8 +34,10 @@ namespace UKHO.Search.Ingestion.Providers.FileShare.Enrichment.Handlers.Enricher
             var gco = XNamespace.Get("http://standards.iso.org/iso/19115/-3/gco/1.0");
             var gml = XNamespace.Get("http://www.opengis.net/gml/3.2");
 
-            document.SetKeyword("S-101");
-            document.SetKeyword("S101");
+            foreach (var normalizedKeyword in _tokenNormalizer.NormalizeToken("S-101"))
+            {
+                document.AddKeyword(normalizedKeyword);
+            }
 
             var organization = root.Element(xc + "contact")
                                    ?.Element(xc + "organization")

@@ -1,0 +1,513 @@
+@page "/checker"
+@rendermode InteractiveServer
+
+@using RulesWorkbench.Contracts
+@using RulesWorkbench.Services
+
+@inject BusinessUnitLookupService BusinessUnitLookupService
+@inject BatchScanService BatchScanService
+@inject RuleCheckerService RuleCheckerService
+
+<PageTitle>Checker</PageTitle>
+
+<h1>Checker</h1>
+
+<p class="text-muted">
+    Run a rule check for a single batch using the same ingestion rules path as `IngestionServiceHost`.
+    This v1 checker runs the rules path only and does not invoke wider ZIP-dependent enrichment.
+</p>
+
+<div class="card mb-3">
+    <div class="card-body">
+        <h2 class="h5">Single batch</h2>
+        <div class="row g-2 align-items-end">
+            <div class="col-12 col-md-8">
+                <label class="form-label" for="checker-batch-id">batchId</label>
+                <input id="checker-batch-id" class="form-control" placeholder="GUID" @bind="BatchId" @bind:event="oninput" />
+            </div>
+            <div class="col-12 col-md-4">
+                <button type="button" class="btn btn-primary w-100" @onclick="RunAsync" disabled="@IsRunning">@RunButtonText</button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<div class="card mb-3">
+    <div class="card-body">
+        <h2 class="h5">Business unit scan</h2>
+        <p class="text-muted mb-3">
+            Scan one selected business unit at a time and stop at the first non-OK result.
+        </p>
+
+        <div class="row g-2 align-items-end">
+            <div class="col-12 col-lg-7">
+                <label class="form-label" for="checker-business-unit">Business unit</label>
+                <select id="checker-business-unit" class="form-select" @bind="SelectedBusinessUnitIdText" disabled="@IsRunningScan">
+                    <option value="">Select a business unit</option>
+                    @foreach (var businessUnit in BusinessUnits)
+                    {
+                        <option value="@businessUnit.Id">@businessUnit.Name (@businessUnit.Id)</option>
+                    }
+                </select>
+            </div>
+            <div class="col-12 col-md-4 col-lg-3">
+                <label class="form-label" for="checker-max-rows">Max rows</label>
+                <input id="checker-max-rows" class="form-control" type="number" min="1" @bind="MaxRows" disabled="@IsRunningScan" />
+            </div>
+            <div class="col-12 col-md-8 col-lg-2">
+                <button type="button" class="btn btn-outline-primary w-100" @onclick="StartScanAsync" disabled="@IsScanDisabled">@ScanButtonText</button>
+            </div>
+        </div>
+
+        @if (IsLoadingBusinessUnits)
+        {
+            <div class="form-text">Loading business units...</div>
+        }
+    </div>
+</div>
+
+@if (!string.IsNullOrWhiteSpace(ErrorMessage))
+{
+    <div class="alert alert-danger" role="alert">
+        @ErrorMessage
+    </div>
+}
+
+@if (!string.IsNullOrWhiteSpace(InfoMessage))
+{
+    <div class="alert alert-info" role="alert">
+        @InfoMessage
+    </div>
+}
+
+@if (Report is not null)
+{
+    <div class="alert @GetStatusAlertClass(Report.Status)" role="alert">
+        <strong>Status:</strong> @Report.Status
+        @if (Report.MissingRequiredFields.Count > 0)
+        {
+            <div class="mt-1">Missing required fields: @string.Join(", ", Report.MissingRequiredFields)</div>
+        }
+    </div>
+
+    @if (Report.ValidationErrors.Count > 0)
+    {
+        <div class="alert alert-danger" role="alert">
+            <strong>Validation errors</strong>
+            <ul class="mb-0">
+                @foreach (var error in Report.ValidationErrors)
+                {
+                    <li>@error</li>
+                }
+            </ul>
+        </div>
+    }
+
+    @if (Report.RuntimeWarnings.Count > 0)
+    {
+        <div class="alert alert-warning" role="alert">
+            <strong>Warnings</strong>
+            <ul class="mb-0">
+                @foreach (var warning in Report.RuntimeWarnings)
+                {
+                    <li>@warning</li>
+                }
+            </ul>
+        </div>
+    }
+
+    <div class="row g-3">
+        <div class="col-12 col-xl-5">
+            <div class="card h-100">
+                <div class="card-body">
+                    <h2 class="h5">Batch summary</h2>
+                    <dl class="row mb-0">
+                        <dt class="col-sm-4">BatchId</dt>
+                        <dd class="col-sm-8">@Report.Batch.BatchId</dd>
+                        <dt class="col-sm-4">CreatedOn</dt>
+                        <dd class="col-sm-8">@(Report.Batch.CreatedOn?.ToString("O") ?? "(none)")</dd>
+                        <dt class="col-sm-4">Business unit</dt>
+                        <dd class="col-sm-8">@(string.IsNullOrWhiteSpace(Report.Batch.BusinessUnitName) ? "(none)" : Report.Batch.BusinessUnitName)</dd>
+                    </dl>
+                </div>
+            </div>
+        </div>
+
+        <div class="col-12 col-xl-7">
+            <div class="card h-100">
+                <div class="card-body">
+                    <h2 class="h5">Matched rules</h2>
+                    @if (Report.MatchedRules.Count == 0)
+                    {
+                        <p class="text-muted mb-0">No rules matched.</p>
+                    }
+                    else
+                    {
+                        <ul class="list-group checker-list-group">
+                            @foreach (var rule in Report.MatchedRules)
+                            {
+                                <li class="list-group-item">
+                                    <div class="fw-semibold">@rule.RuleId</div>
+                                    @if (!string.IsNullOrWhiteSpace(rule.Description))
+                                    {
+                                        <div>@rule.Description</div>
+                                    }
+                                    @if (!string.IsNullOrWhiteSpace(rule.Summary))
+                                    {
+                                        <div class="text-muted">@rule.Summary</div>
+                                    }
+                                </li>
+                            }
+                        </ul>
+                    }
+                </div>
+            </div>
+        </div>
+
+        <div class="col-12">
+            <div class="card">
+                <div class="card-body">
+                    <h2 class="h5">Payload summary</h2>
+
+                    <h3 class="h6 mt-3">Security tokens</h3>
+                    @if (Report.Payload.SecurityTokens.Count == 0)
+                    {
+                        <p class="text-muted">No security tokens.</p>
+                    }
+                    else
+                    {
+                        <ul>
+                            @foreach (var token in Report.Payload.SecurityTokens)
+                            {
+                                <li>@token</li>
+                            }
+                        </ul>
+                    }
+
+                    <h3 class="h6 mt-3">Properties</h3>
+                    @if (Report.Payload.Properties.Count == 0)
+                    {
+                        <p class="text-muted">No properties.</p>
+                    }
+                    else
+                    {
+                        <div class="table-responsive">
+                            <table class="table table-sm align-middle">
+                                <thead>
+                                    <tr>
+                                        <th>Name</th>
+                                        <th>Type</th>
+                                        <th>Value</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    @foreach (var property in Report.Payload.Properties)
+                                    {
+                                        <tr>
+                                            <td>@property.Name</td>
+                                            <td>@property.Type</td>
+                                            <td>@property.Value</td>
+                                        </tr>
+                                    }
+                                </tbody>
+                            </table>
+                        </div>
+                    }
+
+                    <h3 class="h6 mt-3">Files</h3>
+                    @if (Report.Payload.Files.Count == 0)
+                    {
+                        <p class="text-muted">No files.</p>
+                    }
+                    else
+                    {
+                        <div class="table-responsive">
+                            <table class="table table-sm align-middle">
+                                <thead>
+                                    <tr>
+                                        <th>Filename</th>
+                                        <th>MimeType</th>
+                                        <th>Size</th>
+                                        <th>Timestamp</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    @foreach (var file in Report.Payload.Files)
+                                    {
+                                        <tr>
+                                            <td>@file.Filename</td>
+                                            <td>@file.MimeType</td>
+                                            <td>@file.Size</td>
+                                            <td>@(file.Timestamp?.ToString("O") ?? "(none)")</td>
+                                        </tr>
+                                    }
+                                </tbody>
+                            </table>
+                        </div>
+                    }
+
+                    <details class="mt-3">
+                        <summary>Raw payload JSON</summary>
+                        <div class="mt-2 checker-json-host">
+                            <JsonEditor Value="@Report.RawPayloadJson" IsReadOnly="true" EnableFolding="true" HostStyle="height: 24rem; border: 1px solid #dee2e6; border-radius: 0.25rem;" />
+                        </div>
+                    </details>
+                </div>
+            </div>
+        </div>
+
+        <div class="col-12 col-xl-6">
+            <div class="card h-100">
+                <div class="card-body">
+                    <h2 class="h5">Candidate-but-unmatched rules</h2>
+                    @if (CandidateUnmatchedRules.Count == 0)
+                    {
+                        <p class="text-muted mb-0">No candidate-but-unmatched rules.</p>
+                    }
+                    else
+                    {
+                        <div class="list-group checker-list-group">
+                            @foreach (var rule in CandidateUnmatchedRules)
+                            {
+                                <button type="button" class="list-group-item list-group-item-action @(rule.RuleId == SelectedRuleId ? "active" : null)" @onclick="() => SelectRule(rule.RuleId)">
+                                    <div class="fw-semibold">@rule.RuleId</div>
+                                    @if (!string.IsNullOrWhiteSpace(rule.Description))
+                                    {
+                                        <div>@rule.Description</div>
+                                    }
+                                </button>
+                            }
+                        </div>
+                    }
+                </div>
+            </div>
+        </div>
+
+        <div class="col-12 col-xl-6">
+            <div class="card h-100">
+                <div class="card-body">
+                    <h2 class="h5">Selected rule JSON</h2>
+                    @if (SelectedRule is null)
+                    {
+                        <p class="text-muted mb-0">Select a candidate rule to view its JSON.</p>
+                    }
+                    else
+                    {
+                        <div class="mb-2 fw-semibold">@SelectedRule.RuleId</div>
+                        <JsonEditor Value="@SelectedRule.RuleJson" IsReadOnly="true" EnableFolding="true" HostStyle="height: 24rem; border: 1px solid #dee2e6; border-radius: 0.25rem;" />
+                    }
+                </div>
+            </div>
+        </div>
+
+        <div class="col-12">
+            <div class="card">
+                <div class="card-body">
+                    <h2 class="h5">CanonicalDocument JSON</h2>
+                    <JsonEditor Value="@Report.FinalDocumentJson" IsReadOnly="true" EnableFolding="true" HostStyle="height: 24rem; border: 1px solid #dee2e6; border-radius: 0.25rem;" />
+                </div>
+            </div>
+        </div>
+    </div>
+}
+
+@code
+{
+    private string BatchId { get; set; } = string.Empty;
+
+    private IReadOnlyList<BusinessUnitOptionDto> BusinessUnits { get; set; } = Array.Empty<BusinessUnitOptionDto>();
+
+    private string SelectedBusinessUnitIdText { get; set; } = string.Empty;
+
+    private int MaxRows { get; set; } = 100;
+
+    private bool IsRunning { get; set; }
+
+    private bool IsRunningScan { get; set; }
+
+    private bool IsLoadingBusinessUnits { get; set; }
+
+    private string? ErrorMessage { get; set; }
+
+    private string? InfoMessage { get; set; }
+
+    private RuleCheckerReportDto? Report { get; set; }
+
+    private string? SelectedRuleId { get; set; }
+
+    private IReadOnlyList<BatchScanBatchDto> CurrentScanBatches { get; set; } = Array.Empty<BatchScanBatchDto>();
+
+    private int CurrentScanIndex { get; set; }
+
+    private int? CurrentScanBusinessUnitId { get; set; }
+
+    private string CurrentScanBusinessUnitName { get; set; } = string.Empty;
+
+    private string RunButtonText => IsRunning ? "Checking..." : "Check batch";
+
+    private string ScanButtonText => IsRunningScan ? "Scanning..." : "Start scan";
+
+    private bool IsScanDisabled => IsRunning || IsRunningScan || IsLoadingBusinessUnits || string.IsNullOrWhiteSpace(SelectedBusinessUnitIdText);
+
+    private IReadOnlyList<RuleCheckerCandidateRuleDto> CandidateUnmatchedRules =>
+        Report?.CandidateRules.Where(x => !x.IsMatched).ToArray() ?? Array.Empty<RuleCheckerCandidateRuleDto>();
+
+    private RuleCheckerCandidateRuleDto? SelectedRule =>
+        Report?.CandidateRules.FirstOrDefault(x => string.Equals(x.RuleId, SelectedRuleId, StringComparison.Ordinal));
+
+    protected override async Task OnInitializedAsync()
+    {
+        await LoadBusinessUnitsAsync();
+    }
+
+    private async Task RunAsync()
+    {
+        ErrorMessage = null;
+        InfoMessage = null;
+        Report = null;
+        SelectedRuleId = null;
+
+        if (string.IsNullOrWhiteSpace(BatchId))
+        {
+            ErrorMessage = "Batch id is required.";
+            return;
+        }
+
+        IsRunning = true;
+
+        try
+        {
+            var result = await RuleCheckerService.CheckBatchAsync(BatchId, CancellationToken.None);
+            if (!result.IsSuccess || result.Report is null)
+            {
+                ErrorMessage = result.ErrorMessage ?? "Checker failed.";
+                return;
+            }
+
+            Report = result.Report;
+            SelectedRuleId = CandidateUnmatchedRules.FirstOrDefault()?.RuleId;
+        }
+        catch (Exception ex)
+        {
+            ErrorMessage = ex.Message;
+        }
+        finally
+        {
+            IsRunning = false;
+        }
+    }
+
+    private async Task StartScanAsync()
+    {
+        ErrorMessage = null;
+        InfoMessage = null;
+        Report = null;
+        SelectedRuleId = null;
+
+        if (!int.TryParse(SelectedBusinessUnitIdText, out var businessUnitId) || businessUnitId <= 0)
+        {
+            ErrorMessage = "Select a business unit before starting a scan.";
+            return;
+        }
+
+        var businessUnit = BusinessUnits.FirstOrDefault(x => x.Id == businessUnitId);
+        if (businessUnit is null)
+        {
+            ErrorMessage = "The selected business unit could not be found.";
+            return;
+        }
+
+        IsRunningScan = true;
+
+        try
+        {
+            var scanResult = await BatchScanService.GetBatchesForBusinessUnitAsync(businessUnitId, MaxRows, CancellationToken.None);
+            if (!scanResult.IsSuccess)
+            {
+                ErrorMessage = scanResult.ErrorMessage ?? "Failed to load batches for scan.";
+                return;
+            }
+
+            CurrentScanBatches = scanResult.Batches;
+            CurrentScanIndex = 0;
+            CurrentScanBusinessUnitId = businessUnitId;
+            CurrentScanBusinessUnitName = businessUnit.Name;
+
+            if (CurrentScanBatches.Count == 0)
+            {
+                InfoMessage = $"No batches were found for business unit {businessUnit.Name} ({businessUnit.Id}).";
+                return;
+            }
+
+            while (CurrentScanIndex < CurrentScanBatches.Count)
+            {
+                var batch = CurrentScanBatches[CurrentScanIndex];
+                var result = await RuleCheckerService.CheckBatchAsync(batch.BatchId.ToString("D"), businessUnit.Name, CancellationToken.None);
+                if (!result.IsSuccess || result.Report is null)
+                {
+                    ErrorMessage = result.ErrorMessage ?? $"Checker failed while scanning batch '{batch.BatchId:D}'.";
+                    return;
+                }
+
+                if (result.Report.Status is not RuleCheckerStatus.Ok)
+                {
+                    Report = result.Report;
+                    BatchId = batch.BatchId.ToString("D");
+                    SelectedRuleId = CandidateUnmatchedRules.FirstOrDefault()?.RuleId;
+                    InfoMessage = $"Scan stopped at batch {CurrentScanIndex + 1} of {CurrentScanBatches.Count} for business unit {businessUnit.Name} ({businessUnit.Id}).";
+                    return;
+                }
+
+                CurrentScanIndex++;
+            }
+
+            InfoMessage = $"Checked {CurrentScanBatches.Count} batch(es) for business unit {businessUnit.Name} ({businessUnit.Id}). No failing batches were found.";
+        }
+        catch (Exception ex)
+        {
+            ErrorMessage = ex.Message;
+        }
+        finally
+        {
+            IsRunningScan = false;
+        }
+    }
+
+    private async Task LoadBusinessUnitsAsync()
+    {
+        IsLoadingBusinessUnits = true;
+
+        try
+        {
+            var result = await BusinessUnitLookupService.GetBusinessUnitsAsync(CancellationToken.None);
+            if (!result.IsSuccess)
+            {
+                ErrorMessage = result.ErrorMessage ?? "Failed to load business units.";
+                BusinessUnits = Array.Empty<BusinessUnitOptionDto>();
+                return;
+            }
+
+            BusinessUnits = result.BusinessUnits;
+        }
+        finally
+        {
+            IsLoadingBusinessUnits = false;
+        }
+    }
+
+    private void SelectRule(string ruleId)
+    {
+        SelectedRuleId = ruleId;
+    }
+
+    private static string GetStatusAlertClass(RuleCheckerStatus status)
+    {
+        return status switch
+        {
+            RuleCheckerStatus.Ok => "alert-success",
+            RuleCheckerStatus.Warning => "alert-warning",
+            RuleCheckerStatus.Fail => "alert-danger",
+            _ => "alert-secondary",
+        };
+    }
+}

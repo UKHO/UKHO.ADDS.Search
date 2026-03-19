@@ -213,6 +213,29 @@ namespace UKHO.Search.Ingestion.Tests.Enrichment
         }
 
         [Fact]
+        public async Task TryBuildEnrichmentAsync_normalizes_hyphenated_numeric_filename_keywords_for_search_recall()
+        {
+            var zipBytes = CreateZipBytes(new Dictionary<string, byte[]>
+            {
+                ["S-100.TXT"] = "HELLO WORLD"u8.ToArray()
+            });
+
+            var downloader = new FakeZipDownloader(_ => new MemoryStream(zipBytes));
+            var handler = new TextExtractionBatchContentHandler(new[] { ".txt" }, NullLogger<TextExtractionBatchContentHandler>.Instance);
+            var enricher = new BatchContentEnricher(downloader, new[] { handler }, NullLogger<BatchContentEnricher>.Instance, new IngestionModeOptions(IngestionMode.Strict));
+
+            var request = CreateAddRequest("batch-s100-keyword");
+            var document = CanonicalDocument.CreateMinimal("doc-1", request.IndexItem!, request.IndexItem.Timestamp);
+
+            await enricher.TryBuildEnrichmentAsync(request, document, CancellationToken.None);
+
+            document.Content.ShouldContain("hello world");
+            document.Keywords.ShouldContain("s-100");
+            document.Keywords.ShouldContain("s100");
+            document.Keywords.ShouldNotContain("S-100");
+        }
+
+        [Fact]
         public async Task TryBuildEnrichmentAsync_cleans_up_temp_workspace()
         {
             var batchId = "batch-5-cleanup";

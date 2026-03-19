@@ -1,11 +1,14 @@
 using System.Globalization;
 using UKHO.Search.Ingestion.Pipeline.Documents;
 using UKHO.Search.Ingestion.Requests;
+using UKHO.Search.Query;
 
 namespace UKHO.Search.Ingestion.Providers.FileShare.Enrichment
 {
     public sealed class BasicEnricher : IIngestionEnricher
     {
+        private readonly TokenNormalizer _tokenNormalizer = new();
+
         public int Ordinal => 10;
 
         public Task TryBuildEnrichmentAsync(IngestionRequest request, CanonicalDocument document, CancellationToken cancellationToken = default)
@@ -32,12 +35,10 @@ namespace UKHO.Search.Ingestion.Providers.FileShare.Enrichment
 
                 foreach (var value in values)
                 {
-                    if (string.IsNullOrWhiteSpace(value))
+                    foreach (var normalizedKeyword in _tokenNormalizer.NormalizeToken(value))
                     {
-                        continue;
+                        document.AddKeyword(normalizedKeyword);
                     }
-
-                    document.AddKeyword(value);
                 }
             }
 

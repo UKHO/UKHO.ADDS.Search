@@ -24,6 +24,9 @@ namespace RulesWorkbench
             builder.Services.AddSingleton<IRuleJsonValidator, SystemTextJsonRuleJsonValidator>();
             builder.Services.AddSingleton<EvaluationPayloadMapper>();
             builder.Services.AddSingleton<RuleEvaluationService>();
+            builder.Services.AddScoped<BusinessUnitLookupService>();
+            builder.Services.AddScoped<BatchScanService>();
+            builder.Services.AddScoped<RuleCheckerService>();
             builder.Services.AddScoped<BatchPayloadLoader>();
             builder.Services.AddScoped<IClipboardService, BrowserClipboardService>();
 
