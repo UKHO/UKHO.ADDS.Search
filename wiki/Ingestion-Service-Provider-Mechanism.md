@@ -1,0 +1,172 @@
+# Ingestion service provider mechanism
+
+The ingestion service is built around a provider abstraction so that queue polling, host wiring, and generic pipeline runtime can remain stable while source-specific processing graphs vary by provider.
+
+The current concrete provider is File Share, but the architecture is intentionally broader than that single implementation.
+
+## Core contracts
+
+### `IIngestionDataProviderFactory`
+
+Defined in:
+
+- `src/UKHO.Search.Ingestion/Providers/IIngestionDataProviderFactory.cs`
+
+Responsibilities:
+
+- expose the provider `Name`
+- expose the queue name the infrastructure layer should poll
+- create a provider instance
+
+### `IIngestionDataProvider`
+
+Defined in:
+
+- `src/UKHO.Search.Ingestion/Providers/IIngestionDataProvider.cs`
+
+Responsibilities:
+
+- deserialize raw queue message text into `IngestionRequest`
+- accept an `Envelope<IngestionRequest>` and process it asynchronously
+
+## Why the abstraction exists
+
+Without a provider abstraction, the ingestion host would need to know too much about:
+
+- queue payload format
+- provider-specific processing graphs
+- enrichment dependencies
+- source-specific dead-letter/indexing behavior
+
+The provider model keeps those details behind a stable boundary.
+
+```mermaid
+flowchart LR
+    Q[(Provider queue)] --> INF[Infrastructure polling + ack context]
+    INF --> FAC[Provider factory]
+    FAC --> P[Provider instance]
+    P --> G[Provider-owned processing graph]
+    G --> IDX[Indexing/dead-letter/ack]
+```
+
+## Separation of responsibilities
+
+### Infrastructure owns
+
+- queue lifecycle and polling
+- queue visibility/poison handling
+- queue message ack/deletion plumbing
+- client wiring for Azure Queue, Blob, Elasticsearch
+- generic dead-letter persistence and indexing adapters
+
+### Provider owns
+
+- message deserialization details
+- the long-lived processing graph
+- source-specific enrichment and parsing
+- how a valid request becomes provider-specific canonical enrichment
+
+## How this shows up in the code
+
+The design history in `docs/008-provider-refactor/architecture.md` describes the intended split clearly:
+
+- infrastructure queue host receives and wraps messages
+- provider processes `Envelope<IngestionRequest>` objects
+- provider graphs own validation/dispatch/enrichment/batching/index coordination
+
+The File Share factory currently exposes:
+
+- provider name: `file-share`
+- queue name: from configuration (`filesharequeuename`)
+
+## Provider startup model
+
+The File Share provider lazily starts its processing graph the first time it processes a request.
+
+That behavior lives in `FileShareIngestionDataProvider`:
+
+- an ingress channel buffers `Envelope<IngestionRequest>` items
+- `EnsureProcessingGraphStartedAsync()` builds the graph once
+- the provider writes envelopes into the ingress channel
+
+This is a useful pattern because it keeps provider instantiation lightweight until real work arrives.
+
+## Message envelope context
+
+The provider contract uses `Envelope<T>` rather than raw payloads because the envelope carries more than data:
+
+- message id
+- key
+- timestamp
+- attempt count
+- pipeline error state
+- context items such as the queue acker
+- breadcrumb trail for diagnostics
+
+That context is what allows downstream ack/dead-letter nodes to behave correctly without the provider needing to own Azure Queue deletion directly.
+
+## Why provider name matters
+
+Provider name is not just labeling. It is used for:
+
+- metrics tagging
+- rules scoping
+- diagnostic clarity
+- selecting provider-specific runtime behavior
+
+`ApplyEnrichmentNode` also pushes the provider name into `IIngestionProviderContext` so enrichers and the rules engine can stay provider-aware without hard-coded global state.
+
+## Benefits of this design
+
+### Extensibility
+
+A future provider can plug in by implementing the same factory/provider contracts.
+
+### Testability
+
+Provider graphs can be tested with controlled envelopes/channels rather than needing full host startup.
+
+### Layering discipline
+
+The host and infrastructure layers do not need to know the internal graph topology of every provider.
+
+### Operational consistency
+
+Dead-lettering, metrics, and envelope semantics stay consistent across providers.
+
+## File Share as the reference provider
+
+The File Share provider is the canonical example today because it exercises most of the architecture:
+
+- queue deserialization
+- canonical document creation
+- rules integration
+- ZIP download/extraction
+- Kreuzberg content extraction
+- S-57 and S-101 geo/text enrichment
+- best-effort ZIP skipping
+
+See [File Share provider](FileShare-Provider.md) for the concrete implementation.
+
+## Conceptual lifecycle
+
+```mermaid
+sequenceDiagram
+    participant Infra as Infrastructure queue host
+    participant Factory as Provider factory
+    participant Provider as IIngestionDataProvider
+    participant Graph as Provider graph
+
+    Infra->>Factory: CreateProvider()
+    Infra->>Provider: DeserializeIngestionRequestAsync(messageText)
+    Infra->>Provider: ProcessIngestionRequestAsync(envelope)
+    Provider->>Provider: ensure graph started
+    Provider->>Graph: write envelope to ingress channel
+    Graph-->>Infra: ack/delete via context-driven downstream nodes
+```
+
+## Related pages
+
+- [Ingestion pipeline](Ingestion-Pipeline.md)
+- [CanonicalDocument and discovery taxonomy](CanonicalDocument-and-Discovery-Taxonomy.md)
+- [File Share provider](FileShare-Provider.md)

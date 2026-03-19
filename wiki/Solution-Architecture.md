@@ -1,0 +1,198 @@
+# Solution architecture
+
+This repository follows **Onion Architecture**.
+
+The dependency direction is:
+
+`Hosts / UI -> Infrastructure -> Services -> Domain`
+
+Tools and configuration projects sit alongside that main path, but the same intent applies: domain models and pipeline primitives stay inward; adapters and startup wiring stay outward.
+
+## High-level structure
+
+```mermaid
+flowchart TB
+    subgraph Hosts[Hosts / UI]
+        AppHost[AppHost]
+        IngestionHost[IngestionServiceHost]
+        QueryHost[QueryServiceHost]
+        ServiceDefaults[UKHO.Search.ServiceDefaults]
+    end
+
+    subgraph Infrastructure[Infrastructure]
+        InfraCore[UKHO.Search.Infrastructure]
+        InfraIngestion[UKHO.Search.Infrastructure.Ingestion]
+        InfraQuery[UKHO.Search.Infrastructure.Query]
+    end
+
+    subgraph Services[Services]
+        ServicesCore[UKHO.Search.Services]
+        ServicesIngestion[UKHO.Search.Services.Ingestion]
+        ServicesQuery[UKHO.Search.Services.Query]
+    end
+
+    subgraph Domain[Domain]
+        Search[UKHO.Search]
+        Ingestion[UKHO.Search.Ingestion]
+        Query[UKHO.Search.Query]
+    end
+
+    AppHost --> IngestionHost
+    AppHost --> QueryHost
+    IngestionHost --> InfraIngestion
+    QueryHost --> InfraQuery
+    InfraIngestion --> ServicesIngestion
+    InfraQuery --> ServicesQuery
+    ServicesIngestion --> Ingestion
+    ServicesQuery --> Query
+    InfraIngestion --> Search
+    InfraQuery --> Search
+    ServicesIngestion --> Search
+    ServicesQuery --> Search
+```
+
+## Project map
+
+### Hosts and UI
+
+| Project | Purpose |
+|---|---|
+| `src/Hosts/AppHost` | Aspire orchestration, container/resource definitions, and run-mode switching for local workflows. |
+| `src/Hosts/IngestionServiceHost` | Ingestion host, DI/bootstrap, Elasticsearch/blob/queue client wiring, operational UI. |
+| `src/Hosts/QueryServiceHost` | Query-side host and external endpoint surface. |
+| `src/Hosts/UKHO.Search.ServiceDefaults` | Shared Aspire/OpenTelemetry/health-check defaults for hosts. |
+
+### Domain
+
+| Project | Purpose |
+|---|---|
+| `src/UKHO.Search` | Pipeline runtime primitives: envelopes, nodes, channels, supervision, retry, dead-letter, geo primitives, metrics. |
+| `src/UKHO.Search.Ingestion` | Ingestion request contracts, canonical document model, provider abstractions, enrichment node. |
+| `src/UKHO.Search.Query` | Query-side domain concerns such as token normalization. |
+
+### Services
+
+| Project | Purpose |
+|---|---|
+| `src/UKHO.Search.Services` | Shared service-layer orchestration concerns. |
+| `src/UKHO.Search.Services.Ingestion` | Ingestion service orchestration and provider-level coordination. |
+| `src/UKHO.Search.Services.Query` | Query service orchestration. |
+
+### Infrastructure
+
+| Project | Purpose |
+|---|---|
+| `src/UKHO.Search.Infrastructure` | Shared infrastructure utilities and adapters. |
+| `src/UKHO.Search.Infrastructure.Ingestion` | Ingestion bootstrap, queue/blob/Elasticsearch integrations, rules-engine runtime infrastructure. |
+| `src/UKHO.Search.Infrastructure.Query` | Query-side infrastructure adapters. |
+
+### Provider project
+
+| Project | Purpose |
+|---|---|
+| `src/UKHO.Search.Ingestion.Providers.FileShare` | The current concrete ingestion provider. Owns the File Share processing graph, request dispatch, ZIP/content enrichers, and provider-specific parsing. |
+
+### Configuration projects
+
+| Project | Purpose |
+|---|---|
+| `configuration/UKHO.Aspire.Configuration` | Shared configuration support. |
+| `configuration/UKHO.Aspire.Configuration.Hosting` | Aspire-side configuration integration. |
+| `configuration/UKHO.Aspire.Configuration.Seeder` | Configuration seeding support. |
+| `configuration/UKHO.Aspire.Configuration.Emulator` | Local emulator configuration behavior. |
+
+### Developer tools
+
+| Project | Purpose |
+|---|---|
+| `tools/FileShareEmulator` | Local File Share emulator UI/API. |
+| `tools/FileShareEmulator.Common` | Shared emulator types/utilities. |
+| `tools/FileShareImageLoader` | Imports a Docker data image into local SQL/blob storage. |
+| `tools/FileShareImageBuilder` | Builds a Docker data image from a remote File Share environment. |
+| `tools/RulesWorkbench` | Rule inspection, evaluation, batch scan, and rule-checker tooling. |
+
+### Tests
+
+Tests are grouped by concern:
+
+- `test/UKHO.Search.Tests`
+- `test/UKHO.Search.Ingestion.Tests`
+- `test/UKHO.Search.Query.Tests`
+- `test/FileShareEmulator.Tests`
+- `test/FileShareEmulator.Common.Tests`
+- `test/RulesWorkbench.Tests`
+- configuration seeder tests under `test/UKHO.Aspire.Configuration.Seeder.Tests`
+
+## Runtime architecture
+
+```mermaid
+flowchart LR
+    subgraph Orchestration
+        AH[AppHost]
+    end
+
+    subgraph LocalServices[Local services started by Aspire]
+        AZ[Azurite]
+        SQL[SQL Server]
+        ES[Elasticsearch + Kibana]
+        KC[Keycloak]
+        ING[IngestionServiceHost]
+        QRY[QueryServiceHost]
+        FSE[FileShareEmulator]
+        RWB[RulesWorkbench]
+    end
+
+    AH --> AZ
+    AH --> SQL
+    AH --> ES
+    AH --> KC
+    AH --> ING
+    AH --> QRY
+    AH --> FSE
+    AH --> RWB
+
+    FSE --> SQL
+    FSE --> AZ
+    FSE --> ES
+    ING --> AZ
+    ING --> ES
+    QRY --> ES
+    RWB --> SQL
+    RWB --> AZ
+```
+
+## Where major concerns live
+
+### Ingestion runtime
+
+- queue polling, Elasticsearch indexing, blob dead-letter persistence: `src/UKHO.Search.Infrastructure.Ingestion`
+- node/channel runtime: `src/UKHO.Search`
+- request contracts and `CanonicalDocument`: `src/UKHO.Search.Ingestion`
+- File Share provider graph/enrichers: `src/UKHO.Search.Ingestion.Providers.FileShare`
+
+### Query/runtime discovery model
+
+- canonical search shape starts in `src/UKHO.Search.Ingestion`
+- Elasticsearch projection lives in `src/UKHO.Search.Infrastructure.Ingestion/Elastic`
+- query-side services/hosts consume the indexed form
+
+### Local developer tooling
+
+- emulator UI/API: `tools/FileShareEmulator`
+- rule tooling: `tools/RulesWorkbench`
+- data-image import/export: `tools/FileShareImageLoader`, `tools/FileShareImageBuilder`
+
+## Architectural intent
+
+Three design choices explain most of the repository:
+
+1. **Provider extensibility** — the ingestion host is designed to support multiple providers, even though File Share is the current concrete implementation.
+2. **Canonical indexing** — source-specific payloads are normalized into a shared discovery contract before indexing.
+3. **Tool-assisted local development** — the emulator, loader, builder, and RulesWorkbench reduce dependence on live environments.
+
+For the provider and ingestion runtime details, continue to:
+
+- [Ingestion pipeline](Ingestion-Pipeline.md)
+- [Ingestion service provider mechanism](Ingestion-Service-Provider-Mechanism.md)
+- [File Share provider](FileShare-Provider.md)
+- [Tools: `RulesWorkbench`](Tools-RulesWorkbench.md)
