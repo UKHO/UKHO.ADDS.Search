@@ -14,6 +14,7 @@ Be concise but complete. Prefer current research (Microsoft Learn) for Microsoft
 - In this workspace/PowerShell environment, do not use the `rg` (ripgrep) command; assume it isn't available.
 - Avoid clutter in the repository root by placing per-project config files alongside the relevant test or project directories when practical.
 - Do not run Stryker again in this workspace, and remove all Stryker-related configuration/setup files when asked.
+- Ask clarification questions one at a time rather than batching multiple questions together.
 
 ## Blazor Server Guidelines
 - For Blazor Server (Razor Components) pages, explicitly add `@rendermode InteractiveServer` on pages that must handle input/click events; otherwise, pages may render non-interactively even when other pages (e.g., Counter) are interactive.
@@ -60,6 +61,7 @@ Rules:
 - Do not overwrite prior work packages; create the next incremental folder (e.g. `002-...`).
 - When asked to create specification documents for a work package, create only one document containing everything needed; do not split across multiple documents. If multiple were created, merge into one and delete the extras.
 - Use appropriate prompt family & phase from `.github/prompts/`.
+- When asking open questions from a spec, record each answer directly in that same spec file and do not create a new version.
 
 ## Emulator Constraints
 - All emulator code must reside within the existing emulator project; do not add new projects due to Docker constraints.
