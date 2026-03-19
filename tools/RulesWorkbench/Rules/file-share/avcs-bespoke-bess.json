@@ -2,6 +2,7 @@
   "schemaVersion": "1.0",
   "rule": {
     "id": "avcs-bespoke-bess",
+    "context": "avcs-bespokeexchangesets",
     "description": "AVCS bespoke BESS exchange set output.",
     "if": {
       "all": [

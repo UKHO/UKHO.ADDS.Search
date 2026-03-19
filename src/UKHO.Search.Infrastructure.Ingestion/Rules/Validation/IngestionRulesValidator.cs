@@ -77,6 +77,7 @@ namespace UKHO.Search.Infrastructure.Ingestion.Rules.Validation
                         validatedRules.Add(new ValidatedRule
                         {
                             Id = rule.Id,
+                            Context = NormalizeContext(rule.Context),
                             Description = rule.Description,
                             Enabled = enabled,
                             Predicate = predicate.Value,
@@ -126,6 +127,8 @@ namespace UKHO.Search.Infrastructure.Ingestion.Rules.Validation
                         continue;
                     }
 
+                    ValidateContext(rule, providerName, providerRules, errors);
+
                     if (string.IsNullOrWhiteSpace(rule.Id))
                     {
                         errors.Add($"Provider '{providerName}' contains a rule with missing 'id'.");
@@ -170,6 +173,37 @@ namespace UKHO.Search.Infrastructure.Ingestion.Rules.Validation
             }
 
             return hasIf ? rule.If : rule.Match;
+        }
+
+        private static void ValidateContext(RuleDto rule, string providerName, RuleDto[] providerRules, List<string> errors)
+        {
+            if (!string.Equals(providerName, "file-share", StringComparison.OrdinalIgnoreCase))
+            {
+                return;
+            }
+
+            // Transitional behavior: permit the legacy all-missing state while Work Item 2 uplifts the rule files.
+            // Once any file-share rule declares Context, require Context on all file-share rules.
+            var providerIsPartiallyOrFullyUplifted = providerRules.Any(static x => x is not null && !string.IsNullOrWhiteSpace(x.Context));
+            if (!providerIsPartiallyOrFullyUplifted)
+            {
+                return;
+            }
+
+            if (string.IsNullOrWhiteSpace(rule.Context))
+            {
+                errors.Add($"Rule '{rule.Id ?? "<missing id>"}' in provider '{providerName}' is missing required 'context'.");
+            }
+        }
+
+        private static string? NormalizeContext(string? context)
+        {
+            if (string.IsNullOrWhiteSpace(context))
+            {
+                return null;
+            }
+
+            return context.Trim().ToLowerInvariant();
         }
 
         private void ValidateThen(ThenDto then, string? ruleId, string providerName, List<string> errors, JsonElement? predicate)

@@ -79,6 +79,31 @@ namespace UKHO.Search.Ingestion.Tests.Rules
             Assert.Equal(2, ex.FilePaths.Count);
         }
 
+        [Fact]
+        public void LoadProviderRules_WhenContextPresent_LoadsContextIntoRuleDto()
+        {
+            var contentRoot = CreateTempDir();
+            var providerRoot = Directory.CreateDirectory(Path.Combine(contentRoot, "Rules", "file-share"));
+
+            File.WriteAllText(Path.Combine(providerRoot.FullName, "a.json"),
+                """
+                {
+                  "SchemaVersion": "1.0",
+                  "Rule": {
+                    "Id": "r1",
+                    "Context": "adds-s100",
+                    "If": { "path": "id", "exists": true },
+                    "Then": { "keywords": { "add": [ "k" ] } }
+                  }
+                }
+                """);
+
+            var rules = _loader.LoadProviderRules(contentRoot, "file-share");
+
+            Assert.Single(rules);
+            Assert.Equal("adds-s100", rules[0].Context);
+        }
+
         private static void WriteRule(string path, string id)
         {
             Directory.CreateDirectory(Path.GetDirectoryName(path)!);

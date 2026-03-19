@@ -2,6 +2,7 @@
   "schemaVersion": "1.0",
   "rule": {
     "id": "avcs-aio-catalogue",
+    "context": "avcs-bespokeexchangesets",
     "description": "AVCS AIO catalogue: weekly dataset uploaded by TPM for distributors.",
     "if": {
       "all": [

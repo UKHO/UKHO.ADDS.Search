@@ -141,6 +141,91 @@ namespace UKHO.Search.Ingestion.Tests.Rules
             ex.Errors.ShouldContain(x => x.Contains("Unsupported selector", StringComparison.OrdinalIgnoreCase));
         }
 
+        [Fact]
+        public void File_share_rules_without_context_remain_valid_during_transitional_uplift()
+        {
+            using var temp = new TempRulesRoot();
+            temp.WriteRuleFile("file-share", "r1", """
+                                {
+                                  "schemaVersion": "1.0",
+                                  "rule": {
+                                    "id": "r1",
+                                    "if": { "path": "id", "exists": true },
+                                    "then": { "keywords": { "add": [ "k" ] } }
+                                  }
+                                }
+                                """);
+
+            using var provider = CreateProvider(temp.RootPath);
+            var catalog = provider.GetRequiredService<IngestionRulesCatalog>();
+
+            catalog.EnsureLoaded();
+
+            catalog.TryGetProviderRules("file-share", out var rules).ShouldBeTrue();
+            rules.ShouldHaveSingleItem();
+            rules[0].Context.ShouldBeNull();
+        }
+
+        [Fact]
+        public void File_share_rules_with_context_are_projected_into_validated_rules()
+        {
+            using var temp = new TempRulesRoot();
+            temp.WriteRuleFile("file-share", "r1", """
+                                {
+                                  "schemaVersion": "1.0",
+                                  "rule": {
+                                    "id": "r1",
+                                    "context": "adds-s100",
+                                    "if": { "path": "id", "exists": true },
+                                    "then": { "keywords": { "add": [ "k" ] } }
+                                  }
+                                }
+                                """);
+
+            using var provider = CreateProvider(temp.RootPath);
+            var catalog = provider.GetRequiredService<IngestionRulesCatalog>();
+
+            catalog.EnsureLoaded();
+
+            catalog.TryGetProviderRules("file-share", out var rules).ShouldBeTrue();
+            rules.ShouldHaveSingleItem();
+            rules[0].Context.ShouldBe("adds-s100");
+        }
+
+        [Fact]
+        public void File_share_rules_fail_validation_when_context_is_missing_from_a_partially_uplifted_ruleset()
+        {
+            using var temp = new TempRulesRoot();
+            temp.WriteRuleFile("file-share", "r1", """
+                                {
+                                  "schemaVersion": "1.0",
+                                  "rule": {
+                                    "id": "r1",
+                                    "context": "adds-s100",
+                                    "if": { "path": "id", "exists": true },
+                                    "then": { "keywords": { "add": [ "k" ] } }
+                                  }
+                                }
+                                """);
+            temp.WriteRuleFile("file-share", "r2", """
+                                {
+                                  "schemaVersion": "1.0",
+                                  "rule": {
+                                    "id": "r2",
+                                    "if": { "path": "id", "exists": true },
+                                    "then": { "keywords": { "add": [ "k2" ] } }
+                                  }
+                                }
+                                """);
+
+            using var provider = CreateProvider(temp.RootPath);
+            var catalog = provider.GetRequiredService<IIngestionRulesCatalog>();
+
+            var ex = Should.Throw<IngestionRulesValidationException>(() => catalog.EnsureLoaded());
+            ex.Errors.ShouldContain(x => x.Contains("context", StringComparison.OrdinalIgnoreCase));
+            ex.Errors.ShouldContain(x => x.Contains("r2", StringComparison.OrdinalIgnoreCase));
+        }
+
         private static ServiceProvider CreateProvider(string contentRootPath)
         {
             return IngestionRulesTestServiceProviderFactory.Create(contentRootPath);

@@ -109,9 +109,24 @@ namespace RulesWorkbench.Services
             if (candidateRules.Count == 0 && !string.IsNullOrWhiteSpace(businessUnitName))
             {
                 runtimeWarnings.Add($"No candidate rules were identified for business unit '{businessUnitName}'.");
+                _logger.LogWarning("No candidate rules were identified for checker evaluation. BatchId={BatchId} BusinessUnitName={BusinessUnitName}", payload.Id, businessUnitName);
+            }
+
+            if (candidateRules.Count > 0 && evaluationReport.MatchedRules.Count == 0 && missingRequiredFields.Count > 0)
+            {
+                runtimeWarnings.Add($"Candidate rules were identified for business unit '{businessUnitName}', but none matched the batch.");
+                _logger.LogWarning("Candidate rules were identified but none matched. BatchId={BatchId} BusinessUnitName={BusinessUnitName} CandidateRuleCount={CandidateRuleCount}", payload.Id, businessUnitName, candidateRules.Count);
+            }
+
+            if (evaluationReport.MatchedRules.Count > 0 && missingRequiredFields.Count > 0)
+            {
+                runtimeWarnings.Add($"Rules matched, but the required fields are still missing: {string.Join(", ", missingRequiredFields)}.");
+                _logger.LogWarning("Rules matched but required fields remain missing. BatchId={BatchId} BusinessUnitName={BusinessUnitName} MatchedRuleCount={MatchedRuleCount} MissingRequiredFields={MissingRequiredFields}", payload.Id, businessUnitName, evaluationReport.MatchedRules.Count, missingRequiredFields);
             }
 
             var status = DetermineStatus(missingRequiredFields, evaluationReport.ValidationErrors, runtimeWarnings);
+
+            _logger.LogInformation("Checker report built. BatchId={BatchId} BusinessUnitName={BusinessUnitName} CandidateRuleCount={CandidateRuleCount} MatchedRuleCount={MatchedRuleCount} MissingRequiredFieldCount={MissingRequiredFieldCount} Status={Status}", payload.Id, businessUnitName, candidateRules.Count, evaluationReport.MatchedRules.Count, missingRequiredFields.Count, status);
 
             return new RuleCheckerReportDto
             {
@@ -140,10 +155,10 @@ namespace RulesWorkbench.Services
                 return new List<RuleCheckerCandidateRuleDto>();
             }
 
-            var prefix = $"bu-{businessUnitName.ToLowerInvariant()}-";
+            var normalizedBusinessUnitName = businessUnitName.ToLowerInvariant();
             return _appConfigRulesSnapshotStore.GetRules(null)
                 .Where(x => string.Equals(x.Provider, FileShareProviderName, StringComparison.OrdinalIgnoreCase))
-                .Where(x => x.RuleId.StartsWith(prefix, StringComparison.Ordinal))
+                .Where(x => string.Equals(x.Context, normalizedBusinessUnitName, StringComparison.Ordinal))
                 .Select(x => new RuleCheckerCandidateRuleDto
                 {
                     RuleId = x.RuleId,

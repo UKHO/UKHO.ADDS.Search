@@ -56,6 +56,7 @@ namespace RulesWorkbench.Tests
             result.Report.CandidateRules.Select(x => x.RuleId).ShouldBe(new[] { "bu-admiralty-rule-1", "bu-admiralty-rule-2" });
             result.Report.CandidateRules.Count(x => x.IsMatched).ShouldBe(1);
             result.Report.CandidateRules.Single(x => x.RuleId == "bu-admiralty-rule-2").RuleJson.ShouldContain("\"id\": \"bu-admiralty-rule-2\"");
+            result.Report.RuntimeWarnings.ShouldContain(x => x.Contains("rules matched", StringComparison.OrdinalIgnoreCase));
         }
 
         [Fact]
@@ -126,14 +127,103 @@ namespace RulesWorkbench.Tests
             result.Report.RuntimeWarnings.ShouldNotContain(x => x.Contains("BusinessUnitName is missing", StringComparison.OrdinalIgnoreCase));
         }
 
+        [Fact]
+        public async Task CheckPayloadAsync_does_not_match_candidate_rules_by_filename_prefix_when_context_differs()
+        {
+            var service = CreateService(new StubIngestionRulesEngine(new RuleEvaluationReportDto
+            {
+                ProviderName = "file-share",
+                FinalDocumentJson = """
+                {
+                  "category": [ "charts" ]
+                }
+                """,
+                MatchedRules = new List<RuleEvaluationMatchedRuleDto>()
+            }));
+
+            var payload = new EvaluationPayloadDto
+            {
+                Id = "batch-4",
+                Timestamp = DateTimeOffset.Parse("2026-01-01T00:00:00Z"),
+                SecurityTokens = new List<string> { "public" },
+                Properties = new List<EvaluationPayloadPropertyDto>(),
+                Files = new List<EvaluationPayloadFileDto>()
+            };
+
+            var result = await service.CheckPayloadAsync(payload, "adds", CancellationToken.None);
+
+            result.IsSuccess.ShouldBeTrue();
+            result.Report.ShouldNotBeNull();
+            result.Report!.CandidateRules.Select(x => x.RuleId).ShouldBe(new[] { "some-unrelated-rule-id" });
+            result.Report.CandidateRules.ShouldNotContain(x => x.RuleId == "bu-adds-s100-4-base-exchange-set-product-type");
+        }
+
+        [Fact]
+        public async Task CheckPayloadAsync_matches_candidate_rules_by_context_even_when_filename_shape_is_not_informative()
+        {
+            var service = CreateService(new StubIngestionRulesEngine(new RuleEvaluationReportDto
+            {
+                ProviderName = "file-share",
+                FinalDocumentJson = """
+                {
+                  "category": [ "charts" ]
+                }
+                """,
+                MatchedRules = new List<RuleEvaluationMatchedRuleDto>()
+            }));
+
+            var payload = new EvaluationPayloadDto
+            {
+                Id = "batch-5",
+                Timestamp = DateTimeOffset.Parse("2026-01-01T00:00:00Z"),
+                SecurityTokens = new List<string> { "public" },
+                Properties = new List<EvaluationPayloadPropertyDto>(),
+                Files = new List<EvaluationPayloadFileDto>()
+            };
+
+            var result = await service.CheckPayloadAsync(payload, "adds-s100", CancellationToken.None);
+
+            result.IsSuccess.ShouldBeTrue();
+            result.Report.ShouldNotBeNull();
+            result.Report!.CandidateRules.Select(x => x.RuleId).ShouldBe(new[] { "bu-adds-s100-4-base-exchange-set-product-type" });
+        }
+
+        [Fact]
+        public async Task CheckPayloadAsync_when_candidate_rules_exist_but_none_match_adds_explainable_warning()
+        {
+            var service = CreateService(new StubIngestionRulesEngine(new RuleEvaluationReportDto
+            {
+                ProviderName = "file-share",
+                FinalDocumentJson = "{}",
+                MatchedRules = new List<RuleEvaluationMatchedRuleDto>()
+            }));
+
+            var payload = new EvaluationPayloadDto
+            {
+                Id = "batch-6",
+                Timestamp = DateTimeOffset.Parse("2026-01-01T00:00:00Z"),
+                SecurityTokens = new List<string> { "public" },
+                Properties = new List<EvaluationPayloadPropertyDto>(),
+                Files = new List<EvaluationPayloadFileDto>()
+            };
+
+            var result = await service.CheckPayloadAsync(payload, "admiralty", CancellationToken.None);
+
+            result.IsSuccess.ShouldBeTrue();
+            result.Report.ShouldNotBeNull();
+            result.Report!.RuntimeWarnings.ShouldContain(x => x.Contains("none matched", StringComparison.OrdinalIgnoreCase));
+        }
+
         private static RuleCheckerService CreateService(IIngestionRulesEngine engine)
         {
             var configuration = new ConfigurationBuilder()
                 .AddInMemoryCollection(new Dictionary<string, string?>
                 {
-                    ["rules:file-share:bu-admiralty-rule-1"] = "{\"schemaVersion\":\"1.0\",\"rule\":{\"id\":\"bu-admiralty-rule-1\",\"description\":\"Admiralty rule\",\"if\":{\"id\":\"batch-1\"},\"then\":{\"category\":{\"add\":[\"charts\"]}}}}",
-                    ["rules:file-share:bu-admiralty-rule-2"] = "{\"schemaVersion\":\"1.0\",\"rule\":{\"id\":\"bu-admiralty-rule-2\",\"description\":\"Second admiralty rule\",\"if\":{\"id\":\"batch-1\"},\"then\":{\"series\":{\"add\":[\"series-a\"]}}}}",
-                    ["rules:file-share:bu-fisheries-rule-1"] = "{\"schemaVersion\":\"1.0\",\"rule\":{\"id\":\"bu-fisheries-rule-1\",\"description\":\"Fisheries rule\",\"if\":{\"id\":\"batch-1\"},\"then\":{\"instance\":{\"add\":[\"instance-a\"]}}}}"
+                    ["rules:file-share:bu-admiralty-rule-1"] = "{\"schemaVersion\":\"1.0\",\"rule\":{\"id\":\"bu-admiralty-rule-1\",\"context\":\"admiralty\",\"description\":\"Admiralty rule\",\"if\":{\"id\":\"batch-1\"},\"then\":{\"category\":{\"add\":[\"charts\"]}}}}",
+                    ["rules:file-share:bu-admiralty-rule-2"] = "{\"schemaVersion\":\"1.0\",\"rule\":{\"id\":\"bu-admiralty-rule-2\",\"context\":\"admiralty\",\"description\":\"Second admiralty rule\",\"if\":{\"id\":\"batch-1\"},\"then\":{\"series\":{\"add\":[\"series-a\"]}}}}",
+                    ["rules:file-share:bu-fisheries-rule-1"] = "{\"schemaVersion\":\"1.0\",\"rule\":{\"id\":\"bu-fisheries-rule-1\",\"context\":\"fisheries\",\"description\":\"Fisheries rule\",\"if\":{\"id\":\"batch-1\"},\"then\":{\"instance\":{\"add\":[\"instance-a\"]}}}}",
+                    ["rules:file-share:bu-adds-s100-4-base-exchange-set-product-type"] = "{\"schemaVersion\":\"1.0\",\"rule\":{\"id\":\"bu-adds-s100-4-base-exchange-set-product-type\",\"context\":\"adds-s100\",\"description\":\"ADDS-S100 rule\",\"if\":{\"id\":\"batch-1\"},\"then\":{\"instance\":{\"add\":[\"instance-a\"]}}}}",
+                    ["rules:file-share:some-unrelated-rule-id"] = "{\"schemaVersion\":\"1.0\",\"rule\":{\"id\":\"some-unrelated-rule-id\",\"context\":\"adds\",\"description\":\"ADDS rule with non-prefix id\",\"if\":{\"id\":\"batch-1\"},\"then\":{\"series\":{\"add\":[\"series-a\"]}}}}"
                 })
                 .Build();
 
