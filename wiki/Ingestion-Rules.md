@@ -163,6 +163,10 @@ flowchart LR
     Enrich --> Rules[Rules engine]
     Rules --> Mutate[CanonicalDocument mutations]
     Mutate --> Index[Indexing]
+    Index --> PAD[ ]
+
+    classDef hidden fill:#ffffff,stroke:#ffffff,color:#ffffff;
+    class PAD hidden;
 ```
 
 The rules engine is designed to be:

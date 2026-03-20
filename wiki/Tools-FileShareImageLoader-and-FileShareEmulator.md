@@ -31,6 +31,10 @@ flowchart LR
     IMG[Docker data image volume] --> LDR[FileShareImageLoader]
     LDR --> SQL[(SQL Server)]
     LDR --> BLOB[(Azurite blob container named after environment)]
+    BLOB --> PAD[ ]
+
+    classDef hidden fill:#ffffff,stroke:#ffffff,color:#ffffff;
+    class PAD hidden;
 ```
 
 ### Key operational details

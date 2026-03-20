@@ -47,6 +47,10 @@ flowchart LR
     Mode -->|import| Import[Seed local emulator from data image]
     Mode -->|services| Services[Run local search stack]
     Mode -->|export| Export[Build a new data image]
+    Export --> PAD[ ]
+
+    classDef hidden fill:#ffffff,stroke:#ffffff,color:#ffffff;
+    class PAD hidden;
 ```
 
 ### `runmode=services`

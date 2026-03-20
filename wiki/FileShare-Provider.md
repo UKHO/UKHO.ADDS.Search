@@ -59,6 +59,11 @@ flowchart LR
     B --> ID
     D --> DG[Dispatch diagnostics]
     B --> DG
+    A --> PAD[ ]
+    DG --> PAD
+
+    classDef hidden fill:#ffffff,stroke:#ffffff,color:#ffffff;
+    class PAD hidden;
 ```
 
 ## Dispatch and canonical creation

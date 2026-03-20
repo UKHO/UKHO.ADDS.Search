@@ -159,6 +159,10 @@ flowchart LR
     QRY --> ES
     RWB --> SQL
     RWB --> AZ
+    RWB --> PAD[ ]
+
+    classDef hidden fill:#ffffff,stroke:#ffffff,color:#ffffff;
+    class PAD hidden;
 ```
 
 ## Where major concerns live

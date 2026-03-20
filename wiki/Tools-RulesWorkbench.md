@@ -41,6 +41,10 @@ flowchart LR
     RWB --> SQL[(SQL Server)]
     RWB --> BLOB[(Azurite blobs)]
     RWB --> ENG[Shared ingestion rules engine]
+    ENG --> PAD[ ]
+
+    classDef hidden fill:#ffffff,stroke:#ffffff,color:#ffffff;
+    class PAD hidden;
 ```
 
 ## Runtime dependencies

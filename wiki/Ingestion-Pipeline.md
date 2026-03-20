@@ -51,6 +51,11 @@ flowchart LR
     BI0 --> DLR2
     E0 --> DIAG[diagnostics merge/sink]
     BI0 --> DIAG
+    ACK1 --> PAD[ ]
+    DIAG --> PAD
+
+    classDef hidden fill:#ffffff,stroke:#ffffff,color:#ffffff;
+    class PAD hidden;
 ```
 
 ## Runtime stages

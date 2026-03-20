@@ -41,6 +41,10 @@ flowchart LR
     Rules[Rules-based enrichments] --> CD
     CD --> Elastic[Canonical Elasticsearch document]
     Elastic --> Query[Query/runtime discovery]
+    Query --> PAD[ ]
+
+    classDef hidden fill:#ffffff,stroke:#ffffff,color:#ffffff;
+    class PAD hidden;
 ```
 
 That means:

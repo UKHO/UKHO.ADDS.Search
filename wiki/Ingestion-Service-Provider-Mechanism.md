@@ -47,6 +47,10 @@ flowchart LR
     FAC --> P[Provider instance]
     P --> G[Provider-owned processing graph]
     G --> IDX[Indexing/dead-letter/ack]
+    IDX --> PAD[ ]
+
+    classDef hidden fill:#ffffff,stroke:#ffffff,color:#ffffff;
+    class PAD hidden;
 ```
 
 ## Separation of responsibilities

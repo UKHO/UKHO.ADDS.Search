@@ -21,11 +21,15 @@ flowchart LR
     ING --> CD[CanonicalDocument]
     CD --> ES[(Elasticsearch)]
     ES --> QRY[Query service]
+    QRY --> PAD[ ]
     DEV[Developer tooling] --> ING
     DEV --> FS
     APP[Aspire AppHost] --> DEV
     APP --> ING
     APP --> QRY
+
+    classDef hidden fill:#ffffff,stroke:#ffffff,color:#ffffff;
+    class PAD hidden;
 ```
 
 ## Start here
