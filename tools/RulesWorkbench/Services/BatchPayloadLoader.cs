@@ -44,11 +44,11 @@ namespace RulesWorkbench.Services
                 var createdOn = await GetBatchCreatedOnAsync(connection, batchGuid, cancellationToken).ConfigureAwait(false);
                 var attributes = await GetBatchAttributesAsync(connection, batchGuid, cancellationToken).ConfigureAwait(false);
                 var files = await GetBatchFilesAsync(connection, batchGuid, cancellationToken).ConfigureAwait(false);
-                var businessUnitName = await GetActiveBusinessUnitNameAsync(connection, batchGuid, cancellationToken).ConfigureAwait(false);
+                var businessUnitName = await GetBusinessUnitNameAsync(connection, batchGuid, cancellationToken).ConfigureAwait(false);
 
                 if (string.IsNullOrWhiteSpace(businessUnitName))
                 {
-                    _logger.LogWarning("No active business unit found for batch {BatchId}; omitting business-unit security token.", batchGuid);
+                    _logger.LogWarning("No business unit found for batch {BatchId}; omitting business-unit security token.", batchGuid);
                 }
 
                 var securityTokens = SecurityTokenPolicy.CreateTokens(businessUnitName);
@@ -192,7 +192,7 @@ namespace RulesWorkbench.Services
             return results;
         }
 
-        private static async Task<string?> GetActiveBusinessUnitNameAsync(SqlConnection connection, Guid batchId, CancellationToken cancellationToken)
+        private static async Task<string?> GetBusinessUnitNameAsync(SqlConnection connection, Guid batchId, CancellationToken cancellationToken)
         {
             await using var cmd = connection.CreateCommand();
             cmd.CommandType = CommandType.Text;
@@ -200,7 +200,7 @@ namespace RulesWorkbench.Services
             cmd.CommandText = @"SELECT bu.[Name]
 FROM [Batch] b
 INNER JOIN [BusinessUnit] bu ON bu.[Id] = b.[BusinessUnitId]
-WHERE b.[Id] = @batchId AND bu.[IsActive] = 1;";
+WHERE b.[Id] = @batchId;";
             cmd.Parameters.Add(new SqlParameter("@batchId", SqlDbType.UniqueIdentifier) { Value = batchId });
 
             var result = await cmd.ExecuteScalarAsync(cancellationToken).ConfigureAwait(false);

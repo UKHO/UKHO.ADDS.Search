@@ -1,137 +1,165 @@
-# Ingestion rules spec generator prompt (non-collaborative; produces a markdown spec)
+# Ingestion rule author prompt (mapping document to per-rule JSON files)
 
-Target output path: `docs/xxx-<work-item-descriptor>/rule-authoring.md`
+Target output path: `./rules/file-share/`
 
-Copy/paste the prompt below into ChatGPT/Copilot Chat when you want the assistant to generate a **rules specification** document (markdown) from rule details you provide in the chat.
+Copy/paste the prompt below into ChatGPT/Copilot Chat when you want the assistant to read an existing **rule mapping markdown document** and create the corresponding **per-rule JSON files**.
 
 ---
 
 ## Reference prompt
 
-You are given all of the information needed for one or more ingestion rules in the chat.
+You are authoring **ingestion rule JSON files** from an existing **markdown rule mapping document**.
 
-Your job is to generate a **single markdown specification document** for those rules.
+Your job is to read the selected mapping document, identify each proposed rule, ensure `./rules/file-share/` exists, and create the corresponding rule JSON files in that directory.
 
-The deliverable is a markdown document inside the **current work package folder** under `./docs/xxx-<work-item-descriptor>/` (use the active work item folder you are working in), for example:
+Use `./docs/ingestion-rules.md` as the implementation guide whenever rule-schema or rule-authoring detail is needed.
 
-- `docs/034-ingestion-rule-parsing-operators/rule-authoring.md`
+## Mandatory operating rules
 
-The markdown document must:
-- captures the intent, assumptions, and acceptance criteria of the rule(s)
-- records required inputs (paths/properties) and expected outputs
-- includes the final per-rule JSON payload(s) to be placed under `src/Hosts/IngestionServiceHost/Rules/<provider>/...`
+1. **Your first response in every run must ask me which markdown rule mapping document to use, unless I already provided it in the chat.**
+   - Example: `./docs/044-rule-discovery/spec-domain-rule-discovery_v0.03.md`
+2. If I already provided the mapping document path/version in the chat, use it and do not ask again.
+3. Treat the selected markdown mapping document as the authoritative source for:
+   - business unit name
+   - class number
+   - discriminator logic
+   - canonical mapping decisions
+   - domain confirmations and resolved open questions
+4. For **each proposed rule** in the document, create **one JSON file** in `./rules/file-share/`.
+5. If `./rules/file-share/` does not exist, create it before writing any rule files.
+6. Each JSON file must follow the guidance in `./docs/ingestion-rules.md`.
+7. Use `if` rather than `match` when authoring predicates.
+8. Do not create a new markdown spec/version while authoring rules.
+9. If a required rule detail is missing or ambiguous, ask **one concise clarification question at a time**.
+10. Do not guess where the mapping document is explicit.
+11. File creation is required; do not stop at analysis only.
+12. Format every authored JSON file with **strictly four spaces per indentation level**.
 
-Do NOT modify any files. Only produce the markdown spec content.
+## Required input
 
-Assume any rule JSON we describe will be written as a single JSON file under the `file-share` provider directory, for example:
+Prompt me for the markdown document containing the rule mapping unless it is already specified.
+
+Example input document:
+
+- `./docs/044-rule-discovery/spec-domain-rule-discovery_v0.03.md`
+
+## Output location
+
+Create all generated rule files under:
+
+- `./rules/file-share/`
+
+If `./rules/file-share/` does not exist, create it before writing rule files.
+
+## File naming convention
+
+Each rule file must be named:
+
+- `bu-{businessunit name}-{class}-{description}.json`
+
+Naming rules:
+
+- use lowercase only
+- replace spaces and separator punctuation with hyphens
+- make `{businessunit name}` come directly from the document in normalized filename form
+- make `{class}` come directly from the document class number
+- make `{description}` short, specific, and meaningful to a human reader
+- avoid unnecessary words such as `rule` or `json` in the description segment
+
+Example filenames:
+
+- `bu-adds-1-s63-cell-agency-traceid.json`
+- `bu-adds-s100-2-product-type-product-identifier.json`
+- `bu-adsd-viewerupdates-1-publishdatetime.json`
+
+## Rule authoring requirements
+
+For each proposed rule found in the mapping document:
+
+1. Create a valid per-rule JSON file with shape:
 
 ```json
 {
-  "schemaVersion": "1.0",
-  "rule": {
-    /* INSERT RULE HERE */
-  }
+    "schemaVersion": "1.0",
+    "rule": {
+        "id": "...",
+        "description": "...",
+        "enabled": true,
+        "if": { },
+        "then": { }
+    }
 }
 ```
 
-### Context / constraints
+2. Build the `if` predicate from the document's proposed discriminator.
+3. Build the `then` actions from the document's proposed canonical mapping.
+4. Follow `./docs/ingestion-rules.md` for:
+   - schema validity
+   - path syntax
+   - predicate/operator structure
+   - action structure
+   - scalar vs multi-valued fields
+   - numeric conversion using `toInt(...)`
+   - lowercase normalization expectations
+5. Preserve the intent of the mapping document exactly.
+6. Where the mapping document says all batch attribute values must be copied into `keywords`, author only the explicitly mapped fixed keywords from the spec in rule JSON. Assume the ingestion service copies the remaining batch attribute values into `keywords` at runtime.
+7. Where the mapping document specifies aliases such as both `s-100` and `s100`, include them in the authored JSON exactly as required by the mapping document.
+8. Use business-unit-specific, unique rule ids.
+9. When creating or updating rule files, write the JSON using **strictly four spaces per indentation level**.
 
-- Rules are stored on disk as:
-  - `Rules/<provider>/**/*.json` (recursive)
-  - each file contains exactly one rule document
+## Working method
 
-- A rule file JSON document has shape:
-  - top-level `schemaVersion` (must be `"1.0"`)
-  - top-level `rule` object (the rule)
+### Step 1 - Ask for the mapping document
 
-- A rule object uses:
-  - `id` (required, unique, kebab-case)
-  - `description` (concise)
-  - `if` predicate (preferred over `match`)
-  - `then` actions
+If no mapping document path/version is already present in the chat, ask for it first.
 
-- **Do not use** `then.documentType` or `then.facets` (these are removed).
+Example:
 
-- Treat unsupported/unknown fields the same as any other incorrect field (no special handling).
+> Please provide the markdown rule mapping document to use, for example `./docs/044-rule-discovery/spec-domain-rule-discovery_v0.03.md`.
 
-- Only use supported actions in `then`:
-  - `keywords.add`, `searchText.add`, `content.add`
-  - Additional top-level `*.add` fields for canonical fields such as:
-    - `authority.add`, `region.add`, `format.add`, `category.add`, `series.add`, `instance.add`
-    - `majorVersion.add`, `minorVersion.add` (numbers)
+### Step 2 - Read the mapping document
 
-- For runtime data that is missing, rules should simply not match / produce no outputs.
+Extract, for each business unit/class:
 
-- For `majorVersion.add` and `minorVersion.add`:
-  - values may be JSON numbers **or** string templates wrapped in `toInt(...)`
-  - use `toInt(<expr>)` to explicitly parse strings to integers (parse failure => no output)
-  - variables are resolved first (e.g. `$val`, `$path:...`), then trimmed + parsed using invariant culture
+- business unit name
+- class number
+- representative metadata only if needed for description or clarification
+- proposed discriminator
+- proposed canonical mapping
+- any domain confirmations that affect rule contents
 
-### Process (spec generation)
+### Step 3 - Author rule JSON files
 
-- Produce the full markdown document content for `docs/xxx-<work-item-descriptor>/rule-authoring.md` in one output.
+For each proposed rule/class:
 
-- Only ask a clarification question if a required piece of information is missing and cannot be inferred (for example: whether a `majorVersion`/`minorVersion` source is numeric or needs `toInt(...)`).
+- create one JSON file in `./rules/`
+- use the required filename convention
+- make the rule valid according to `./docs/ingestion-rules.md`
 
-- If multiple rules are provided, generate a single combined spec document with a clearly separated section per rule.
+### Step 4 - Validate your own output
 
-- Ensure any JSON you produce is valid and properly escaped (e.g. `properties[\"week\"]`).
+Before finishing:
 
-### How to interpret my instruction
+- check that every proposed rule/class from the mapping document has a corresponding JSON file
+- check that filenames are lowercase and human-readable
+- check that each file uses `schemaVersion: "1.0"`
+- check that each rule has exactly one predicate block
+- check that operators and paths conform to `./docs/ingestion-rules.md`
+- check that every rule JSON file is formatted with strictly four spaces per indentation level
 
-When I describe a condition like:
+## Clarification rules
 
-- “when `properties[\"week\"]` exists”
+Ask a question only when necessary, for example:
 
-Use an `if` block like:
+- the mapping document contains a class but no usable discriminator
+- a required action cannot be represented safely from the documented guidance
+- the mapping document is explicit about intent but incomplete about the exact output structure
 
-```json
-{ "all": [ { "path": "properties[\"week\"]", "exists": true } ] }
-```
+When asking, ask only one question at a time.
 
-When I say:
+## Deliverable
 
-- “put the value of `properties[\"X\"]` into `minorVersion` (and multiple others)”
+Create the rule JSON files in `./rules/file-share/`.
 
-Use:
-
-- For string fields supporting templates:
-
-```json
-"fieldName": { "add": ["$path:properties[\"X\"]"] }
-```
-
-- For numeric fields (`majorVersion`, `minorVersion`):
-  - if `properties["X"]` is already a JSON number, emit a numeric literal in the `add` array
-  - if it might be a string, use `toInt($path:properties["X"])` (or ask me if parsing rules need changing)
-
-### Before writing the spec
-
-Assume the user message contains the full rule details. Do not ask iterative questions. Ask at most one minimal clarification question only if required.
-
-### Required markdown structure (final output)
-
-Use this structure (repeat sections 2–6 per rule if multiple rules are provided):
-
-- Title: `Ingestion rule specification` (include date/time or a short identifier)
-- `1. Overview`
-  - goal / description
-  - provider (e.g. `file-share`)
-  - rule id(s)
-- `2. Inputs`
-  - list of required payload paths (e.g. `properties["week"]`) and whether they are required/optional
-  - any normalization/parsing rules (including use of `toInt(...)`)
-- `3. Matching logic`
-  - describe the `if` predicate in plain English
-  - include the draft `if` JSON block
-- `4. Outputs / actions`
-  - describe each `then` action and where values come from
-  - include notes on missing data behavior (no outputs)
-- `5. Examples`
-  - example input payload fragment(s) (minimal)
-  - expected outputs (canonical fields affected)
-- `6. Final rule JSON`
-  - include one or more final per-rule JSON documents (valid JSON)
-  - include the recommended file path(s), e.g. `src/Hosts/IngestionServiceHost/Rules/file-share/<rule-id>.json`
-
-In all JSON examples, ensure paths are properly escaped (e.g. `properties[\"week\"]`).
+Do not create a new spec document.
+Do not rewrite the mapping document unless I explicitly ask you to.

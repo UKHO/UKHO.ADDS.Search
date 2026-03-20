@@ -12,6 +12,18 @@ Be concise but complete. Prefer current research (Microsoft Learn) for Microsoft
 - Do not interact with git (no branch creation, no git commands) unless explicitly requested.
 - When adding or modifying code in this repo, always follow `.github/instructions/coding-standards.instructions.md`: Allman braces, block-scoped namespaces, one public type per file, and underscore-prefixed private fields. Double-check new files for these conventions before finishing.
 - In this workspace/PowerShell environment, do not use the `rg` (ripgrep) command; assume it isn't available.
+- Avoid clutter in the repository root by placing per-project config files alongside the relevant test or project directories when practical.
+- Do not run Stryker again in this workspace, and remove all Stryker-related configuration/setup files when asked.
+- Ask clarification questions one at a time rather than batching multiple questions together.
+
+## Documentation Workflow (Summary)
+- For each new Work Package/piece of work: create a new numbered folder under `./docs/` named `xxx-<descriptor>` (e.g. `001-Initial-Shell`).
+- Store ALL related documents (specs, plans, architecture notes, etc.) together inside that Work Package folder.
+- Do not overwrite prior work packages; create the next incremental folder (e.g. `002-...`).
+- When asked to create specification documents for a work package, create only one document containing everything needed; do not split across multiple documents. If multiple were created, merge into one and delete the extras.
+- Use appropriate prompt family & phase from `.github/prompts/`.
+- When asking open questions from a spec, record each answer directly in that same spec file and do not create a new version.
+- When documentation references repository wiki pages, prefer proper markdown links rather than inline code-formatted URLs or plain page names.
 
 ## Blazor Server Guidelines
 - For Blazor Server (Razor Components) pages, explicitly add `@rendermode InteractiveServer` on pages that must handle input/click events; otherwise, pages may render non-interactively even when other pages (e.g., Counter) are interactive.
@@ -21,6 +33,7 @@ Be concise but complete. Prefer current research (Microsoft Learn) for Microsoft
 
 ## Coding Standards
 - Never declare multiple classes/interfaces/enums in the same C# file; split each type into its own file. Enforce the standard of one public type per C# file.
+- Do not use `GeoJSON.Net` in this repository for geo polygon serialization because it relies on Newtonsoft.Json; prefer a System.Text.Json-compatible approach.
 
 ## Architecture (Onion)
 This repository uses **Onion Architecture**.
@@ -46,18 +59,12 @@ Rules:
 ## FileShare Enrichment
 - For FileShare ZIP extraction enrichment, use `CanonicalDocument.SetContent()` to append content naturally. Additionally, call `CanonicalDocument.SetKeyword()` for each extracted file name (without extension).
 - When creating the defensive copy for `CanonicalDocument.Source`, perform a shallow copy of the properties list (new list/array, reuse existing immutable `IngestionProperty` instances).
+- Every indexed `CanonicalDocument` goes through an ingestion rule path; missing title after rule processing should be treated as a processing failure rather than a non-rule exception case.
 
 ## MCP Tool Selection
 - Azure DevOps intent: use Azure DevOps tools.
 - GitHub intent: use GitHub tools.
 - Microsoft tech (Blazor, ASP.NET Core, Azure, .NET): use Microsoft Learn tools.
-
-## Documentation Workflow (Summary)
-- For each new Work Package/piece of work: create a new numbered folder under `./docs/` named `xxx-<descriptor>` (e.g. `001-Initial-Shell`).
-- Store ALL related documents (specs, plans, architecture notes, etc.) together inside that Work Package folder.
-- Do not overwrite prior work packages; create the next incremental folder (e.g. `002-...`).
-- When asked to create specification documents for a work package, create only one document containing everything needed; do not split across multiple documents. If multiple were created, merge into one and delete the extras.
-- Use appropriate prompt family & phase from `.github/prompts/`.
 
 ## Emulator Constraints
 - All emulator code must reside within the existing emulator project; do not add new projects due to Docker constraints.
@@ -69,13 +76,18 @@ Rules:
 - When editing `.csproj` files, keep `PackageReference` entries in `ItemGroup` blocks that contain only `PackageReference` entries (do not mix `ProjectReference` and `PackageReference` in the same `ItemGroup`).
 
 ## Search Indexing Guidelines
-- For search indexing, normalize `Keywords`, `SearchText`, and `Facets` to lowercase (case-insensitive exact matching).
+- For search indexing, normalize `Keywords`, `SearchText`, and `Facets` to lowercase (case-insensitive exact matching). Everything going into an index must be lowercase.
 
 ## Rule Evaluation Guidelines
 - Differentiate ruleset validation vs runtime data: fail-fast only for invalid JSON/schema/operators/path syntax. If a given `AddItem`/`UpdateItem` payload is missing a referenced property/path at evaluation time, the rule/condition should simply not match, and any derived outputs should be skipped (expected often).
 
 ## RulesWorkbench Specifications
 - When updating specs for RulesWorkbench, editing is mandatory (existing behavior) and implement saving of VALID rules back to Azure App Configuration if it is a simple extension.
+- For RulesWorkbench rule-checker work, use the rule naming convention `bu-{businessunitname}-*` in lowercase, deriving the business unit name by joining the BusinessUnit table and lowercasing it.
+- Do not save the detected RulesWorkbench Checker preferences to the repository or user instructions; treat them as temporary/hardwired for now.
+
+## Ingestion Rules
+- When authoring ingestion rules from the mapping spec, only explicitly mapped fixed keywords should be written into rule JSON; copying the remaining batch attribute values into keywords is handled by the ingestion service at runtime.
 
 ## Detailed Topic Guides
 Refer to specialized instruction files for full detail:

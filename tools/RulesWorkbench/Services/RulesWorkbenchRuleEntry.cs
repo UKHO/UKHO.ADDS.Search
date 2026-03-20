@@ -7,6 +7,7 @@ namespace RulesWorkbench.Services
         string Provider,
         string RuleId,
         string Key,
+        string? Context,
         JsonNode? RuleJson,
         bool IsValid,
         string? ErrorMessage);

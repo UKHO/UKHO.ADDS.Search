@@ -1,6 +1,4 @@
 using Microsoft.Extensions.DependencyInjection;
-using Microsoft.Extensions.Hosting;
-using Microsoft.Extensions.Logging;
 using Shouldly;
 using UKHO.Search.Infrastructure.Ingestion.Injection;
 using UKHO.Search.Infrastructure.Ingestion.Rules;
@@ -28,11 +26,47 @@ namespace UKHO.Search.Ingestion.Tests.Rules
                 new IngestionFile("f1", 1, DateTimeOffset.UtcNow, "app/s63")
             });
 
-            var document = CanonicalDocument.CreateMinimal("doc-1", request.IndexItem!, request.IndexItem.Timestamp);
+            var document = CanonicalDocument.CreateMinimal("doc-1", "file-share", request.IndexItem!, request.IndexItem.Timestamp);
             engine.Apply("file-share", request, document);
 
+            document.Title.ShouldBe(new[] { "Exchange Set app/s63" });
             document.Keywords.ShouldContain("exchange-set");
             document.SearchText.ShouldBe("exchange set exchangeset");
+        }
+
+        [Fact]
+        public void Rule_title_is_added_to_canonical_document_without_lowercasing()
+        {
+            using var temp = new TempRulesRoot();
+            temp.WriteRuleFile("file-share", "title-only", """
+                                {
+                                  "schemaVersion": "1.0",
+                                  "rule": {
+                                    "id": "title-only",
+                                    "title": "Display Title $path:properties[\"abcdef\"]",
+                                    "enabled": true,
+                                    "if": {
+                                      "properties[\"abcdef\"]": "a value"
+                                    },
+                                    "then": {
+                                      "keywords": { "add": [ "key1" ] }
+                                    }
+                                  }
+                                }
+                                """);
+
+            using var provider = CreateProvider(temp.RootPath);
+            var engine = provider.GetRequiredService<IIngestionRulesEngine>();
+
+            var request = CreateRequest("doc-3", new IngestionPropertyList
+            {
+                new IngestionProperty { Name = "abcdef", Type = IngestionPropertyType.String, Value = "a value" }
+            }, new IngestionFileList());
+
+            var document = CanonicalDocument.CreateMinimal("doc-3", "file-share", request.IndexItem!, request.IndexItem.Timestamp);
+            engine.Apply("file-share", request, document);
+
+            document.Title.ShouldBe(new[] { "Display Title a value" });
         }
 
         [Fact]
@@ -50,7 +84,7 @@ namespace UKHO.Search.Ingestion.Tests.Rules
                 new IngestionProperty { Name = "abcdef", Type = IngestionPropertyType.String, Value = "a value" }
             }, new IngestionFileList());
 
-            var document = CanonicalDocument.CreateMinimal("doc-2", request.IndexItem!, request.IndexItem.Timestamp);
+            var document = CanonicalDocument.CreateMinimal("doc-2", "file-share", request.IndexItem!, request.IndexItem.Timestamp);
             engine.Apply("file-share", request, document);
 
             document.Keywords.ShouldContain("key1");
@@ -58,13 +92,7 @@ namespace UKHO.Search.Ingestion.Tests.Rules
         }
         private static ServiceProvider CreateProvider(string contentRootPath)
         {
-            var services = new ServiceCollection();
-
-            services.AddSingleton<IHostEnvironment>(new TestHostEnvironment { ContentRootPath = contentRootPath });
-            services.AddLogging(b => b.SetMinimumLevel(LogLevel.Debug));
-            services.AddIngestionServices();
-
-            return services.BuildServiceProvider();
+            return IngestionRulesTestServiceProviderFactory.Create(contentRootPath);
         }
 
         private static IngestionRequest CreateRequest(string id, IngestionPropertyList properties, IngestionFileList files)
@@ -81,6 +109,7 @@ namespace UKHO.Search.Ingestion.Tests.Rules
                      "schemaVersion": "1.0",
                      "rule": {
                        "id": "mime-app-s63",
+                       "title": "Exchange Set $path:files[*].mimeType",
                        "description": "When any file is app/s63, enrich as exchange set",
                        "enabled": true,
                        "if": {
@@ -102,6 +131,7 @@ namespace UKHO.Search.Ingestion.Tests.Rules
                      "schemaVersion": "1.0",
                      "rule": {
                        "id": "prop-abcdef-keywords",
+                       "title": "Property abcdef keywords",
                        "description": "When properties.abcdef equals 'a value', add key1/key2",
                        "enabled": true,
                        "if": {

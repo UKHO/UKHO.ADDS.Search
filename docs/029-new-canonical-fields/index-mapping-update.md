@@ -18,7 +18,7 @@ Add the following fields to the index mapping:
 |---|---|---|
 | `authority` | string[] | `keyword` |
 | `region` | string[] | `keyword` |
-| `fornat` | string[] | `keyword` |
+| `format` | string[] | `keyword` |
 | `majorVersion` | int[] | `keyword` |
 | `minorVersion` | int[] | `keyword` |
 | `category` | string[] | `keyword` |

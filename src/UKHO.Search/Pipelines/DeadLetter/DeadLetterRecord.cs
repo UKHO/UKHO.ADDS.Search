@@ -13,6 +13,8 @@ namespace UKHO.Search.Pipelines.DeadLetter
 
         public PipelineError? Error { get; init; }
 
+        public DeadLetterPayloadDiagnostics? PayloadDiagnostics { get; init; }
+
         public string? RawSnapshot { get; init; }
 
         public DeadLetterMetadata? Metadata { get; init; }

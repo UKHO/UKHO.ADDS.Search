@@ -1,0 +1,61 @@
+{
+    "schemaVersion": "1.0",
+    "rule": {
+        "id": "bu-adds-s57-4-catalogue-support",
+        "context": "adds-s57",
+        "title": "ADDS-S57 catalogue $path:properties[\"catalogue type\"]",
+        "description": "ADDS-S57 catalogue support item.",
+        "enabled": true,
+        "if": {
+            "all": [
+                {
+                    "path": "properties[\"businessunitname\"]",
+                    "eq": "adds-s57"
+                },
+                {
+                    "path": "properties[\"catalogue type\"]",
+                    "exists": true
+                }
+            ]
+        },
+        "then": {
+            "keywords": {
+                "add": [
+                    "adds-s57",
+                    "avcs",
+                    "catalogue"
+                ]
+            },
+            "authority": {
+                "add": [
+                    "ukho"
+                ]
+            },
+            "format": {
+                "add": [
+                    "catalogue"
+                ]
+            },
+            "category": {
+                "add": [
+                    "catalogue"
+                ]
+            },
+            "series": {
+                "add": [
+                    "avcs"
+                ]
+            },
+            "instance": {
+                "add": [
+                    "$path:properties[\"catalogue type\"]"
+                ]
+            },
+            "searchText": {
+                "add": [
+                    "avcs catalogue support item"
+                ]
+            }
+        }
+    }
+}

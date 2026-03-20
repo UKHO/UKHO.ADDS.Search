@@ -8,7 +8,8 @@ namespace UKHO.Search.Infrastructure.Ingestion.Elastic
         public CreateIndexRequestDescriptor Configure(CreateIndexRequestDescriptor descriptor)
         {
             return descriptor.Mappings(m => m.Properties(p => p.Object("source", o => o.Enabled(false))
-                                                               .Keyword("documentId")
+                                                               .Keyword("provider")
+                                                               .Keyword("title")
                                                                .Date("timestamp")
                                                                .Keyword("keywords")
                                                                .Keyword("authority")

@@ -1,0 +1,8 @@
+.checker-list-group {
+    max-height: 20rem;
+    overflow: auto;
+}
+
+.checker-json-host {
+    min-height: 24rem;
+}

@@ -98,6 +98,10 @@ namespace FileShareEmulator.Api
                     var fileName = $"{batchId}.zip";
                     return Results.Stream(download.Value.Content, contentType, fileName);
                 }
+                catch (OperationCanceledException) when (httpContext.RequestAborted.IsCancellationRequested || cancellationToken.IsCancellationRequested)
+                {
+                    return Results.StatusCode(StatusCodes.Status499ClientClosedRequest);
+                }
                 catch (RequestFailedException ex) when (ex.Status == StatusCodes.Status404NotFound)
                 {
                     return Results.NotFound();

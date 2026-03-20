@@ -48,6 +48,32 @@ namespace RulesWorkbench.Services
             return obj["description"]?.GetValue<string?>() ?? obj["Description"]?.GetValue<string?>();
         }
 
+        private static string? TryGetTitle(JsonNode? node)
+        {
+            if (node is not JsonObject obj)
+            {
+                return null;
+            }
+
+            return obj["title"]?.GetValue<string?>() ?? obj["Title"]?.GetValue<string?>();
+        }
+
+        private static string? TryGetContext(JsonNode? node)
+        {
+            if (node is not JsonObject obj)
+            {
+                return null;
+            }
+
+            var context = obj["context"]?.GetValue<string?>() ?? obj["Context"]?.GetValue<string?>();
+            if (string.IsNullOrWhiteSpace(context))
+            {
+                return null;
+            }
+
+            return context.Trim().ToLowerInvariant();
+        }
+
         public (bool IsValid, string? ErrorMessage) UpdateRuleJson(string provider, string ruleId, string json)
         {
             var validation = _validator.Validate(UnwrapRuleJson(json));
@@ -136,7 +162,7 @@ namespace RulesWorkbench.Services
 
                             if (isValid)
                             {
-                                var validation = _validator.Validate(json);
+                             var validation = _validator.Validate(UnwrapRuleJson(json));
                                 if (!validation.IsValid)
                                 {
                                     isValid = false;
@@ -150,7 +176,12 @@ namespace RulesWorkbench.Services
                             obj["id"] = ruleId;
                         }
 
-                        list.Add(new RulesWorkbenchRuleEntry(list.Count, provider, ruleId, key, node, isValid, error));
+                        if (!isValid && string.IsNullOrWhiteSpace(error) && string.IsNullOrWhiteSpace(TryGetTitle(node)))
+                        {
+                            error = "Rule JSON must include a non-empty 'title' property.";
+                        }
+
+                        list.Add(new RulesWorkbenchRuleEntry(list.Count, provider, ruleId, key, TryGetContext(node), node, isValid, error));
                     }
                 }
 

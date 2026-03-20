@@ -1,6 +1,4 @@
 using Microsoft.Extensions.DependencyInjection;
-using Microsoft.Extensions.Hosting;
-using Microsoft.Extensions.Logging;
 using Shouldly;
 using UKHO.Search.Infrastructure.Ingestion.Injection;
 using UKHO.Search.Infrastructure.Ingestion.Rules;
@@ -22,6 +20,7 @@ namespace UKHO.Search.Ingestion.Tests.Rules
                                   "schemaVersion": "1.0",
                                   "rule": {
                                     "id": "payload-selection",
+                                    "title": "Payload selection rule",
                                     "enabled": true,
                                     "if": { "id": "add-id" },
                                     "then": { "keywords": { "add": [ "matched" ] } }
@@ -38,7 +37,7 @@ namespace UKHO.Search.Ingestion.Tests.Rules
                 IndexItem = new IndexRequest("add-id", Array.Empty<IngestionProperty>(), new[] { "t1" }, DateTimeOffset.UnixEpoch, new IngestionFileList())
             };
 
-            var document = CanonicalDocument.CreateMinimal("doc-1", new IndexRequest("doc-1", Array.Empty<IngestionProperty>(), ["t"], DateTimeOffset.UnixEpoch, new IngestionFileList()), DateTimeOffset.UnixEpoch);
+            var document = CanonicalDocument.CreateMinimal("doc-1", "file-share", new IndexRequest("doc-1", Array.Empty<IngestionProperty>(), ["t"], DateTimeOffset.UnixEpoch, new IngestionFileList()), DateTimeOffset.UnixEpoch);
 
             engine.Apply("file-share", request, document);
 
@@ -54,6 +53,7 @@ namespace UKHO.Search.Ingestion.Tests.Rules
                                   "schemaVersion": "1.0",
                                   "rule": {
                                     "id": "additional-fields",
+                                    "title": "Document Title $path:properties[\"region\"]",
                                     "enabled": true,
                                     "if": { "id": "doc-1" },
                                     "then": {
@@ -84,10 +84,11 @@ namespace UKHO.Search.Ingestion.Tests.Rules
                     new IngestionFileList())
             };
 
-            var document = CanonicalDocument.CreateMinimal("doc-1", request.IndexItem!, request.IndexItem.Timestamp);
+            var document = CanonicalDocument.CreateMinimal("doc-1", "file-share", request.IndexItem!, request.IndexItem.Timestamp);
 
             engine.Apply("file-share", request, document);
 
+            document.Title.ShouldBe(new[] { "Document Title Europe" });
             document.Authority.ShouldBe(new[] { "ukho" });
             document.Region.ShouldBe(new[] { "europe" });
             document.Format.ShouldBe(new[] { "pdf" });
@@ -100,13 +101,7 @@ namespace UKHO.Search.Ingestion.Tests.Rules
 
         private static ServiceProvider CreateProvider(string contentRootPath)
         {
-            var services = new ServiceCollection();
-
-            services.AddSingleton<IHostEnvironment>(new TestHostEnvironment { ContentRootPath = contentRootPath });
-            services.AddLogging(b => b.SetMinimumLevel(LogLevel.Debug));
-            services.AddIngestionServices();
-
-            return services.BuildServiceProvider();
+            return IngestionRulesTestServiceProviderFactory.Create(contentRootPath);
         }
     }
 }

@@ -1,6 +1,4 @@
 using Microsoft.Extensions.DependencyInjection;
-using Microsoft.Extensions.Hosting;
-using Microsoft.Extensions.Logging;
 using Shouldly;
 using UKHO.Search.Infrastructure.Ingestion.Injection;
 using UKHO.Search.Infrastructure.Ingestion.Rules;
@@ -22,6 +20,7 @@ namespace UKHO.Search.Ingestion.Tests.Rules
                                   "schemaVersion": "1.0",
                                   "rule": {
                                     "id": "tax1",
+                                    "title": "Taxonomy rule",
                                     "if": { "id": "doc-1" },
                                     "then": {
                                       "authority": { "add": [ "UKHO", "Admiralty", "ukho" ] },
@@ -46,7 +45,7 @@ namespace UKHO.Search.Ingestion.Tests.Rules
                 IndexItem = new IndexRequest("doc-1", Array.Empty<IngestionProperty>(), new[] { "t1" }, DateTimeOffset.UnixEpoch, new IngestionFileList())
             };
 
-            var document = CanonicalDocument.CreateMinimal("doc-1", request.IndexItem!, request.IndexItem.Timestamp);
+            var document = CanonicalDocument.CreateMinimal("doc-1", "file-share", request.IndexItem!, request.IndexItem.Timestamp);
 
             engine.Apply("file-share", request, document);
 
@@ -62,13 +61,7 @@ namespace UKHO.Search.Ingestion.Tests.Rules
 
         private static ServiceProvider CreateProvider(string contentRootPath)
         {
-            var services = new ServiceCollection();
-
-            services.AddSingleton<IHostEnvironment>(new TestHostEnvironment { ContentRootPath = contentRootPath });
-            services.AddLogging(b => b.SetMinimumLevel(LogLevel.Debug));
-            services.AddIngestionServices();
-
-            return services.BuildServiceProvider();
+            return IngestionRulesTestServiceProviderFactory.Create(contentRootPath);
         }
     }
 }

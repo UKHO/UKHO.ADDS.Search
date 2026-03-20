@@ -1,6 +1,5 @@
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
-using Microsoft.Extensions.Hosting;
 using Microsoft.Extensions.Logging.Abstractions;
 using Shouldly;
 using UKHO.Search.Infrastructure.Ingestion.Bootstrap;
@@ -43,15 +42,33 @@ namespace UKHO.Search.Ingestion.Tests.Rules
             ex.Errors.ShouldContain(x => x.Contains("non-empty", StringComparison.OrdinalIgnoreCase));
         }
 
+        [Fact]
+        public async Task Bootstrap_fails_when_rule_title_is_missing()
+        {
+            using var temp = new TempRulesRoot();
+            temp.WriteRuleFile("file-share", "missing-title", """
+                {
+                  "schemaVersion": "1.0",
+                  "rule": {
+                    "id": "missing-title",
+                    "if": { "path": "id", "exists": true },
+                    "then": { "keywords": { "add": [ "k" ] } }
+                  }
+                }
+                """);
+
+            using var provider = CreateProvider(temp.RootPath);
+            var rulesCatalog = provider.GetRequiredService<IIngestionRulesCatalog>();
+
+            var bootstrap = new BootstrapService(new ConfigurationBuilder().Build(), null!, null!, null!, null!, rulesCatalog, NullLogger<BootstrapService>.Instance);
+
+            var ex = await Should.ThrowAsync<IngestionRulesValidationException>(() => bootstrap.BootstrapAsync());
+            ex.Message.ShouldContain("title", Case.Insensitive);
+        }
+
         private static ServiceProvider CreateProvider(string contentRootPath)
         {
-            var services = new ServiceCollection();
-
-            services.AddSingleton<IHostEnvironment>(new TestHostEnvironment { ContentRootPath = contentRootPath });
-            services.AddLogging();
-            services.AddIngestionServices();
-
-            return services.BuildServiceProvider();
+            return IngestionRulesTestServiceProviderFactory.Create(contentRootPath);
         }
     }
 }

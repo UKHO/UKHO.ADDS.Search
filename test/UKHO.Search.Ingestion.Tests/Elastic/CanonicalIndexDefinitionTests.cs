@@ -35,10 +35,21 @@ namespace UKHO.Search.Ingestion.Tests.Elastic
                 throw new InvalidOperationException($"Expected create-index request JSON to include 'mappings.properties'. JSON: {json}");
             }
 
+            properties.TryGetProperty("documentId", out _)
+                      .ShouldBeFalse();
+
             properties.GetProperty("source")
                       .GetProperty("enabled")
                       .GetBoolean()
                       .ShouldBeFalse();
+            properties.GetProperty("provider")
+                      .GetProperty("type")
+                      .GetString()
+                      .ShouldBe("keyword");
+            properties.GetProperty("title")
+                      .GetProperty("type")
+                      .GetString()
+                      .ShouldBe("keyword");
             properties.GetProperty("keywords")
                       .GetProperty("type")
                       .GetString()

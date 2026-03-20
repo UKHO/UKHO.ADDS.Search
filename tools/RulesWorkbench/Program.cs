@@ -18,12 +18,14 @@ namespace RulesWorkbench
             builder.Services.AddRazorComponents()
                 .AddInteractiveServerComponents();
 
-            builder.Services.AddSingleton<RulesSnapshotStore>();
             builder.Services.AddSingleton<AppConfigRulesSnapshotStore>();
             builder.Services.AddSingleton<IRuleBuilderMapper, RuleBuilderMapper>();
             builder.Services.AddSingleton<IRuleJsonValidator, SystemTextJsonRuleJsonValidator>();
             builder.Services.AddSingleton<EvaluationPayloadMapper>();
             builder.Services.AddSingleton<RuleEvaluationService>();
+            builder.Services.AddScoped<BusinessUnitLookupService>();
+            builder.Services.AddScoped<BatchScanService>();
+            builder.Services.AddScoped<RuleCheckerService>();
             builder.Services.AddScoped<BatchPayloadLoader>();
             builder.Services.AddScoped<IClipboardService, BrowserClipboardService>();
 
