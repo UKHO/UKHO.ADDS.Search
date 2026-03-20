@@ -40,6 +40,7 @@ flowchart LR
 - [Tools (advanced): `FileShareImageBuilder`](Tools-Advanced-FileShareImageBuilder)
 - [Tools: `RulesWorkbench`](Tools-RulesWorkbench)
 - [Ingestion pipeline](Ingestion-Pipeline)
+- [Metrics in the Aspire dashboard](Metrics-in-the-Aspire-Dashboard)
 - [How to write ingestion rules](Ingestion-Rules)
 - [CanonicalDocument and discovery taxonomy](CanonicalDocument-and-Discovery-Taxonomy)
 - [Ingestion service provider mechanism](Ingestion-Service-Provider-Mechanism)
@@ -69,7 +70,8 @@ flowchart LR
 2. Run `AppHost` in `import` mode and start the loader.
 3. Run `AppHost` in `services` mode.
 4. Use `FileShareEmulator` to inspect data and enqueue batches.
-5. Watch ingestion metrics/logs in Aspire and inspect Elasticsearch/query behavior.
+5. Use Kibana from the Aspire dashboard for Elasticsearch index inspection, management, and query work.
+6. Watch ingestion metrics/logs in Aspire and inspect Elasticsearch/query behavior.
 
 If your task is rule authoring or rule diagnosis, open [`RulesWorkbench`](Tools-RulesWorkbench) as part of that loop.
 

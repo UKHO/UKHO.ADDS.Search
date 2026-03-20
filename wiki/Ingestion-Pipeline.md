@@ -263,6 +263,8 @@ The pipeline emits metrics such as:
 
 Use the Aspire dashboard to inspect metrics by node and provider.
 
+For the full meter contract, dimensions, instrument semantics, dead-letter metric impact, and built-in OpenTelemetry instrumentation notes, see [Metrics in the Aspire dashboard](Metrics-in-the-Aspire-Dashboard).
+
 ## Local operational guidance
 
 ### Queue to index loop
@@ -279,6 +281,7 @@ A common local loop is:
 ### What to inspect when debugging
 
 - queue depth and lane hotspots in Aspire metrics
+- Kibana from the Aspire dashboard for Elasticsearch index inspection, query investigation, and index management
 - dead-letter blob content for failed requests/index operations
 - poison queue growth when messages repeatedly fail before terminal success
 - Elasticsearch mapping creation/validation failures

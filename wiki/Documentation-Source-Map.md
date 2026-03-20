@@ -83,6 +83,9 @@ Parser refactor work.
 ### `docs/050-geo-polygon-fixes`
 Recent fixes for Elasticsearch-facing geo polygon serialization.
 
+### `docs/052-provider-canonical-field`
+Addition of the system-managed `Provider` field to `CanonicalDocument` and its propagation through the ingestion pipeline and index mapping.
+
 ## Canonical discovery taxonomy and rule evolution
 
 ### `docs/028-consolidate-insert`
@@ -139,8 +142,14 @@ Token normalization and canonical mutator rationalization.
 ### `docs/046-rule-checker`
 RulesWorkbench checker, candidate-rule identification, and rule-definition uplift.
 
+### `docs/056-rules-workbench-scan-all`
+RulesWorkbench checker scan workflow uplift, including bounded `Scan` and unbounded `Scan All` business-unit actions.
+
 ### `docs/054-rule-title`
 Canonical document title, mandatory `rule.title`, post-enrichment title validation, and repository/tooling alignment work.
+
+### `docs/055-rule-exists-semantics`
+Boolean `exists` operator semantics, including support for both `exists: true` and `exists: false` in runtime evaluation, tests, tooling, and docs.
 
 ## Emulator and local-tooling history
 
@@ -167,13 +176,18 @@ Business-unit indexing in FileShareEmulator.
 ### `docs/049-deadletter-enhancement`
 Richer dead-letter diagnostic payloads, including runtime payload snapshots.
 
+## Documentation and quality work
+
+### `docs/051-wiki`
+Developer wiki creation and consolidation of the historical `docs/` corpus into the current `wiki/` guidance set.
+
+### `docs/053-test-coverage-gaps`
+Repository-wide test coverage baseline assessment and identification of important subsystem and behavior coverage gaps.
+
 ### Top-level operational docs
 
 | Path | Topic |
 |---|---|
-| `docs/azureacr.md` | Pulling/pushing the shared File Share data image via ACR. |
-| `docs/ingestion-rules.md` | Current practical rule-authoring guide and schema semantics. |
-| `docs/metrics.md` | Aspire metrics for the ingestion pipeline. |
 | `docs/README.md` | General docs/prompt asset overview. |
 | `docs/mcp-setup.md` | MCP setup guidance for repo tooling. |
 | `docs/reuse-docs-folder.md` | Reuse guidance for docs template assets. |

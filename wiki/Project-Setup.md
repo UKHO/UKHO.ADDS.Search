@@ -69,6 +69,11 @@ Starts the main developer stack:
 
 Use this mode for day-to-day development and debugging.
 
+Kibana is also available through the Aspire dashboard for Elasticsearch index inspection, index management, and ad-hoc query work.
+
+- sign in as `kibana_admin`
+- use the value of the `elastic-password` parameter from the Aspire dashboard **Parameters** tab as the password
+
 ### `runmode=import`
 
 Starts the data-image import workflow:
@@ -91,7 +96,7 @@ Use this only when creating a new data image from a remote File Share environmen
 
 ## Getting the shared data image from ACR
 
-The repository includes `docs/azureacr.md` for pulling the shared image.
+Use the `searchacr` registry for the shared File Share data image.
 
 ### Pull workflow
 
@@ -99,12 +104,28 @@ The repository includes `docs/azureacr.md` for pulling the shared image.
    - `az login`
 2. Log in to the ACR:
    - `az acr login --name searchacr`
-3. Select the `AbzuUTL` subscription if prompted.
+3. When `az login` lists available subscriptions, select `AbzuUTL`.
 4. Pull the shared image:
    - `docker pull searchacr.azurecr.io/fss-data-vnext-e2e:latest`
 5. Retag it to the local image name expected by AppHost:
    - `docker tag searchacr.azurecr.io/fss-data-vnext-e2e:latest fss-data-vnext-e2e:latest`
-6. Optionally remove the fully-qualified tag after retagging.
+6. Remove the fully-qualified tag after retagging:
+   - `docker rmi searchacr.azurecr.io/fss-data-vnext-e2e:latest`
+
+### Push workflow
+
+Use this when you have built or refreshed the local image and need to publish it back to ACR.
+
+1. Sign in to Azure:
+   - `az login`
+2. Log in to the ACR:
+   - `az acr login --name searchacr`
+3. When `az login` lists available subscriptions, select `AbzuUTL`.
+4. Ensure you are PIM'ed on the subscription before pushing.
+5. Tag the local image with the registry name:
+   - `docker tag fss-data-vnext-e2e:latest searchacr.azurecr.io/fss-data-vnext-e2e:latest`
+6. Push the image:
+   - `docker push searchacr.azurecr.io/fss-data-vnext-e2e:latest`
 
 The key rule is that the local image name must match the AppHost convention:
 
@@ -155,7 +176,9 @@ With `runmode=services`:
 2. Open the Aspire dashboard.
 3. Confirm that `IngestionServiceHost`, `QueryServiceHost`, `FileShareEmulator`, `RulesWorkbench`, storage, SQL, and Elasticsearch are healthy.
 4. Use `FileShareEmulator` to inspect statistics and queue batches for ingestion.
-5. Watch Aspire metrics and logs while indexing occurs.
+5. Open Kibana from the Aspire dashboard when you need Elasticsearch index inspection, management, or query access.
+6. Sign in to Kibana as `kibana_admin` using the `elastic-password` value from the Aspire dashboard **Parameters** tab.
+7. Watch Aspire metrics and logs while indexing occurs.
 
 ## Configuration behavior in local Aspire
 
@@ -184,6 +207,8 @@ That means the local workflow is:
 
 - `FileShareEmulator` home page shows metadata statistics.
 - `FileShareEmulator` indexing page can submit batches, clear queues, and delete indexes.
+- Kibana is reachable from the Aspire dashboard for inspecting indexes, running queries, and checking Elasticsearch state.
+- Kibana credentials are `kibana_admin` plus the `elastic-password` parameter value from the Aspire dashboard **Parameters** tab.
 - Aspire metrics show the custom ingestion meter described in `docs/metrics.md`.
 - dead-letter blobs appear under the configured dead-letter container/prefix.
 
