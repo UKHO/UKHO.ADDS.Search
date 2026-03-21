@@ -39,6 +39,7 @@ flowchart LR
 - [Tools: `FileShareImageLoader` and `FileShareEmulator`](Tools-FileShareImageLoader-and-FileShareEmulator)
 - [Tools (advanced): `FileShareImageBuilder`](Tools-Advanced-FileShareImageBuilder)
 - [Tools: `RulesWorkbench`](Tools-RulesWorkbench)
+- [Tools: `UKHO Search Studio`](Tools-UKHO-Search-Studio)
 - [Ingestion pipeline](Ingestion-Pipeline)
 - [Metrics in the Aspire dashboard](Metrics-in-the-Aspire-Dashboard)
 - [How to write ingestion rules](Ingestion-Rules)
@@ -56,6 +57,7 @@ flowchart LR
 - `src/Hosts/QueryServiceHost` — query-side host
 - `tools/FileShareEmulator` — local File Share emulator UI/API
 - `tools/RulesWorkbench` — rule inspection, evaluation, and checker tooling
+- `src/Studio/Server` — browser-hosted Eclipse Theia studio shell
 
 ### Core libraries
 

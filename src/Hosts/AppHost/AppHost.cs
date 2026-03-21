@@ -2,6 +2,7 @@ using AppHost.Elastic;
 using AppHost.Extensions;
 using Docker.DotNet;
 using Docker.DotNet.Models;
+using Microsoft.Extensions.Configuration;
 using Projects;
 using UKHO.Aspire.Configuration.Hosting;
 using UKHO.Search.Configuration;
@@ -13,6 +14,7 @@ namespace AppHost
         public static async Task Main(string[] args)
         {
             var builder = DistributedApplication.CreateBuilder(args);
+            var studioShellPort = builder.Configuration.GetValue<int>("Studio:Server:Port");
 
             var environmentParameter = builder.AddParameter("environment");
             var environment = await environmentParameter.Resource.GetValueAsync(CancellationToken.None) ?? string.Empty;
@@ -112,6 +114,11 @@ namespace AppHost
                                                 .WithReference(storageBlob)
                                                 .WaitFor(sqlServer)
                                                 .WaitFor(storageBlob);
+
+                    var studioShell = builder.AddJavaScriptApp(ServiceNames.StudioShell, "../../Studio/Server", "start:browser")
+                                             .WithBuildScript("build:browser")
+                                             .WithArgs("--", "--hostname", "0.0.0.0", "--port", studioShellPort.ToString())
+                                             .WithHttpEndpoint(targetPort: studioShellPort, port: studioShellPort, env: "PORT", isProxied: false);
 
                         // Configuration
                     if (builder.ExecutionContext.IsRunMode)

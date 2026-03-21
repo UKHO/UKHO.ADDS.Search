@@ -89,6 +89,11 @@ Rules:
 ## Ingestion Rules
 - When authoring ingestion rules from the mapping spec, only explicitly mapped fixed keywords should be written into rule JSON; copying the remaining batch attribute values into keywords is handled by the ingestion service at runtime.
 
+## Theia Studio Shell Configuration
+- For Theia studio shell work, configure the fixed local port in `AppHost` `appsettings.json` and read it the same way as other Aspire configuration items stored there.
+- Ensure the repository wiki captures the implementation, including prerequisites and clear build instructions for the Theia components.
+- On a fresh clone building the Aspire solution in Visual Studio, ensure the shell builds before it runs, and the shell build should be incremental so it only runs when inputs change.
+
 ## Detailed Topic Guides
 Refer to specialized instruction files for full detail:
 - Architecture: `.github/instructions/architecture.instructions.md`

@@ -17,6 +17,20 @@ Optional but commonly useful:
 - Visual Studio with Aspire support
 - Elastic/Kibana familiarity for index inspection
 - Azure Storage Explorer or similar tools for blobs/queues
+- `nvm` / `nvm-windows` when working on the Theia shell so you can switch to the validated Node version quickly
+
+### Additional prerequisites for `UKHO Search Studio`
+
+If you are building the Theia shell in `src/Studio/Server`, also ensure the following are available:
+
+- Node `18.20.4`
+- `yarn` classic (`1.x`)
+- the globally installed `generator-theia-extension` package
+- Visual Studio Build Tools 2022 C++ tooling for native Node module compilation
+
+The current generated Theia stack in this repository was validated with that toolchain combination.
+
+When building from Visual Studio, the `StudioHost` project now triggers the Theia workspace build script before build so a fresh clone can prepare the shell as part of the normal solution build.
 
 ## Local orchestration entry point
 
@@ -65,6 +79,7 @@ Starts the main developer stack:
 - `QueryServiceHost`
 - `FileShareEmulator`
 - `RulesWorkbench`
+- `UKHO Search Studio` (Theia shell on `Studio:Server:Port`, default `3000`)
 - local configuration emulation that also loads repository rules from `rules/`
 
 Use this mode for day-to-day development and debugging.
@@ -175,10 +190,37 @@ With `runmode=services`:
 1. Start `AppHost`.
 2. Open the Aspire dashboard.
 3. Confirm that `IngestionServiceHost`, `QueryServiceHost`, `FileShareEmulator`, `RulesWorkbench`, storage, SQL, and Elasticsearch are healthy.
-4. Use `FileShareEmulator` to inspect statistics and queue batches for ingestion.
-5. Open Kibana from the Aspire dashboard when you need Elasticsearch index inspection, management, or query access.
-6. Sign in to Kibana as `kibana_admin` using the `elastic-password` value from the Aspire dashboard **Parameters** tab.
-7. Watch Aspire metrics and logs while indexing occurs.
+4. Confirm that `UKHO Search Studio` is healthy and bound to the configured local port.
+5. Open `UKHO Search Studio` with `http://localhost:3000`.
+6. Use `FileShareEmulator` to inspect statistics and queue batches for ingestion.
+7. Open Kibana from the Aspire dashboard when you need Elasticsearch index inspection, management, or query access.
+8. Sign in to Kibana as `kibana_admin` using the `elastic-password` value from the Aspire dashboard **Parameters** tab.
+9. Watch Aspire metrics and logs while indexing occurs.
+
+## Building the Theia shell workspace
+
+The Theia shell lives in:
+
+- `src/Studio/Server`
+
+Recommended local build flow:
+
+1. Switch to the validated Node version:
+   - `nvm use 18.20.4`
+2. Ensure `yarn` is available:
+   - `yarn --version`
+3. Restore dependencies from `src/Studio/Server`:
+   - `yarn install --ignore-engines`
+4. Build the browser shell:
+   - `yarn build:browser`
+
+For more detail, see [Tools: `UKHO Search Studio`](Tools-UKHO-Search-Studio).
+
+### Automatic build from Visual Studio
+
+If you build the solution in Visual Studio, `src/Studio/StudioHost/StudioHost.csproj` runs `src/Studio/Server/build.ps1` before build.
+
+That integration is incremental, so the script is intended to run only when relevant Theia workspace inputs have changed or when the shell has not yet been built on a fresh clone.
 
 ## Configuration behavior in local Aspire
 
@@ -234,6 +276,18 @@ If SQL/blob storage has not been seeded, the emulator may start but have no mean
 ### You expected import mode to run automatically
 
 `FileShareLoader` is configured with explicit start. Start it from the Aspire dashboard.
+
+### `UKHO Search Studio` looks healthy in Aspire but the browser still fails
+
+Check that you are opening:
+
+- `http://localhost:3000`
+
+and not:
+
+- `https://localhost:3000`
+
+The current Theia shell endpoint is HTTP-only.
 
 ## Related pages
 

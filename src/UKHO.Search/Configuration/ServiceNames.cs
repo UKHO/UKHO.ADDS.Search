@@ -31,5 +31,7 @@
         public const string RulesWorkbench = "tools-rules-workbench";
 
         public const string StudioApi = "tools-studio-api";
+
+        public const string StudioShell = "tools-studio-shell";
     }
 }
