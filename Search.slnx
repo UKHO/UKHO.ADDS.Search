@@ -21,6 +21,7 @@
     <Project Path="src/Hosts/IngestionServiceHost/IngestionServiceHost.csproj" />
     <Project Path="src/Hosts/QueryServiceHost/QueryServiceHost.csproj" />
     <Project Path="src/Hosts/UKHO.Search.ServiceDefaults/UKHO.Search.ServiceDefaults.csproj" />
+    <Project Path="src/Studio/StudioHost/StudioHost.csproj" />
   </Folder>
   <Folder Name="/04 Hosts/@local/">
     <Project Path="src/Hosts/AppHost/AppHost.csproj" />

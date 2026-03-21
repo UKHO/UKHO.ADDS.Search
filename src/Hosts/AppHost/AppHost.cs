@@ -106,14 +106,21 @@ namespace AppHost
                                                 .WaitFor(sqlServer)
                                                 .WaitFor(storageBlob);
 
-                    // Configuration
+                    var studioApi = builder.AddProject<StudioHost>(ServiceNames.StudioApi)
+                                                .WithExternalHttpEndpoints()
+                                                .WithReference(sqlServer)
+                                                .WithReference(storageBlob)
+                                                .WaitFor(sqlServer)
+                                                .WaitFor(storageBlob);
+
+                        // Configuration
                     if (builder.ExecutionContext.IsRunMode)
                     {
                         var rulesPath = Path.GetFullPath(Path.Combine(builder.Environment.ContentRootPath, "..", "..", "..", "rules"));
 
                         builder.AddConfigurationEmulator(
                             ServiceConfiguration.ServiceGroupName,
-                            [ingestionService, queryService, rulesWorkbench!],
+                            [ingestionService, queryService, rulesWorkbench, studioApi!],
                             [fileShareEmulator],
                             @"../../../configuration/configuration.json",
                             @"../../../configuration/external-services.json",

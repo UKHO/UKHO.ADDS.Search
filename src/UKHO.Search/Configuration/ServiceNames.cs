@@ -29,5 +29,7 @@
         public const string FileShareLoader = "tools-fileshare-loader";
 
         public const string RulesWorkbench = "tools-rules-workbench";
+
+        public const string StudioApi = "tools-studio-api";
     }
 }
