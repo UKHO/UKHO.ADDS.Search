@@ -20,7 +20,7 @@ This gives ingestion a deterministic, testable pipeline runtime without coupling
 
 The current concrete graph is built in:
 
-- `src/UKHO.Search.Ingestion.Providers.FileShare/Pipeline/FileShareIngestionProcessingGraph.cs`
+- `src/Providers/UKHO.Search.Ingestion.Providers.FileShare/Pipeline/FileShareIngestionProcessingGraph.cs`
 
 The graph is lane-based. A single validated request stream is partitioned into `laneCount` independent ordered lanes, and each lane gets its own dispatch, enrichment, batching, indexing, ack, dead-letter, and diagnostics flow.
 

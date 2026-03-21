@@ -61,7 +61,7 @@ flowchart LR
 
 - `src/UKHO.Search` — pipeline runtime, channels, supervision, metrics, dead-letter primitives
 - `src/UKHO.Search.Ingestion` — ingestion contracts and `CanonicalDocument`
-- `src/UKHO.Search.Ingestion.Providers.FileShare` — File Share provider processing graph and enrichers
+- `src/Providers/UKHO.Search.Ingestion.Providers.FileShare` — File Share provider processing graph and enrichers
 - `src/UKHO.Search.Infrastructure.Ingestion` — queue, blob dead-letter, bootstrap, and Elasticsearch integration
 
 ### Local workflow at a glance

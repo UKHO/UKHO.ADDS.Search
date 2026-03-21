@@ -90,7 +90,7 @@ flowchart TB
 
 | Project | Purpose |
 |---|---|
-| `src/UKHO.Search.Ingestion.Providers.FileShare` | The current concrete ingestion provider. Owns the File Share processing graph, request dispatch, ZIP/content enrichers, and provider-specific parsing. |
+| `src/Providers/UKHO.Search.Ingestion.Providers.FileShare` | The current concrete ingestion provider. Owns the File Share processing graph, request dispatch, ZIP/content enrichers, and provider-specific parsing. |
 
 ### Configuration projects
 
@@ -172,7 +172,7 @@ flowchart LR
 - queue polling, Elasticsearch indexing, blob dead-letter persistence: `src/UKHO.Search.Infrastructure.Ingestion`
 - node/channel runtime: `src/UKHO.Search`
 - request contracts and `CanonicalDocument`: `src/UKHO.Search.Ingestion`
-- File Share provider graph/enrichers: `src/UKHO.Search.Ingestion.Providers.FileShare`
+- File Share provider graph/enrichers: `src/Providers/UKHO.Search.Ingestion.Providers.FileShare`
 
 ### Query/runtime discovery model
 

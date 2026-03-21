@@ -4,6 +4,10 @@ This is the current concrete ingestion provider.
 
 It owns the File Share processing graph and the provider-specific enrichment behavior that converts File Share batches into a canonical discovery document.
 
+## Project location
+
+- `src/Providers/UKHO.Search.Ingestion.Providers.FileShare`
+
 ## Main responsibilities
 
 - identify itself as provider `file-share`
@@ -39,7 +43,7 @@ Responsibilities:
 
 The File Share provider graph is built in:
 
-- `Pipeline/FileShareIngestionProcessingGraph.cs`
+- `src/Providers/UKHO.Search.Ingestion.Providers.FileShare/Pipeline/FileShareIngestionProcessingGraph.cs`
 
 It combines generic pipeline nodes with File Share dispatch and enrichment.
 
