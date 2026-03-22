@@ -31,7 +31,7 @@ namespace IngestionServiceHost
             builder.AddAzureQueueServiceClient(ServiceNames.Queues);
             builder.AddAzureBlobServiceClient(ServiceNames.Blobs);
 
-            builder.Services.AddIngestionServices();
+            builder.Services.AddIngestionServices(builder.Configuration);
 
             // Add services to the container.
             builder.Services.AddRazorComponents()

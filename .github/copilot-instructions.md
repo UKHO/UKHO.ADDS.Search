@@ -97,6 +97,9 @@ Rules:
 - On a fresh clone building the Aspire solution in Visual Studio, ensure the shell builds before it runs, and the shell build should be incremental so it only runs when inputs change.
 - Prefer using HTTPS endpoints instead of HTTP whenever possible for StudioHost/Theia integration.
 
+## Provider Model Guidelines
+- Use `UKHO.Search.ProviderModel` as the mandatory shared home for generic provider registration and metadata concerns, located at `src/UKHO.Search.ProviderModel`. Ensure specifications reflect required refactoring and test migration.
+
 ## Detailed Topic Guides
 Refer to specialized instruction files for full detail:
 - Architecture: `.github/instructions/architecture.instructions.md`

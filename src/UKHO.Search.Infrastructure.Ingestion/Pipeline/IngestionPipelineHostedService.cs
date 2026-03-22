@@ -13,6 +13,7 @@ namespace UKHO.Search.Infrastructure.Ingestion.Pipeline
         private readonly IConfiguration _configuration;
         private readonly IHostApplicationLifetime _hostApplicationLifetime;
         private readonly ILogger<IngestionPipelineHostedService> _logger;
+        private readonly IIngestionProviderStartupValidator _providerStartupValidator;
         private readonly IIngestionProviderService _providerService;
         private readonly IQueueClientFactory _queueClientFactory;
         private CancellationTokenSource? _runCts;
@@ -23,6 +24,7 @@ namespace UKHO.Search.Infrastructure.Ingestion.Pipeline
             IQueueClientFactory queueClientFactory,
             IBootstrapService bootstrapService,
             IHostApplicationLifetime hostApplicationLifetime,
+            IIngestionProviderStartupValidator providerStartupValidator,
             ILogger<IngestionPipelineHostedService> logger)
         {
             _configuration = configuration;
@@ -30,11 +32,14 @@ namespace UKHO.Search.Infrastructure.Ingestion.Pipeline
             _queueClientFactory = queueClientFactory;
             _bootstrapService = bootstrapService;
             _hostApplicationLifetime = hostApplicationLifetime;
+            _providerStartupValidator = providerStartupValidator;
             _logger = logger;
         }
 
         public Task StartAsync(CancellationToken cancellationToken)
         {
+            _providerStartupValidator.Validate();
+
             _runCts = CancellationTokenSource.CreateLinkedTokenSource(_hostApplicationLifetime.ApplicationStopping, cancellationToken);
             _runTask = RunAsync(_runCts.Token);
             return Task.CompletedTask;

@@ -21,6 +21,7 @@
 			<PrivateAssets>all</PrivateAssets>
 			<IncludeAssets>runtime; build; native; contentfiles; analyzers; buildtransitive</IncludeAssets>
 		</PackageReference>
+      <PackageReference Include="Microsoft.Extensions.DependencyInjection" Version="10.0.5" />
 		<PackageReference Include="Microsoft.NET.Test.Sdk" Version="18.3.0" />
 		<PackageReference Include="Shouldly" Version="4.3.0" />
 		<PackageReference Include="xunit" Version="2.9.3" />
@@ -36,6 +37,10 @@
 		<ProjectReference Include="..\..\src\UKHO.Search.Ingestion\UKHO.Search.Ingestion.csproj" />
 		<ProjectReference Include="..\..\src\UKHO.Search.Infrastructure.Ingestion\UKHO.Search.Infrastructure.Ingestion.csproj" />
 		<ProjectReference Include="..\..\tools\FileShareEmulator\FileShareEmulator.csproj" />
+	</ItemGroup>
+
+	<ItemGroup>
+	  <Folder Include="Providers\" />
 	</ItemGroup>
 
 </Project>

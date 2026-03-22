@@ -45,6 +45,7 @@ flowchart LR
 - [How to write ingestion rules](Ingestion-Rules)
 - [CanonicalDocument and discovery taxonomy](CanonicalDocument-and-Discovery-Taxonomy)
 - [Ingestion service provider mechanism](Ingestion-Service-Provider-Mechanism)
+- [Provider metadata and split registration](Provider-Metadata-and-Split-Registration)
 - [File Share provider deep dive](FileShare-Provider)
 - [Documentation source map](Documentation-Source-Map)
 
@@ -55,7 +56,7 @@ flowchart LR
 - `src/Hosts/AppHost` — Aspire orchestration and `runmode` switching
 - `src/Hosts/IngestionServiceHost` — ingestion host and bootstrap/runtime wiring
 - `src/Hosts/QueryServiceHost` — query-side host
-- `src/Studio/StudioApiHost` — studio-facing minimal API host used by the Theia shell proof/integration path
+- `src/Studio/StudioApiHost` — studio-facing minimal API host used by the Theia shell proof/integration path, including the development-time `/providers` endpoint that now returns full shared provider metadata
 - `tools/FileShareEmulator` — local File Share emulator UI/API
 - `tools/RulesWorkbench` — rule inspection, evaluation, and checker tooling
 - `src/Studio/Server` — browser-hosted Eclipse Theia studio shell
@@ -63,8 +64,11 @@ flowchart LR
 ### Core libraries
 
 - `src/UKHO.Search` — pipeline runtime, channels, supervision, metrics, dead-letter primitives
+- `src/UKHO.Search.ProviderModel` — shared provider identity, metadata, catalogs, and registration helpers used by ingestion and studio composition
 - `src/UKHO.Search.Ingestion` — ingestion contracts and `CanonicalDocument`
+- `src/Studio/UKHO.Search.Studio` — generic Studio provider contracts, catalogs, and registration validation
 - `src/Providers/UKHO.Search.Ingestion.Providers.FileShare` — File Share provider processing graph and enrichers
+- `src/Providers/UKHO.Search.Studio.Providers.FileShare` — tandem File Share Studio provider registration for development-time composition
 - `src/UKHO.Search.Infrastructure.Ingestion` — queue, blob dead-letter, bootstrap, and Elasticsearch integration
 
 ### Test estate
@@ -93,6 +97,7 @@ If your task is rule authoring or rule diagnosis, open [`RulesWorkbench`](Tools-
 - **Rules** provide additive enrichment without hard-coding every mapping into C#.
 - **Rule titles** now provide the canonical display title contract for indexed documents, and missing titles are treated as ingestion failures.
 - **Developer tooling** is first-class, especially for local File Share workflows.
+- **Provider metadata** is shared across hosts through `UKHO.Search.ProviderModel`, with mandatory split registration for provider packages and tandem Studio provider composition for development-time studio tooling.
 
 ## Historical design lineage
 

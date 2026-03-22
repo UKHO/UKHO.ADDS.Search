@@ -83,6 +83,45 @@ The File Share factory currently exposes:
 - provider name: `file-share`
 - queue name: from configuration (`filesharequeuename`)
 
+## Provider metadata and split registration
+
+Provider identity now needs to serve two different composition roots:
+
+- `IngestionServiceHost`, which needs provider runtime services
+- `StudioApiHost`, which only needs provider metadata for development-time discovery APIs and Theia integration
+
+Those two hosts must not depend on each other. In particular, `StudioApiHost` and Theia are development-time-only components and are not expected to be present in live deployments.
+
+The current implementation now centralizes generic provider identity, metadata, catalogs, and registration helpers in `src/UKHO.Search.ProviderModel` so both ingestion and studio composition use the same shared model.
+
+To support that, providers must follow a split-registration model:
+
+- **metadata registration** contributes shared provider metadata such as the canonical provider descriptor
+- **runtime registration** contributes the ingestion factory and runtime-only dependencies
+
+This allows:
+
+- `StudioApiHost` to know about providers by composing provider metadata directly
+- `IngestionServiceHost` to compose both metadata and runtime registrations, then validate enabled providers before queue/bootstrap work begins
+
+Studio-side provider behavior is now also modeled separately through `src/Studio/UKHO.Search.Studio` and tandem provider projects such as `src/Providers/UKHO.Search.Studio.Providers.FileShare`, keeping development-time provider logic out of ingestion provider projects and out of `StudioApiHost` itself.
+
+In the current implementation, the File Share provider exposes split registration so that:
+
+- `AddFileShareProviderMetadata()` is used by `StudioApiHost`
+- `AddFileShareProviderRuntime(...)` is used by ingestion runtime composition
+
+`StudioApiHost` also composes `AddFileShareStudioProvider()` from the tandem Studio provider package and validates Studio provider registrations against the shared Provider Model at startup.
+
+The ingestion runtime then applies enabled-provider validation before startup proceeds:
+
+- enabled provider names are read from the `ingestion:providers:*` configuration path
+- names are matched case-insensitively against provider metadata and runtime registrations
+- if no providers are configured, ingestion defaults to all registered runtime providers
+- invalid or incomplete provider enablement fails before bootstrap or queue polling begins
+
+See [Provider metadata and split registration](Provider-Metadata-and-Split-Registration) for the formal design guidance.
+
 ## Provider startup model
 
 The File Share provider lazily starts its processing graph the first time it processes a request.
@@ -179,3 +218,4 @@ sequenceDiagram
 - [Ingestion pipeline](Ingestion-Pipeline)
 - [CanonicalDocument and discovery taxonomy](CanonicalDocument-and-Discovery-Taxonomy)
 - [File Share provider](FileShare-Provider)
+- [Provider metadata and split registration](Provider-Metadata-and-Split-Registration)

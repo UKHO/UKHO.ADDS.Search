@@ -1,8 +1,9 @@
 ﻿using Azure.Storage.Blobs;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
-using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.DependencyInjection.Extensions;
+using Microsoft.Extensions.Logging;
+using Microsoft.Extensions.Options;
 using UKHO.Search.Infrastructure.Ingestion.Bootstrap;
 using UKHO.Search.Infrastructure.Ingestion.DeadLetter;
 using UKHO.Search.Infrastructure.Ingestion.Diagnostics;
@@ -65,31 +66,21 @@ namespace UKHO.Search.Infrastructure.Ingestion.Injection
 
         public static IServiceCollection AddIngestionServices(this IServiceCollection collection)
         {
-            collection.AddFileShareProvider();
+            ArgumentNullException.ThrowIfNull(collection);
 
-            collection.AddScoped<IIngestionProviderContext, IngestionProviderContext>();
+            return AddIngestionServices(collection, new ConfigurationBuilder().Build());
+        }
 
-             collection.AddSingleton<AppConfigEndpointResolver>();
-             collection.AddSingleton<IRuleConfigurationWriter, AppConfigRuleConfigurationWriter>();
-             collection.AddSingleton<IRulesSource, AppConfigRulesSource>();
-             collection.AddSingleton<IngestionRulesSource>();
-            collection.AddSingleton<IngestionRulesLoader>();
-            collection.AddSingleton<IngestionRulesPathValidator>();
-            collection.AddSingleton<IngestionRulesValidator>();
-            collection.AddSingleton<IngestionRulesCatalog>();
-            collection.AddSingleton<IIngestionRulesCatalog>(sp => sp.GetRequiredService<IngestionRulesCatalog>());
-             collection.TryAddSingleton<Microsoft.Extensions.Configuration.AzureAppConfiguration.IConfigurationRefresherProvider>(sp => null!);
-             collection.AddHostedService<AppConfigIngestionRulesRefreshService>();
-            collection.AddSingleton<IPathResolver, IngestionRulesPathResolver>();
-            collection.AddSingleton<IngestionRulesPredicateEvaluator>();
-            collection.AddSingleton<IngestionRulesTemplateExpander>();
-            collection.AddSingleton<IngestionRulesActionApplier>();
-            collection.AddSingleton<IIngestionRulesEngine, IngestionRulesEngine>();
-            collection.AddScoped<IIngestionEnricher, IngestionRulesEnricher>();
+        public static IServiceCollection AddIngestionServices(this IServiceCollection collection, IConfiguration configuration)
+        {
+            ArgumentNullException.ThrowIfNull(collection);
+            ArgumentNullException.ThrowIfNull(configuration);
 
-            collection.AddSingleton<IIngestionDataProviderFactory>(sp =>
+            collection.AddOptions<IngestionProviderOptions>()
+                .Bind(configuration.GetSection("ingestion"));
+
+            collection.AddFileShareProviderRuntime(sp =>
             {
-                var configuration = sp.GetRequiredService<IConfiguration>();
                 var loggerFactory = sp.GetRequiredService<ILoggerFactory>();
                 var scopeFactory = sp.GetRequiredService<IServiceScopeFactory>();
                 var bulkIndexClient = sp.GetRequiredService<IBulkIndexClient<IndexOperation>>();
@@ -130,7 +121,28 @@ namespace UKHO.Search.Infrastructure.Ingestion.Injection
                 return new FileShareIngestionDataProviderFactory(queueName, processingGraphDependencies, loggerFactory, ingressCapacity);
             });
 
+            collection.AddScoped<IIngestionProviderContext, IngestionProviderContext>();
+
+             collection.AddSingleton<AppConfigEndpointResolver>();
+             collection.AddSingleton<IRuleConfigurationWriter, AppConfigRuleConfigurationWriter>();
+             collection.AddSingleton<IRulesSource, AppConfigRulesSource>();
+             collection.AddSingleton<IngestionRulesSource>();
+            collection.AddSingleton<IngestionRulesLoader>();
+            collection.AddSingleton<IngestionRulesPathValidator>();
+            collection.AddSingleton<IngestionRulesValidator>();
+            collection.AddSingleton<IngestionRulesCatalog>();
+            collection.AddSingleton<IIngestionRulesCatalog>(sp => sp.GetRequiredService<IngestionRulesCatalog>());
+             collection.TryAddSingleton<Microsoft.Extensions.Configuration.AzureAppConfiguration.IConfigurationRefresherProvider>(sp => null!);
+             collection.AddHostedService<AppConfigIngestionRulesRefreshService>();
+            collection.AddSingleton<IPathResolver, IngestionRulesPathResolver>();
+            collection.AddSingleton<IngestionRulesPredicateEvaluator>();
+            collection.AddSingleton<IngestionRulesTemplateExpander>();
+            collection.AddSingleton<IngestionRulesActionApplier>();
+            collection.AddSingleton<IIngestionRulesEngine, IngestionRulesEngine>();
+            collection.AddScoped<IIngestionEnricher, IngestionRulesEnricher>();
+
             collection.AddSingleton<IIngestionProviderService, IngestionProviderService>();
+            collection.AddSingleton<IIngestionProviderStartupValidator, IngestionProviderStartupValidator>();
             collection.AddSingleton<CanonicalIndexDefinition>();
             collection.AddSingleton<IBootstrapService, BootstrapService>();
             collection.AddSingleton<IStatisticsService, StatisticsService>();

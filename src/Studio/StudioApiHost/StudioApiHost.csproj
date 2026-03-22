@@ -25,7 +25,11 @@
   </ItemGroup>
 
   <ItemGroup>
+    <ProjectReference Include="..\..\UKHO.Search.ProviderModel\UKHO.Search.ProviderModel.csproj" />
     <ProjectReference Include="..\..\Hosts\UKHO.Search.ServiceDefaults\UKHO.Search.ServiceDefaults.csproj" />
+    <ProjectReference Include="..\..\Providers\UKHO.Search.Ingestion.Providers.FileShare\UKHO.Search.Ingestion.Providers.FileShare.csproj" />
+    <ProjectReference Include="..\UKHO.Search.Studio\UKHO.Search.Studio.csproj" />
+    <ProjectReference Include="..\..\Providers\UKHO.Search.Studio.Providers.FileShare\UKHO.Search.Studio.Providers.FileShare.csproj" />
   </ItemGroup>
 
   <Target Name="BuildTheiaStudioShell"

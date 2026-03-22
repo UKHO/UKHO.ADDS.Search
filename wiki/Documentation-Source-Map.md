@@ -193,6 +193,12 @@ Historical design package for propagating the studio API endpoint into the Theia
 ### `docs/060-studio-host-rename`
 Current work package for renaming the studio API host and its matching test project from `StudioHost` / `StudioHost.Tests` to `StudioApiHost` / `StudioApiHost.Tests`, including Theia contract and wiki alignment.
 
+### `docs/061-provider-metadata`
+Provider metadata model and split-registration design for provider packages, including development-time composition in `StudioApiHost`/Theia and live-deployment independence from studio components.
+
+### `docs/062-studio-provider`
+Shared Provider Model extraction plus Studio provider contracts, tandem Studio provider registration, and the amended `StudioApiHost` `/providers` contract that returns full provider metadata for development-time tooling.
+
 ### Top-level operational docs
 
 | Path | Topic |
@@ -217,4 +223,5 @@ Use the historical `docs/` work packages for the **why, when, and how the design
 - [Ingestion rules](Ingestion-Rules)
 - [CanonicalDocument and discovery taxonomy](CanonicalDocument-and-Discovery-Taxonomy)
 - [Ingestion service provider mechanism](Ingestion-Service-Provider-Mechanism)
+- [Provider metadata and split registration](Provider-Metadata-and-Split-Registration)
 - [File Share provider](FileShare-Provider)
