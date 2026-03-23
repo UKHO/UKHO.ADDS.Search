@@ -19,6 +19,7 @@ import { SearchStudioIngestionTreeModel } from './ingestion/search-studio-ingest
 import { SearchStudioIngestionViewContainerFactory } from './ingestion/search-studio-ingestion-view-container-factory';
 import { SearchStudioIngestionViewContribution } from './ingestion/search-studio-ingestion-view-contribution';
 import { SearchStudioIngestionWidget } from './ingestion/search-studio-ingestion-widget';
+import { SearchStudioOutputToolbarContribution } from './panel/search-studio-output-toolbar-contribution';
 import { SearchStudioOutputViewContribution } from './panel/search-studio-output-view-contribution';
 import { SearchStudioOutputWidget } from './panel/search-studio-output-widget';
 import { SearchStudioProviderTreeModel } from './providers/search-studio-provider-tree-model';
@@ -64,6 +65,7 @@ export default new ContainerModule(bind => {
     bind(SearchStudioDocumentWidget).toSelf();
     bind(SearchStudioRulesToolbarContribution).toSelf().inSingletonScope();
     bind(SearchStudioIngestionToolbarContribution).toSelf().inSingletonScope();
+    bind(SearchStudioOutputToolbarContribution).toSelf().inSingletonScope();
     bind(SearchStudioProvidersViewContainerFactory).toSelf().inSingletonScope();
     bind(SearchStudioRulesViewContainerFactory).toSelf().inSingletonScope();
     bind(SearchStudioIngestionViewContainerFactory).toSelf().inSingletonScope();
@@ -139,5 +141,6 @@ export default new ContainerModule(bind => {
     bindViewContribution(bind, SearchStudioOutputViewContribution);
     bind(TabBarToolbarContribution).toService(SearchStudioRulesToolbarContribution);
     bind(TabBarToolbarContribution).toService(SearchStudioIngestionToolbarContribution);
+    bind(TabBarToolbarContribution).toService(SearchStudioOutputToolbarContribution);
     bind(FrontendApplicationContribution).toService(SearchStudioShellLayoutContribution);
 });

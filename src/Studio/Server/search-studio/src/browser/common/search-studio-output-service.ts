@@ -32,7 +32,7 @@ export class SearchStudioOutputService {
 
     protected append(level: 'info' | 'error', message: string, source: string): void {
         this._entrySequence += 1;
-        this._entries.unshift({
+        this._entries.push({
             id: `entry-${this._entrySequence}`,
             timestamp: new Date().toISOString(),
             level,
@@ -41,7 +41,7 @@ export class SearchStudioOutputService {
         });
 
         if (this._entries.length > 200) {
-            this._entries.length = 200;
+            this._entries.shift();
         }
 
         this._onDidChangeEntries.fire();

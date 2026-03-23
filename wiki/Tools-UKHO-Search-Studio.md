@@ -17,13 +17,15 @@ It currently provides:
 - a branded Theia shell with dedicated `Providers`, `Rules`, and `Ingestion` activity-bar work areas
 - a native Theia extension named `search-studio`
 - provider-backed native Theia navigation trees for `Providers` and `Ingestion` using live `StudioApiHost` `GET /providers` data
+- first-root-only default expansion in `Providers`, `Rules`, and `Ingestion` so the first visible provider root opens automatically while other top-level roots remain collapsed
 - placeholder editor surfaces for provider overview, queue inspection, and dead-letter inspection
 - a rules-backed native Theia `Rules` navigation tree using live `StudioApiHost` `GET /rules` data
 - placeholder rules overview, rule-checker, existing-rule, and new-rule editor surfaces opened from the live rules tree
 - an ingestion work area with provider overview plus explicit `By id`, `All unindexed`, and `By context` mode nodes beneath provider roots
 - placeholder ingestion overview and mode-specific editor surfaces driven by live provider metadata
 - native Theia view-toolbar actions for `New Rule`, `Refresh Rules`, and `Refresh Providers` where those actions remain visible
-- a lower `Studio Output` panel for shell diagnostics and placeholder action feedback
+- a lower `Studio Output` panel for shell diagnostics and placeholder action feedback, now rendered in a denser log-style layout with a native toolbar `Clear output` action
+- a planned `Studio Output` baseline under work package `067-studio-output-enhancements` that keeps the panel non-terminal while adding a toolbar-based `Copy all` action for the merged stream alongside the existing `Clear output` action
 - runtime configuration for the local `StudioApiHost` API base URL
 - access to `StudioApiHost` read-only rule discovery through `GET /rules`
 
@@ -249,8 +251,9 @@ The current shell flow is:
    - `/search-studio/api/configuration`
 7. the browser-side Studio API client calls `StudioApiHost` `GET /providers` using the configured base URL
 8. provider metadata is mapped into the shell trees for `Providers`, `Rules`, and `Ingestion`
-9. selecting provider nodes opens placeholder editor surfaces in the main workbench area
-10. shell loading and placeholder actions are written to the lower `Studio Output` panel
+9. the first visible provider root in each work area is expanded automatically on first render while later top-level roots remain collapsed until the user changes them
+10. selecting provider nodes opens placeholder editor surfaces in the main workbench area
+11. shell loading and placeholder actions are written to the lower `Studio Output` panel
 
 ## Reviewing the Studio skeleton
 
@@ -262,13 +265,16 @@ The purpose of the current shell is to review the overall look, navigation model
 2. Open `http://localhost:3000`
 3. Confirm the `Providers`, `Rules`, and `Ingestion` activity-bar items are visible
 4. Open `Providers` and confirm it renders as a native tree fed by live `GET /providers` data
-5. Double-click a provider root to open its overview, expand it, then open `Queue` and `Dead letters`
-6. Open `Rules` and confirm it renders as a native tree with provider roots, `Rule checker`, a `Rules` grouping node, and live rule entries from `GET /rules`
-7. Confirm the `Rules` view toolbar exposes `New Rule` and `Refresh Rules`, then open a rules overview, a rule checker placeholder, an existing rule, and `New Rule`
-8. Open `Ingestion` and confirm it renders as a native tree with provider roots plus `By id`, `All unindexed`, and `By context` beneath each provider root
-9. Confirm the `Ingestion` view toolbar exposes `Refresh Providers`, then open an ingestion overview, open each ingestion mode, and trigger `Reset indexing status`
-10. Open the `Studio Output` panel and confirm loading, navigation, and placeholder action entries appear there
-11. Confirm all three work areas feel visually consistent, with no body-level CTA buttons, duplicate in-body titles, or persistent provider description text in the side bar
+5. Confirm only the first visible provider root is expanded automatically, then collapse or expand a root manually and confirm a refresh preserves that top-level state
+6. Double-click a provider root to open its overview, then open `Queue` and `Dead letters`
+7. Open `Rules` and confirm it renders as a native tree with provider roots, `Rule checker`, a `Rules` grouping node, and live rule entries from `GET /rules`
+8. Confirm the `Rules` view toolbar exposes `New Rule` and `Refresh Rules`, verify only the first visible provider root auto-expands, then open a rules overview, a rule checker placeholder, an existing rule, and `New Rule`
+9. Open `Ingestion` and confirm it renders as a native tree with provider roots plus `By id`, `All unindexed`, and `By context` beneath each provider root
+10. Confirm the `Ingestion` view toolbar exposes `Refresh Providers`, verify only the first visible provider root auto-expands, then open an ingestion overview, open each ingestion mode, and trigger `Reset indexing status`
+11. Open the `Studio Output` panel and confirm loading, navigation, and placeholder action entries appear there in a dense log-style layout
+12. Confirm the output toolbar exposes `Clear output`, use it, and verify the panel clears immediately without a body-level clear button
+13. Note that the current `067-studio-output-enhancements` baseline also plans a toolbar `Copy all` action for the merged output stream once that slice is delivered
+14. Confirm all three work areas and the output panel feel visually consistent, with no body-level CTA buttons, duplicate in-body titles, or persistent provider description text in the side bar
 
 At this stage, success means the shell feels coherent and reviewable, not that queue, rules, or ingestion functionality has been implemented yet.
 

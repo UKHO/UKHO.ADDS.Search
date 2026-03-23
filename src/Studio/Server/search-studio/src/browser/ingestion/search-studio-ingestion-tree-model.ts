@@ -1,11 +1,17 @@
 import { TreeModelImpl } from '@theia/core/lib/browser/tree/tree-model';
+import { ExpandableTreeNode } from '@theia/core/lib/browser/tree/tree-expansion';
 import { SelectableTreeNode } from '@theia/core/lib/browser/tree/tree-selection';
 import { inject, injectable, postConstruct } from '@theia/core/shared/inversify';
 import { SearchStudioProviderCatalogService } from '../api/search-studio-provider-catalog-service';
 import { SearchStudioProviderSelectionService } from '../common/search-studio-provider-selection-service';
+import {
+    rememberTopLevelExpansionState,
+    synchronizeTopLevelExpansionState
+} from '../common/search-studio-top-level-expansion-state';
 import { mapProviderCatalogSnapshotToIngestionTreeRoot } from './search-studio-ingestion-mapper';
 import {
     isSearchStudioIngestionTreeNode,
+    SearchStudioIngestionTreeRoot,
     SearchStudioIngestionTreeNode
 } from './search-studio-ingestion-tree-types';
 
@@ -13,6 +19,7 @@ import {
 export class SearchStudioIngestionTreeModel extends TreeModelImpl {
 
     protected _initialized = false;
+    protected readonly _topLevelExpansionState = new Map<string, boolean>();
 
     @inject(SearchStudioProviderCatalogService)
     protected readonly _providerCatalogService!: SearchStudioProviderCatalogService;
@@ -36,6 +43,7 @@ export class SearchStudioIngestionTreeModel extends TreeModelImpl {
         this.toDispose.push(this._providerCatalogService.onDidChange(() => this.rebuildTree()));
         this.toDispose.push(this._providerSelectionService.onDidChangeSelectedProvider(() => this.syncSelectedProvider()));
         this.toDispose.push(this.onSelectionChanged(nodes => this.handleSelectionChanged(nodes)));
+        this.toDispose.push(this.onExpansionChanged(node => this.handleExpansionChanged(node)));
 
         this.rebuildTree();
         void this._providerCatalogService.ensureLoaded();
@@ -45,8 +53,16 @@ export class SearchStudioIngestionTreeModel extends TreeModelImpl {
         const snapshot = this._providerCatalogService.snapshot;
 
         this._providerSelectionService.synchronizeProviderSelection(snapshot.providers, 'ingestion');
-        this.root = mapProviderCatalogSnapshotToIngestionTreeRoot(snapshot);
+        const root = mapProviderCatalogSnapshotToIngestionTreeRoot(snapshot);
+
+        synchronizeTopLevelExpansionState(root, this._topLevelExpansionState);
+
+        this.root = root;
         this.syncSelectedProvider();
+    }
+
+    protected handleExpansionChanged(node: Readonly<ExpandableTreeNode>): void {
+        rememberTopLevelExpansionState(this.root as SearchStudioIngestionTreeRoot | undefined, node, this._topLevelExpansionState);
     }
 
     protected handleSelectionChanged(nodes: readonly Readonly<SelectableTreeNode>[]): void {

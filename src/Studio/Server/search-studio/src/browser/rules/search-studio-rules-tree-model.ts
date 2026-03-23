@@ -1,13 +1,19 @@
 import { TreeModelImpl } from '@theia/core/lib/browser/tree/tree-model';
+import { ExpandableTreeNode } from '@theia/core/lib/browser/tree/tree-expansion';
 import { SelectableTreeNode } from '@theia/core/lib/browser/tree/tree-selection';
 import { inject, injectable, postConstruct } from '@theia/core/shared/inversify';
 import { SearchStudioRulesCatalogService } from '../api/search-studio-rules-catalog-service';
 import { SearchStudioProviderSelectionService } from '../common/search-studio-provider-selection-service';
 import {
+    rememberTopLevelExpansionState,
+    synchronizeTopLevelExpansionState
+} from '../common/search-studio-top-level-expansion-state';
+import {
     mapRulesCatalogSnapshotToRulesTreeRoot
 } from './search-studio-rules-mapper';
 import {
     isSearchStudioRulesTreeNode,
+    SearchStudioRulesTreeRoot,
     SearchStudioRulesTreeNode
 } from './search-studio-rules-tree-types';
 
@@ -15,6 +21,7 @@ import {
 export class SearchStudioRulesTreeModel extends TreeModelImpl {
 
     protected _initialized = false;
+    protected readonly _topLevelExpansionState = new Map<string, boolean>();
 
     @inject(SearchStudioRulesCatalogService)
     protected readonly _rulesCatalogService!: SearchStudioRulesCatalogService;
@@ -38,6 +45,7 @@ export class SearchStudioRulesTreeModel extends TreeModelImpl {
         this.toDispose.push(this._rulesCatalogService.onDidChange(() => this.rebuildTree()));
         this.toDispose.push(this._providerSelectionService.onDidChangeSelectedProvider(() => this.syncSelectedProvider()));
         this.toDispose.push(this.onSelectionChanged(nodes => this.handleSelectionChanged(nodes)));
+        this.toDispose.push(this.onExpansionChanged(node => this.handleExpansionChanged(node)));
 
         this.rebuildTree();
         void this._rulesCatalogService.ensureLoaded();
@@ -48,8 +56,16 @@ export class SearchStudioRulesTreeModel extends TreeModelImpl {
         const providers = snapshot.providers.map(group => group.provider);
 
         this._providerSelectionService.synchronizeProviderSelection(providers, 'rules');
-        this.root = mapRulesCatalogSnapshotToRulesTreeRoot(snapshot);
+        const root = mapRulesCatalogSnapshotToRulesTreeRoot(snapshot);
+
+        synchronizeTopLevelExpansionState(root, this._topLevelExpansionState);
+
+        this.root = root;
         this.syncSelectedProvider();
+    }
+
+    protected handleExpansionChanged(node: Readonly<ExpandableTreeNode>): void {
+        rememberTopLevelExpansionState(this.root as SearchStudioRulesTreeRoot | undefined, node, this._topLevelExpansionState);
     }
 
     protected handleSelectionChanged(nodes: readonly Readonly<SelectableTreeNode>[]): void {
