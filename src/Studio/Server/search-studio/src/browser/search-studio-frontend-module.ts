@@ -19,6 +19,7 @@ import { SearchStudioHomeService } from './home/search-studio-home-service';
 import { SearchStudioHomeNavigationService } from './home/search-studio-home-navigation-service';
 import { SearchStudioHomeWidget } from './home/search-studio-home-widget';
 import { SearchStudioIngestionToolbarContribution } from './ingestion/search-studio-ingestion-toolbar-contribution';
+import { SearchStudioIngestionOperationService } from './ingestion/search-studio-ingestion-operation-service';
 import { SearchStudioIngestionTreeModel } from './ingestion/search-studio-ingestion-tree-model';
 import { SearchStudioIngestionViewContainerFactory } from './ingestion/search-studio-ingestion-view-container-factory';
 import { SearchStudioIngestionViewContribution } from './ingestion/search-studio-ingestion-view-contribution';
@@ -69,6 +70,7 @@ export default new ContainerModule(bind => {
     bind(SearchStudioApiClient).toSelf().inSingletonScope();
     bind(SearchStudioProviderCatalogService).toSelf().inSingletonScope();
     bind(SearchStudioRulesCatalogService).toSelf().inSingletonScope();
+    bind(SearchStudioIngestionOperationService).toSelf().inSingletonScope();
     bind(SearchStudioProviderSelectionService).toSelf().inSingletonScope();
     bind(SearchStudioOutputService).toSelf().inSingletonScope();
     bind(SearchStudioDocumentService).toSelf().inSingletonScope();

@@ -31,6 +31,16 @@ namespace StudioApiHost.Tests
                 content.ShouldContain("\"openapi\"");
                 content.ShouldContain("\"/providers\"");
                 content.ShouldContain("\"/rules\"");
+                content.ShouldContain("\"/ingestion/{provider}/{id}\"");
+                content.ShouldContain("\"/ingestion/{provider}/payload\"");
+                content.ShouldContain("\"/ingestion/{provider}/all\"");
+                content.ShouldContain("\"/ingestion/{provider}/contexts\"");
+                content.ShouldContain("\"/ingestion/{provider}/context/{context}\"");
+                content.ShouldContain("\"/ingestion/{provider}/context/{context}/operations/reset-indexing-status\"");
+                content.ShouldContain("\"/ingestion/{provider}/operations/reset-indexing-status\"");
+                content.ShouldContain("\"/operations/active\"");
+                content.ShouldContain("\"/operations/{operationId}\"");
+                content.ShouldContain("\"/operations/{operationId}/events\"");
             }
             finally
             {
@@ -69,6 +79,7 @@ namespace StudioApiHost.Tests
         {
             return new Dictionary<string, string?>
             {
+                ["SkipAddsConfiguration"] = "true",
                 ["rules:file-share:rule-1"] = """
                     {
                       "schemaVersion": "1.0",

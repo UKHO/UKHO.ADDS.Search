@@ -25,6 +25,7 @@ namespace StudioApiHost.Tests
                     builder.WebHost.UseTestServer();
                     builder.Configuration.AddInMemoryCollection(new Dictionary<string, string?>
                     {
+                        ["SkipAddsConfiguration"] = "true",
                         ["rules:FILE-SHARE:rule-1"] = CreateRuleJson("rule-1", title: "File Share Rule", context: "Adds-S100"),
                         ["rules:other-provider:rule-2"] = CreateRuleJson("rule-2", title: "Other Provider Rule", enabled: false)
                     });
@@ -65,6 +66,7 @@ namespace StudioApiHost.Tests
                     builder.WebHost.UseTestServer();
                     builder.Configuration.AddInMemoryCollection(new Dictionary<string, string?>
                     {
+                        ["SkipAddsConfiguration"] = "true",
                         ["rules:file-share:rule-1"] = CreateRuleJson("rule-1", title: "File Share Rule")
                     });
                     builder.Services.AddProviderDescriptor<AdditionalProviderRegistrationMarker>(
@@ -101,6 +103,7 @@ namespace StudioApiHost.Tests
                         builder.WebHost.UseTestServer();
                         builder.Configuration.AddInMemoryCollection(new Dictionary<string, string?>
                         {
+                            ["SkipAddsConfiguration"] = "true",
                             ["rules:unknown-provider:rule-1"] = CreateRuleJson("rule-1", title: "Unknown Provider Rule")
                         });
                     }));

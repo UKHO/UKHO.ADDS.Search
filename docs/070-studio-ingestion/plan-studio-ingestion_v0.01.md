@@ -41,7 +41,7 @@
 
 ## Slice 1 — Fetch payload by id and submit it for ingestion
 
-- [ ] Work Item 1: Deliver a runnable provider-neutral `By id` ingestion flow from Studio UI through `StudioApiHost` to the file-share provider
+- [x] Work Item 1: Deliver a runnable provider-neutral `By id` ingestion flow from Studio UI through `StudioApiHost` to the file-share provider
   - **Purpose**: Bring the first placeholder page to life with the smallest meaningful end-to-end capability: select a provider, fetch a payload by id, inspect it, and enqueue that same payload without client-side transformation.
   - **Acceptance Criteria**:
     - `GET /ingestion/{provider}/{id}` returns a wrapped provider-neutral response with `id` and `payload`.
@@ -58,31 +58,31 @@
     - API, provider, and frontend tests pass for the slice
     - Documentation updated in this work package
     - Can execute end-to-end via: launching Studio, opening `Ingestion -> By id`, selecting `file-share`, fetching a valid id, and indexing the fetched payload
-  - [ ] Task 1.1: Add shared provider-neutral ingestion contracts in the Studio shared layer
-    - [ ] Step 1: Introduce provider-neutral request/response DTOs for fetch and payload submit in `src/Studio/UKHO.Search.Studio`.
-    - [ ] Step 2: Add provider-neutral ingestion provider abstractions that extend the existing Studio provider model without leaking file-share terms.
-    - [ ] Step 3: Keep payload bodies opaque JSON while making non-payload fields Studio-neutral.
-    - [ ] Step 4: Add contract-level validation helpers or result types needed for `400` vs `404` handling.
-  - [ ] Task 1.2: Implement the `StudioApiHost` by-id ingestion endpoints
-    - [ ] Step 1: Add ingestion endpoint classes under `src/Studio/StudioApiHost/Api` using the existing class-per-endpoint-group pattern.
-    - [ ] Step 2: Map `GET /ingestion/{provider}/{id}` and `POST /ingestion/{provider}/payload`.
-    - [ ] Step 3: Validate route/body inputs and return the spec-defined status codes and wrapped DTOs.
-    - [ ] Step 4: Add coarse logging for successful fetch, submit, not-found, and infrastructure-failure paths.
-  - [ ] Task 1.3: Implement file-share provider translation for fetch and payload submit
-    - [ ] Step 1: Extend `FileShareStudioProvider` or supporting types so the provider can fetch the current ingestion payload for a file-share id.
-    - [ ] Step 2: Reuse the existing host DI registrations for SQL, blob, and queue clients rather than creating bespoke provider registration.
-    - [ ] Step 3: Keep queue names, SQL details, blob/container rules, and business-unit terminology internal to the provider project.
-    - [ ] Step 4: Ensure queue write failures surface as immediate `5xx` errors from `POST /ingestion/{provider}/payload`.
-  - [ ] Task 1.4: Replace the placeholder Theia `By id` document with a working flow
-    - [ ] Step 1: Extend the Studio API client/types with fetch-by-id and submit-payload calls.
-    - [ ] Step 2: Replace placeholder document content with a provider dropdown, id input, `Fetch` button, `Index` button, and read-only Monaco payload preview.
-    - [ ] Step 3: Disable actions until a provider is selected; disable `Index` until a payload has been fetched.
-    - [ ] Step 4: Surface validation, not-found, and submit-failure messages through the existing Studio output/notification patterns.
-  - [ ] Task 1.5: Add slice-focused tests
-    - [ ] Step 1: Add `StudioApiHost` endpoint tests for success, unknown provider, and unknown id.
-    - [ ] Step 2: Add file-share provider tests for payload fetch translation and queue-submit behavior.
-    - [ ] Step 3: Add frontend tests for button enablement, payload reuse, and error display.
-    - [ ] Step 4: Add a manual verification note for inspecting payload JSON and submitting it unchanged.
+  - [x] Task 1.1: Add shared provider-neutral ingestion contracts in the Studio shared layer
+    - [x] Step 1: Introduce provider-neutral request/response DTOs for fetch and payload submit in `src/Studio/UKHO.Search.Studio`.
+    - [x] Step 2: Add provider-neutral ingestion provider abstractions that extend the existing Studio provider model without leaking file-share terms.
+    - [x] Step 3: Keep payload bodies opaque JSON while making non-payload fields Studio-neutral.
+    - [x] Step 4: Add contract-level validation helpers or result types needed for `400` vs `404` handling.
+  - [x] Task 1.2: Implement the `StudioApiHost` by-id ingestion endpoints
+    - [x] Step 1: Add ingestion endpoint classes under `src/Studio/StudioApiHost/Api` using the existing class-per-endpoint-group pattern.
+    - [x] Step 2: Map `GET /ingestion/{provider}/{id}` and `POST /ingestion/{provider}/payload`.
+    - [x] Step 3: Validate route/body inputs and return the spec-defined status codes and wrapped DTOs.
+    - [x] Step 4: Add coarse logging for successful fetch, submit, not-found, and infrastructure-failure paths.
+  - [x] Task 1.3: Implement file-share provider translation for fetch and payload submit
+    - [x] Step 1: Extend `FileShareStudioProvider` or supporting types so the provider can fetch the current ingestion payload for a file-share id.
+    - [x] Step 2: Reuse the existing host DI registrations for SQL, blob, and queue clients rather than creating bespoke provider registration.
+    - [x] Step 3: Keep queue names, SQL details, blob/container rules, and business-unit terminology internal to the provider project.
+    - [x] Step 4: Ensure queue write failures surface as immediate `5xx` errors from `POST /ingestion/{provider}/payload`.
+  - [x] Task 1.4: Replace the placeholder Theia `By id` document with a working flow
+    - [x] Step 1: Extend the Studio API client/types with fetch-by-id and submit-payload calls.
+    - [x] Step 2: Replace placeholder document content with a provider dropdown, id input, `Fetch` button, `Index` button, and read-only Monaco payload preview.
+    - [x] Step 3: Disable actions until a provider is selected; disable `Index` until a payload has been fetched.
+    - [x] Step 4: Surface validation, not-found, and submit-failure messages through the existing Studio output/notification patterns.
+  - [x] Task 1.5: Add slice-focused tests
+    - [x] Step 1: Add `StudioApiHost` endpoint tests for success, unknown provider, and unknown id.
+    - [x] Step 2: Add file-share provider tests for payload fetch translation and queue-submit behavior.
+    - [x] Step 3: Add frontend tests for button enablement, payload reuse, and error display.
+    - [x] Step 4: Add a manual verification note for inspecting payload JSON and submitting it unchanged.
   - **Files**:
     - `src/Studio/UKHO.Search.Studio/*`: new provider-neutral ingestion contracts and provider abstractions.
     - `src/Studio/StudioApiHost/Api/*`: new ingestion endpoint classes and API DTO wiring.
@@ -107,7 +107,8 @@
 
 ## Slice 2 — Start provider-wide ingestion and track it live
 
-- [ ] Work Item 2: Deliver a runnable `All unindexed` flow with in-memory operation tracking, SSE progress, and provider-wide reset support
+- [x] Work Item 2: Deliver a runnable `All unindexed` flow with in-memory operation tracking, SSE progress, and provider-wide reset support - Completed
+  - **Summary**: Added shared operation DTOs, an in-memory host operation store with SSE streaming and a global active-operation lock, file-share provider-wide index/reset execution, and a live Theia `All unindexed` document with recovery and conflict handling. Updated API, provider, and frontend tests, and rebuilt the browser assets.
   - **Purpose**: Bring the second placeholder page to life while introducing the shared long-running operation model that later slices will reuse.
   - **Acceptance Criteria**:
     - `PUT /ingestion/{provider}/all` returns `202 Accepted` with the spec-defined operation envelope.
@@ -123,31 +124,36 @@
     - Theia `All unindexed` document uses the shared operation model and is no longer placeholder content
     - API, provider, and frontend tests pass for operation lifecycle and conflict handling
     - Can execute end-to-end via: launching Studio, opening `Ingestion -> All unindexed`, starting an operation, watching progress, and verifying recovery via reload
-  - [ ] Task 2.1: Add the shared operation model in `StudioApiHost`
-    - [ ] Step 1: Introduce provider-neutral operation state DTOs, status values, progress events, and conflict response DTOs.
-    - [ ] Step 2: Add an in-memory operation store that retains completed operations until host restart.
-    - [ ] Step 3: Add a single global lock for `queued` and `running` operations.
-    - [ ] Step 4: Add SSE event fan-out that emits only live events and closes after the terminal event.
-  - [ ] Task 2.2: Implement provider-wide long-running ingestion and reset endpoints
-    - [ ] Step 1: Add endpoint classes under `src/Studio/StudioApiHost/Api` for `PUT /ingestion/{provider}/all`, `POST /ingestion/{provider}/operations/reset-indexing-status`, and operation read endpoints.
-    - [ ] Step 2: Return `202`, `404`, `409`, and `5xx` outcomes exactly as required by the spec.
-    - [ ] Step 3: Start long-running work in a host-managed background flow that updates the in-memory operation state.
-    - [ ] Step 4: Keep endpoint contracts provider-neutral and do not expose provider internals in messages or DTOs.
-  - [ ] Task 2.3: Implement file-share translation for provider-wide index-all and reset-all
-    - [ ] Step 1: Translate provider-neutral `all` ingestion into the existing file-share pending/unindexed behavior.
-    - [ ] Step 2: Translate provider-neutral reset-all into the existing file-share-wide reset behavior.
-    - [ ] Step 3: Report coarse `completed` and `total` progress back to the host operation model.
-    - [ ] Step 4: Map provider and infrastructure failures to stable failure codes such as `database-error`, `provider-error`, or `unexpected-error`.
-  - [ ] Task 2.4: Replace the placeholder `All unindexed` document with a working operation UI
-    - [ ] Step 1: Extend the frontend API client for accepted-operation responses, active-operation lookup, status lookup, reset-all, and SSE subscription.
-    - [ ] Step 2: Add a shared frontend operation service that owns active-operation state and stream lifecycle.
-    - [ ] Step 3: Replace placeholder content with provider selection, start action, reset-all action, progress display, and final state messaging.
-    - [ ] Step 4: Rediscover active operations on document open/reload before subscribing for new events.
-  - [ ] Task 2.5: Add slice-focused tests
-    - [ ] Step 1: Add API tests for accepted responses, conflict responses, active-operation lookup, and SSE terminal closure.
-    - [ ] Step 2: Add provider tests for provider-wide index-all and reset-all translation.
-    - [ ] Step 3: Add frontend tests for operation recovery, progress updates, and conflict-state UX.
-    - [ ] Step 4: Add a manual smoke path covering reload during a running operation.
+  - [x] Task 2.1: Add the shared operation model in `StudioApiHost` - Completed
+    - **Summary**: Added provider-neutral operation envelopes, progress/failure DTOs, an in-memory retained operation store, a single active-operation lock, and live-only SSE fan-out with terminal stream closure.
+    - [x] Step 1: Introduce provider-neutral operation state DTOs, status values, progress events, and conflict response DTOs.
+    - [x] Step 2: Add an in-memory operation store that retains completed operations until host restart.
+    - [x] Step 3: Add a single global lock for `queued` and `running` operations.
+    - [x] Step 4: Add SSE event fan-out that emits only live events and closes after the terminal event.
+  - [x] Task 2.2: Implement provider-wide long-running ingestion and reset endpoints - Completed
+    - **Summary**: Added provider-wide start/reset routes plus `/operations/active`, `/operations/{operationId}`, and `/operations/{operationId}/events`, returning the required `202`, `404`, and `409` responses while running work in a host-managed background coordinator.
+    - [x] Step 1: Add endpoint classes under `src/Studio/StudioApiHost/Api` for `PUT /ingestion/{provider}/all`, `POST /ingestion/{provider}/operations/reset-indexing-status`, and operation read endpoints.
+    - [x] Step 2: Return `202`, `404`, `409`, and `5xx` outcomes exactly as required by the spec.
+    - [x] Step 3: Start long-running work in a host-managed background flow that updates the in-memory operation state.
+    - [x] Step 4: Keep endpoint contracts provider-neutral and do not expose provider internals in messages or DTOs.
+  - [x] Task 2.3: Implement file-share translation for provider-wide index-all and reset-all - Completed
+    - **Summary**: Extended the file-share provider/store to load pending batches, queue provider-wide ingestion, reset all indexing state, report coarse progress, and map failures to stable queue/database/provider codes.
+    - [x] Step 1: Translate provider-neutral `all` ingestion into the existing file-share pending/unindexed behavior.
+    - [x] Step 2: Translate provider-neutral reset-all into the existing file-share-wide reset behavior.
+    - [x] Step 3: Report coarse `completed` and `total` progress back to the host operation model.
+    - [x] Step 4: Map provider and infrastructure failures to stable failure codes such as `database-error`, `provider-error`, or `unexpected-error`.
+  - [x] Task 2.4: Replace the placeholder `All unindexed` document with a working operation UI - Completed
+    - **Summary**: Added operation-aware frontend DTOs/client calls, a shared operation service, a live `All unindexed` document with start/reset/progress messaging, and active-operation rediscovery on open.
+    - [x] Step 1: Extend the frontend API client for accepted-operation responses, active-operation lookup, status lookup, reset-all, and SSE subscription.
+    - [x] Step 2: Add a shared frontend operation service that owns active-operation state and stream lifecycle.
+    - [x] Step 3: Replace placeholder content with provider selection, start action, reset-all action, progress display, and final state messaging.
+    - [x] Step 4: Rediscover active operations on document open/reload before subscribing for new events.
+  - [x] Task 2.5: Add slice-focused tests - Completed
+    - **Summary**: Added API tests for accept/conflict/active/SSE behavior, provider tests for index-all/reset/failure mapping, frontend state tests for recovery/progress/conflicts, and preserved the manual smoke path in the run instructions.
+    - [x] Step 1: Add API tests for accepted responses, conflict responses, active-operation lookup, and SSE terminal closure.
+    - [x] Step 2: Add provider tests for provider-wide index-all and reset-all translation.
+    - [x] Step 3: Add frontend tests for operation recovery, progress updates, and conflict-state UX.
+    - [x] Step 4: Add a manual smoke path covering reload during a running operation.
   - **Files**:
     - `src/Studio/UKHO.Search.Studio/*`: operation model abstractions and DTOs.
     - `src/Studio/StudioApiHost/Api/*`: provider-wide ingestion, reset-all, and operation endpoint classes.
@@ -172,7 +178,8 @@
 
 ## Slice 3 — Discover contexts and run context-scoped ingestion
 
-- [ ] Work Item 3: Deliver a runnable `By context` flow with context discovery, context-scoped ingestion, and context-scoped reset support
+- [x] Work Item 3: Deliver a runnable `By context` flow with context discovery, context-scoped ingestion, and context-scoped reset support - Completed
+  - **Summary**: Added provider-neutral context DTOs and provider contracts, context discovery plus context-scoped API routes with shared operation/recovery behavior, file-share business-unit translation kept internal to the provider, and a live Theia `By context` workflow with context loading, selection, and shared progress tracking. Expanded API, provider, frontend, and OpenAPI coverage and rebuilt the Studio browser assets.
   - **Purpose**: Bring the third placeholder page to life using the shared operation model while proving the provider-neutral `context` abstraction end to end.
   - **Acceptance Criteria**:
     - `GET /ingestion/{provider}/contexts` returns contexts sorted by `displayName` ascending.
@@ -188,31 +195,36 @@
     - Theia `By context` document uses live context discovery and shared operation tracking
     - API, provider, and frontend tests pass for sorting, validation, and context-scoped actions
     - Can execute end-to-end via: launching Studio, opening `Ingestion -> By context`, selecting a context, running context ingestion, and watching coarse progress
-  - [ ] Task 3.1: Add provider-neutral context discovery contracts
-    - [ ] Step 1: Add shared context DTOs with `value`, `displayName`, and `isDefault` as string-based Studio-neutral fields.
-    - [ ] Step 2: Ensure the API contract keeps context values opaque to the Studio client.
-    - [ ] Step 3: Add host-side validation for unknown provider and unknown context.
-    - [ ] Step 4: Keep sorting responsibility explicit so results are returned by ascending `displayName`.
-  - [ ] Task 3.2: Implement context discovery and context-scoped operation endpoints
-    - [ ] Step 1: Add endpoint classes for `GET /ingestion/{provider}/contexts`, `PUT /ingestion/{provider}/context/{context}`, and `POST /ingestion/{provider}/context/{context}/operations/reset-indexing-status`.
-    - [ ] Step 2: Reuse the shared operation store and global lock from Work Item 2.
-    - [ ] Step 3: Return `400` for unknown context rather than `404`.
-    - [ ] Step 4: Add coarse logging for context loading, context-index start, reset start, and provider failures.
-  - [ ] Task 3.3: Implement file-share context translation
-    - [ ] Step 1: Load file-share business units and expose them as Studio-neutral contexts.
-    - [ ] Step 2: Translate context values back to the provider’s internal typed business-unit identifiers.
-    - [ ] Step 3: Translate context indexing to the existing file-share business-unit indexing behavior.
-    - [ ] Step 4: Translate reset-by-context to the existing business-unit reset behavior without leaking that terminology outward.
-  - [ ] Task 3.4: Replace the placeholder `By context` document with a working flow
-    - [ ] Step 1: Extend the frontend API client/types for context discovery and context-scoped mutation calls.
-    - [ ] Step 2: Replace placeholder content with provider selection, context loading, context dropdown, run action, reset action, and shared progress display.
-    - [ ] Step 3: Disable context actions until a provider is selected and contexts have loaded successfully.
-    - [ ] Step 4: Surface context-load, validation, and operation errors through the existing Studio output/notification patterns.
-  - [ ] Task 3.5: Add slice-focused tests
-    - [ ] Step 1: Add API tests for context sorting, unknown context, and accepted context operations.
-    - [ ] Step 2: Add provider tests for business-unit-to-context mapping and context reset/index translation.
-    - [ ] Step 3: Add frontend tests for dropdown population, action enablement, and shared progress behavior.
-    - [ ] Step 4: Add a manual smoke path covering both context ingestion and reset-by-context.
+  - [x] Task 3.1: Add provider-neutral context discovery contracts - Completed
+    - **Summary**: Added shared context discovery DTOs plus provider-neutral context operations in the Studio shared layer, keeping context values opaque while leaving explicit sorting/validation at the host boundary.
+    - [x] Step 1: Add shared context DTOs with `value`, `displayName`, and `isDefault` as string-based Studio-neutral fields.
+    - [x] Step 2: Ensure the API contract keeps context values opaque to the Studio client.
+    - [x] Step 3: Add host-side validation for unknown provider and unknown context.
+    - [x] Step 4: Keep sorting responsibility explicit so results are returned by ascending `displayName`.
+  - [x] Task 3.2: Implement context discovery and context-scoped operation endpoints - Completed
+    - **Summary**: Added context discovery plus context-scoped start/reset endpoints under `StudioIngestionApi`, reusing the shared operation coordinator/store, returning `400` for unknown contexts, and adding coarse logging for context load/start/reset paths.
+    - [x] Step 1: Add endpoint classes for `GET /ingestion/{provider}/contexts`, `PUT /ingestion/{provider}/context/{context}`, and `POST /ingestion/{provider}/context/{context}/operations/reset-indexing-status`.
+    - [x] Step 2: Reuse the shared operation store and global lock from Work Item 2.
+    - [x] Step 3: Return `400` for unknown context rather than `404`.
+    - [x] Step 4: Add coarse logging for context loading, context-index start, reset start, and provider failures.
+  - [x] Task 3.3: Implement file-share context translation - Completed
+    - **Summary**: Added file-share business-unit discovery, mapped opaque context values back to internal business-unit ids, translated context indexing/reset flows to existing business-unit behavior, and kept provider-specific terminology inside the provider project.
+    - [x] Step 1: Load file-share business units and expose them as Studio-neutral contexts.
+    - [x] Step 2: Translate context values back to the provider’s internal typed business-unit identifiers.
+    - [x] Step 3: Translate context indexing to the existing file-share business-unit indexing behavior.
+    - [x] Step 4: Translate reset-by-context to the existing business-unit reset behavior without leaking that terminology outward.
+  - [x] Task 3.4: Replace the placeholder `By context` document with a working flow - Completed
+    - **Summary**: Added context discovery API client calls and UI state helpers, replaced the placeholder document with load/select/run/reset actions, reused shared operation rendering and recovery, and surfaced context-load/operation messages through Studio output patterns.
+    - [x] Step 1: Extend the frontend API client/types for context discovery and context-scoped mutation calls.
+    - [x] Step 2: Replace placeholder content with provider selection, context loading, context dropdown, run action, reset action, and shared progress display.
+    - [x] Step 3: Disable context actions until a provider is selected and contexts have loaded successfully.
+    - [x] Step 4: Surface context-load, validation, and operation errors through the existing Studio output/notification patterns.
+  - [x] Task 3.5: Add slice-focused tests - Completed
+    - **Summary**: Added API tests for sorting/unknown-context/accepted context routes, provider tests for business-unit mapping plus context index/reset translation, frontend state tests for context loading and enablement, and kept the manual smoke path in the verification notes.
+    - [x] Step 1: Add API tests for context sorting, unknown context, and accepted context operations.
+    - [x] Step 2: Add provider tests for business-unit-to-context mapping and context reset/index translation.
+    - [x] Step 3: Add frontend tests for dropdown population, action enablement, and shared progress behavior.
+    - [x] Step 4: Add a manual smoke path covering both context ingestion and reset-by-context.
   - **Files**:
     - `src/Studio/UKHO.Search.Studio/*`: context DTOs and provider-neutral context contracts.
     - `src/Studio/StudioApiHost/Api/*`: context discovery and context-scoped operation endpoint classes.
@@ -236,7 +248,8 @@
 
 ## Slice 4 — Recovery, consistency, and final ingestion UX alignment
 
-- [ ] Work Item 4: Unify the three ingestion screens around a shared operation/recovery experience and close the work package with full verification
+- [x] Work Item 4: Unify the three ingestion screens around a shared operation/recovery experience and close the work package with full verification - Completed
+  - **Summary**: Unified shared ingestion messaging/layout behavior in the Theia document widget, made the `By id` screen aware of the global active-operation lock while preserving read-only fetch, added final operation readback after SSE completion, aligned host-side failure-code/OpenAPI consistency, updated the Studio wiki, and re-ran API/provider/frontend verification including browser bundle rebuilds.
   - **Purpose**: Ensure the three newly live ingestion screens feel consistent, recover correctly after reload/reconnect, and expose the required error and final-state behavior without leaking provider-specific terminology.
   - **Acceptance Criteria**:
     - All three ingestion screens consistently enforce provider selection before enabling controls.
@@ -251,21 +264,24 @@
     - Targeted tests cover cross-screen recovery and conflict consistency
     - This plan remains aligned with the delivered implementation details
     - Can execute end-to-end via: starting an operation, reloading Studio mid-flight, observing recovery, and reviewing final state from any ingestion screen
-  - [ ] Task 4.1: Consolidate shared frontend ingestion behaviors
-    - [ ] Step 1: Factor shared provider-selection, operation-state, and error-display logic used by all three ingestion screens.
-    - [ ] Step 2: Reuse shared components/services for status banners, progress text, and final-state readback.
-    - [ ] Step 3: Ensure the `By id` screen respects global lock behavior for `POST /payload` while still allowing read-only fetch during an active operation.
-    - [ ] Step 4: Keep labels and descriptions provider-neutral across all screens.
-  - [ ] Task 4.2: Finalize host-side consistency and diagnostics
-    - [ ] Step 1: Review failure-code usage for consistency across by-id, all-unindexed, and by-context flows.
-    - [ ] Step 2: Ensure mutating and read-only route behavior aligns with the lock rules in the spec.
-    - [ ] Step 3: Confirm completed operations remain queryable until host restart.
-    - [ ] Step 4: Review OpenAPI descriptions and endpoint grouping so the new surface is discoverable and coherent.
-  - [ ] Task 4.3: Complete final verification and documentation
-    - [ ] Step 1: Run the relevant API, provider, and frontend test suites together.
-    - [ ] Step 2: Rebuild the Studio browser bundle to avoid stale frontend artifacts.
-    - [ ] Step 3: Perform a manual end-to-end smoke walkthrough covering all three ingestion pages.
-    - [ ] Step 4: Update this plan if final file placements or component names differ materially from the draft.
+  - [x] Task 4.1: Consolidate shared frontend ingestion behaviors - Completed
+    - **Summary**: Factored shared document header/metrics/provider metadata and status-banner rendering, reused the shared operation service for final-state readback, surfaced shared operation status on `By id`, and kept all ingestion screen copy provider-neutral.
+    - [x] Step 1: Factor shared provider-selection, operation-state, and error-display logic used by all three ingestion screens.
+    - [x] Step 2: Reuse shared components/services for status banners, progress text, and final-state readback.
+    - [x] Step 3: Ensure the `By id` screen respects global lock behavior for `POST /payload` while still allowing read-only fetch during an active operation.
+    - [x] Step 4: Keep labels and descriptions provider-neutral across all screens.
+  - [x] Task 4.2: Finalize host-side consistency and diagnostics - Completed
+    - **Summary**: Centralized shared failure-code constants, added cross-route tests for read-only fetch vs mutating lock behavior and retained completed operations, and documented the ingestion/operations endpoint surface with OpenAPI summaries and descriptions.
+    - [x] Step 1: Review failure-code usage for consistency across by-id, all-unindexed, and by-context flows.
+    - [x] Step 2: Ensure mutating and read-only route behavior aligns with the lock rules in the spec.
+    - [x] Step 3: Confirm completed operations remain queryable until host restart.
+    - [x] Step 4: Review OpenAPI descriptions and endpoint grouping so the new surface is discoverable and coherent.
+  - [x] Task 4.3: Complete final verification and documentation - Completed
+    - **Summary**: Re-ran the API, provider, frontend unit, frontend build, and browser bundle workflows, refreshed the Studio wiki to document the now-live ingestion APIs/screens, and confirmed the draft plan naming still matches the delivered implementation.
+    - [x] Step 1: Run the relevant API, provider, and frontend test suites together.
+    - [x] Step 2: Rebuild the Studio browser bundle to avoid stale frontend artifacts.
+    - [x] Step 3: Perform a manual end-to-end smoke walkthrough covering all three ingestion pages.
+    - [x] Step 4: Update this plan if final file placements or component names differ materially from the draft.
   - **Files**:
     - `src/Studio/Server/search-studio/src/browser/ingestion/*`: shared UX/service cleanup and consistency work.
     - `src/Studio/Server/search-studio/src/browser/api/*`: final operation/readback client refinements.

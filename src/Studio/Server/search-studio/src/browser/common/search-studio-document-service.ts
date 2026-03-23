@@ -263,21 +263,24 @@ export class SearchStudioDocumentService {
         await this.openDocument({
             documentId: `search-studio.document.ingestion-by-id.${provider.name}`,
             label: `${provider.name} / By id`,
-            caption: `By-id ingestion placeholder for ${provider.displayName}`,
+            caption: `By-id ingestion for ${provider.displayName}`,
             iconClass: SearchStudioIngestionByIdDocumentIconClass,
             kind: 'ingestion-by-id',
             provider,
-            placeholderLabel: 'Placeholder mode',
-            description: 'This by-id ingestion surface reserves space for future targeted ingestion, payload preview, progress, and outcome details.',
+            placeholderLabel: 'Provider-neutral flow',
+            description: 'Fetch a payload by id, inspect the payload JSON, and submit the same payload for indexing without client-side transformation.',
             metrics: [
-                { label: 'Identifier input', value: 'Placeholder', emphasis: 'placeholder' },
-                { label: 'Payload preview', value: 'Reserved', emphasis: 'placeholder' },
-                { label: 'Execution', value: 'Not implemented', emphasis: 'placeholder' }
+                { label: 'Identifier input', value: 'Live' },
+                { label: 'Payload preview', value: 'Read-only JSON editor' },
+                { label: 'Submission', value: 'Direct queue hand-off' }
             ],
-            metadata: this.createProviderMetadata(provider),
+            metadata: [
+                ...this.createProviderMetadata(provider),
+                { label: 'Payload source', value: 'StudioApiHost /ingestion/{provider}/{id}' },
+                { label: 'Submission target', value: 'StudioApiHost /ingestion/{provider}/payload' }
+            ],
             actions: [
-                { id: 'open-ingestion-overview', label: 'Open Ingestion overview' },
-                { id: 'reset-ingestion-status', label: 'Reset indexing status' }
+                { id: 'open-ingestion-overview', label: 'Open Ingestion overview' }
             ]
         });
     }
@@ -286,18 +289,23 @@ export class SearchStudioDocumentService {
         await this.openDocument({
             documentId: `search-studio.document.ingestion-all-unindexed.${provider.name}`,
             label: `${provider.name} / All unindexed`,
-            caption: `All-unindexed ingestion placeholder for ${provider.displayName}`,
+            caption: `All-unindexed ingestion for ${provider.displayName}`,
             iconClass: SearchStudioIngestionAllUnindexedDocumentIconClass,
             kind: 'ingestion-all-unindexed',
             provider,
-            placeholderLabel: 'Placeholder mode',
-            description: 'This bulk-ingestion surface reserves space for future progress, batching, and result summaries when unindexed content is processed.',
+            placeholderLabel: 'Live operation flow',
+            description: 'Start provider-wide ingestion for all unindexed items, monitor coarse progress, reset indexing status, and recover the active operation after reload.',
             metrics: [
-                { label: 'Scope', value: 'All unindexed items', emphasis: 'placeholder' },
-                { label: 'Progress', value: 'Reserved', emphasis: 'placeholder' },
-                { label: 'Results', value: 'Not implemented', emphasis: 'placeholder' }
+                { label: 'Scope', value: 'All unindexed items' },
+                { label: 'Progress', value: 'Live SSE updates' },
+                { label: 'Recovery', value: 'Active operation lookup' }
             ],
-            metadata: this.createProviderMetadata(provider),
+            metadata: [
+                ...this.createProviderMetadata(provider),
+                { label: 'Start target', value: 'StudioApiHost /ingestion/{provider}/all' },
+                { label: 'Reset target', value: 'StudioApiHost /ingestion/{provider}/operations/reset-indexing-status' },
+                { label: 'Recovery source', value: 'StudioApiHost /operations/active and /operations/{operationId}/events' }
+            ],
             actions: [
                 { id: 'open-ingestion-overview', label: 'Open Ingestion overview' },
                 { id: 'reset-ingestion-status', label: 'Reset indexing status' }
@@ -309,18 +317,23 @@ export class SearchStudioDocumentService {
         await this.openDocument({
             documentId: `search-studio.document.ingestion-by-context.${provider.name}`,
             label: `${provider.name} / By context`,
-            caption: `By-context ingestion placeholder for ${provider.displayName}`,
+            caption: `By-context ingestion for ${provider.displayName}`,
             iconClass: SearchStudioIngestionByContextDocumentIconClass,
             kind: 'ingestion-by-context',
             provider,
-            placeholderLabel: 'Placeholder mode',
-            description: 'This context-based ingestion surface reserves space for future context selection, filtering, and scoped execution using Studio terminology.',
+            placeholderLabel: 'Live context flow',
+            description: 'Load provider contexts, select one by display name, start context-scoped ingestion or reset, and track progress using the shared operation model.',
             metrics: [
-                { label: 'Context selector', value: 'Placeholder', emphasis: 'placeholder' },
-                { label: 'Scoped preview', value: 'Reserved', emphasis: 'placeholder' },
-                { label: 'Execution', value: 'Not implemented', emphasis: 'placeholder' }
+                { label: 'Context selector', value: 'Live API discovery' },
+                { label: 'Scope', value: 'Context-scoped operations' },
+                { label: 'Progress', value: 'Shared operation tracking' }
             ],
-            metadata: this.createProviderMetadata(provider),
+            metadata: [
+                ...this.createProviderMetadata(provider),
+                { label: 'Context source', value: 'StudioApiHost /ingestion/{provider}/contexts' },
+                { label: 'Start target', value: 'StudioApiHost /ingestion/{provider}/context/{context}' },
+                { label: 'Reset target', value: 'StudioApiHost /ingestion/{provider}/context/{context}/operations/reset-indexing-status' }
+            ],
             actions: [
                 { id: 'open-ingestion-overview', label: 'Open Ingestion overview' },
                 { id: 'reset-ingestion-status', label: 'Reset indexing status' }

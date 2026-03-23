@@ -27,7 +27,7 @@ It currently provides:
 - a rules-backed native Theia `Rules` navigation tree using live `StudioApiHost` `GET /rules` data
 - placeholder rules overview, rule-checker, existing-rule, and new-rule editor surfaces opened from the live rules tree
 - an ingestion work area with provider overview plus explicit `By id`, `All unindexed`, and `By context` mode nodes beneath provider roots
-- placeholder ingestion overview and mode-specific editor surfaces driven by live provider metadata
+- live ingestion editor surfaces driven by `StudioApiHost`, including payload fetch-by-id, provider-wide and context-scoped long-running ingestion, reset flows, active-operation recovery, and coarse progress/final-state feedback
 - a mock `Search` work area with a left query/facets panel, a central `Search results` document, and a right-hand `Search Details` panel for screenshot-aligned review
 - native Theia view-toolbar actions for `New Rule`, `Refresh Rules`, and `Refresh Providers` where those actions remain visible
 - a lower `Studio Output` panel for shell diagnostics and placeholder action feedback, now rendered through a read-only `xterm.js` surface with reveal-latest behavior, pastel `INFO` / `ERROR` severity styling, and native toolbar `Copy all` and `Clear output` actions
@@ -36,11 +36,12 @@ It currently provides:
 
 This work package does **not** migrate existing repository tooling into the shell yet.
 
-The current Studio skeleton deliberately keeps live backend usage narrow:
+The current Studio shell deliberately keeps live backend usage focused on Studio-safe provider-neutral contracts:
 
 - `GET /providers` supplies real provider metadata for the shell navigation
 - `GET /rules` supplies real provider-scoped rule discovery for the `Rules` work area
-- queue, dead-letter, rules-authoring, and ingestion surfaces remain placeholder-driven for UX review
+- queue and dead-letter surfaces remain placeholder-driven for UX review
+- ingestion surfaces actively use the provider-neutral Studio ingestion and operations APIs for fetch-by-id, payload submit, context discovery, long-running operations, SSE progress, conflict handling, and final-state readback
 
 ## How it is hosted locally
 
@@ -230,7 +231,15 @@ For work package `064-studio-skeleton`, the shell actively uses:
 - `GET /providers` for the live `Providers`, `Rules`, and `Ingestion` provider roots
 - `GET /rules` for the live `Rules` provider grouping, rule lists, and rule overview counts
 
-The shell intentionally does **not** yet call deeper queue, dead-letter, or ingestion APIs. Those screens are placeholders whose job is to validate workbench layout, editor behavior, and navigation before real functionality is lifted from existing Blazor tools.
+The shell intentionally does **not** yet call deeper queue or dead-letter APIs. Those screens remain placeholders whose job is to validate workbench layout, editor behavior, and navigation before real functionality is lifted from existing Blazor tools.
+
+The ingestion work area now actively uses:
+
+- `GET /ingestion/{provider}/{id}` to fetch a provider-neutral payload envelope by id
+- `POST /ingestion/{provider}/payload` to submit a fetched payload synchronously
+- `PUT /ingestion/{provider}/all` and `POST /ingestion/{provider}/operations/reset-indexing-status` for provider-wide long-running ingestion/reset flows
+- `GET /ingestion/{provider}/contexts`, `PUT /ingestion/{provider}/context/{context}`, and `POST /ingestion/{provider}/context/{context}/operations/reset-indexing-status` for context-scoped flows
+- `GET /operations/active`, `GET /operations/{operationId}`, and `GET /operations/{operationId}/events` for recovery, live progress, shared conflict handling, and final-state readback across all ingestion screens
 
 The shell also intentionally does **not** write rules yet. `New Rule` currently opens a placeholder authoring surface only.
 

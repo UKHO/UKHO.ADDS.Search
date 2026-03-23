@@ -1,33 +1,58 @@
 using System.Net;
-using Microsoft.AspNetCore.Mvc.Testing;
+using Microsoft.AspNetCore.TestHost;
+using Microsoft.Extensions.Configuration;
 using Shouldly;
 using StudioApiHost;
 using Xunit;
 
 namespace UKHO.Search.Tests.Studio
 {
-    public class StudioApiHostEchoEndpointTests : IClassFixture<WebApplicationFactory<Program>>
+    public sealed class StudioApiHostEchoEndpointTests
     {
-        private readonly HttpClient _client;
-
-        public StudioApiHostEchoEndpointTests(WebApplicationFactory<Program> factory)
-        {
-            _client = factory.CreateClient(new WebApplicationFactoryClientOptions
-            {
-                AllowAutoRedirect = true
-            });
-        }
-
         [Fact]
         public async Task GetEcho_WhenRequested_ShouldReturnStudioApiHostMessage()
         {
-            var response = await _client.GetAsync("/echo");
+            var app = StudioApiHostApplication.BuildApp(
+                Array.Empty<string>(),
+                builder =>
+                {
+                    builder.Configuration.AddInMemoryCollection(new Dictionary<string, string?>
+                    {
+                        ["SkipAddsConfiguration"] = "true",
+                        ["rules:file-share:rule-1"] = """
+                            {
+                              "schemaVersion": "1.0",
+                              "rule": {
+                                "id": "rule-1",
+                                "title": "Studio API host echo endpoint test rule",
+                                "if": { "path": "id", "exists": true },
+                                "then": { "keywords": { "add": [ "k" ] } }
+                              }
+                            }
+                            """
+                    });
 
-            response.StatusCode.ShouldBe(HttpStatusCode.OK);
+                    // This test builds the host directly so it can bypass Aspire-only startup configuration.
+                    builder.WebHost.UseTestServer();
+                });
 
-            var content = await response.Content.ReadAsStringAsync();
+            try
+            {
+                await app.StartAsync();
+                using var client = app.GetTestClient();
 
-            content.ShouldBe("Hello from StudioApiHost echo.");
+                var response = await client.GetAsync("/echo");
+
+                response.StatusCode.ShouldBe(HttpStatusCode.OK);
+
+                var content = await response.Content.ReadAsStringAsync();
+
+                content.ShouldBe("Hello from StudioApiHost echo.");
+            }
+            finally
+            {
+                await app.DisposeAsync();
+            }
         }
     }
 }

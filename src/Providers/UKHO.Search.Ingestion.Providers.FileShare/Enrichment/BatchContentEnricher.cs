@@ -124,7 +124,7 @@ namespace UKHO.Search.Ingestion.Providers.FileShare.Enrichment
             {
                 if (_ingestionModeOptions.Mode == IngestionMode.BestEffort && IsZipNotFound(ex))
                 {
-                    _logger.LogWarning(ex, "ZIP not found in FileShare; skipping ZIP enrichment. BatchId={BatchId} IngestionMode={IngestionMode}", batchId, _ingestionModeOptions.Mode);
+                    _logger.LogWarning("ZIP not found in FileShare; skipping ZIP enrichment. BatchId={BatchId} IngestionMode={IngestionMode}", batchId, _ingestionModeOptions.Mode);
                     return false;
                 }
 

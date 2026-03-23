@@ -29,24 +29,6 @@ namespace FileShareEmulator.Api
                 var containerClient = blobServiceClient.GetBlobContainerClient(containerName);
                 var blobClient = containerClient.GetBlobClient(blobName);
 
-                // Last-resort fallback: enumerate the container and match names case-insensitively.
-                // (This is slower than direct lookups, but prevents surprising 404s when casing differs.)
-                static async Task<BlobClient?> TryFindBlobCaseInsensitiveAsync(BlobContainerClient container, string requestedName, CancellationToken ct)
-                {
-                    var requested = requestedName.ToLowerInvariant();
-
-                    await foreach (var blob in container.GetBlobsAsync(BlobTraits.None, BlobStates.None, null, ct)
-                                                        .ConfigureAwait(false))
-                    {
-                        if (blob.Name.ToLowerInvariant() == requested)
-                        {
-                            return container.GetBlobClient(blob.Name);
-                        }
-                    }
-
-                    return null;
-                }
-
                 try
                 {
                     BlobClient resolvedBlobClient;
@@ -73,15 +55,7 @@ namespace FileShareEmulator.Api
                         }
                         catch (RequestFailedException ex2) when (ex2.Status == StatusCodes.Status404NotFound)
                         {
-                            // Final fallback: enumerate and match case-insensitively.
-                            var caseInsensitiveMatch = await TryFindBlobCaseInsensitiveAsync(containerClient, originalCaseBlobName, cancellationToken)
-                                .ConfigureAwait(false);
-                            if (caseInsensitiveMatch is null)
-                            {
-                                return Results.NotFound();
-                            }
-
-                            resolvedBlobClient = caseInsensitiveMatch;
+                            return Results.NotFound();
                         }
                     }
 

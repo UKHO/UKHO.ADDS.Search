@@ -9,6 +9,8 @@ namespace UKHO.Search.Studio.Providers.FileShare.Injection
         {
             ArgumentNullException.ThrowIfNull(services);
 
+            services.AddSingleton<IFileShareStudioBatchPayloadStore, FileShareStudioBatchPayloadStore>();
+            services.AddSingleton<IFileShareStudioQueueWriter, FileShareStudioQueueWriter>();
             services.AddStudioProvider<FileShareStudioProviderRegistrationMarker, FileShareStudioProvider>();
 
             return services;

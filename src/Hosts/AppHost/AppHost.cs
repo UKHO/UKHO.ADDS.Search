@@ -111,8 +111,10 @@ namespace AppHost
                     var studioApi = builder.AddProject<StudioApiHost>(ServiceNames.StudioApi)
                                                 .WithExternalHttpEndpoints()
                                                 .WithReference(sqlServer)
+                                                .WithReference(storageQueue)
                                                 .WithReference(storageBlob)
                                                 .WaitFor(sqlServer)
+                                                .WaitFor(storageQueue)
                                                 .WaitFor(storageBlob)
                                                 .WithScalar("Studio API");
 

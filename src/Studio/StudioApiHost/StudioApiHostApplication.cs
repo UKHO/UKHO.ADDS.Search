@@ -1,4 +1,6 @@
 using Scalar.AspNetCore;
+using StudioApiHost.Api;
+using StudioApiHost.Operations;
 using UKHO.Aspire.Configuration;
 using UKHO.Search.Configuration;
 using UKHO.Search.Infrastructure.Ingestion.Injection;
@@ -22,7 +24,10 @@ namespace StudioApiHost
 
             configureBuilder?.Invoke(builder);
 
-            builder.AddConfiguration(ServiceConfiguration.ServiceGroupName, ServiceNames.Configuration);
+            if (!builder.Configuration.GetValue<bool>("SkipAddsConfiguration"))
+            {
+                builder.AddConfiguration(ServiceConfiguration.ServiceGroupName, ServiceNames.Configuration);
+            }
 
             builder.Services.AddAuthorization();
             builder.Services.AddCors(options =>
@@ -38,6 +43,8 @@ namespace StudioApiHost
             builder.Services.AddIngestionRulesEngine();
             builder.Services.AddFileShareProviderMetadata();
             builder.Services.AddFileShareStudioProvider();
+            builder.Services.AddSingleton<StudioIngestionOperationStore>();
+            builder.Services.AddSingleton<StudioIngestionOperationCoordinator>();
 
             builder.AddElasticsearchClient(ServiceNames.ElasticSearch);
             builder.AddAzureQueueServiceClient(ServiceNames.Queues);
@@ -107,6 +114,9 @@ namespace StudioApiHost
 
             app.MapGet("/echo", () => TypedResults.Text("Hello from StudioApiHost echo."))
                .WithName("GetEcho");
+
+            app.MapStudioIngestionApi();
+            app.MapStudioOperationsApi();
 
             return app;
         }
