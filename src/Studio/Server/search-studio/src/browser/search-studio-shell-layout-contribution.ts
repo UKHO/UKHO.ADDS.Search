@@ -4,6 +4,7 @@ import { SearchStudioHomeService } from './home/search-studio-home-service';
 import { SearchStudioIngestionViewContribution } from './ingestion/search-studio-ingestion-view-contribution';
 import { SearchStudioOutputViewContribution } from './panel/search-studio-output-view-contribution';
 import { SearchStudioRulesViewContribution } from './rules/search-studio-rules-view-contribution';
+import { SearchStudioSearchViewContribution } from './search/search-studio-search-view-contribution';
 import { SearchStudioViewContribution } from './search-studio-view-contribution';
 
 @injectable()
@@ -19,6 +20,9 @@ export class SearchStudioShellLayoutContribution implements FrontendApplicationC
 
     @inject(SearchStudioIngestionViewContribution)
     protected readonly _ingestionViewContribution!: SearchStudioIngestionViewContribution;
+
+    @inject(SearchStudioSearchViewContribution)
+    protected readonly _searchViewContribution!: SearchStudioSearchViewContribution;
 
     @inject(SearchStudioOutputViewContribution)
     protected readonly _outputViewContribution!: SearchStudioOutputViewContribution;
@@ -43,6 +47,7 @@ export class SearchStudioShellLayoutContribution implements FrontendApplicationC
         await this._providersViewContribution.openView({ activate: false, reveal: true });
         await this._rulesViewContribution.openView({ activate: false, reveal: true });
         await this._ingestionViewContribution.openView({ activate: false, reveal: true });
+        await this._searchViewContribution.openView({ activate: false, reveal: true });
         await this._outputViewContribution.openView({ activate: false, reveal: true });
         await this._homeService.openHome();
     }

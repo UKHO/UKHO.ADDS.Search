@@ -19,6 +19,22 @@ export const SearchStudioIngestionWidgetIconClass = 'codicon codicon-cloud-uploa
 export const SearchStudioIngestionToggleCommandId = 'search-studio.toggleIngestion';
 export const SearchStudioIngestionViewContainerId = 'search-studio.ingestion.container';
 
+export const SearchStudioSearchWidgetId = 'search-studio.search.view';
+export const SearchStudioSearchWidgetLabel = 'Search';
+export const SearchStudioSearchWidgetIconClass = 'codicon codicon-search';
+export const SearchStudioSearchToggleCommandId = 'search-studio.toggleSearch';
+export const SearchStudioSearchViewContainerId = 'search-studio.search.container';
+
+export const SearchStudioSearchResultsWidgetId = 'search-studio.search-results';
+export const SearchStudioSearchResultsWidgetFactoryId = 'search-studio.search-results';
+export const SearchStudioSearchResultsWidgetLabel = 'Search results';
+export const SearchStudioSearchResultsWidgetIconClass = 'codicon codicon-list-tree';
+
+export const SearchStudioSearchDetailsWidgetId = 'search-studio.search-details';
+export const SearchStudioSearchDetailsWidgetLabel = 'Search Details';
+export const SearchStudioSearchDetailsWidgetIconClass = 'codicon codicon-info';
+export const SearchStudioSearchDetailsToggleCommandId = 'search-studio.toggleSearchDetails';
+
 export const SearchStudioOutputWidgetId = 'search-studio.output.view';
 export const SearchStudioOutputWidgetLabel = 'Studio Output';
 export const SearchStudioOutputWidgetIconClass = 'codicon codicon-output';

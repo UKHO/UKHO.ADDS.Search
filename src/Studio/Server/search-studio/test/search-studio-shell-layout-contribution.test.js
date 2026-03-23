@@ -49,6 +49,11 @@ test('SearchStudioShellLayoutContribution reveals Studio views and opens Home on
             calls.push({ target: 'ingestion', options });
         }
     };
+    contribution._searchViewContribution = {
+        async openView(options) {
+            calls.push({ target: 'search', options });
+        }
+    };
     contribution._outputViewContribution = {
         async openView(options) {
             calls.push({ target: 'output', options });
@@ -67,6 +72,7 @@ test('SearchStudioShellLayoutContribution reveals Studio views and opens Home on
         { target: 'providers', options: { activate: false, reveal: true } },
         { target: 'rules', options: { activate: false, reveal: true } },
         { target: 'ingestion', options: { activate: false, reveal: true } },
+        { target: 'search', options: { activate: false, reveal: true } },
         { target: 'output', options: { activate: false, reveal: true } },
         { target: 'home' }
     ]);

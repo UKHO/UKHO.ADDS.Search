@@ -33,6 +33,14 @@ import { SearchStudioRulesToolbarContribution } from './rules/search-studio-rule
 import { SearchStudioRulesTreeModel } from './rules/search-studio-rules-tree-model';
 import { SearchStudioRulesViewContribution } from './rules/search-studio-rules-view-contribution';
 import { SearchStudioRulesWidget } from './rules/search-studio-rules-widget';
+import { SearchStudioSearchDetailsViewContribution } from './search/search-studio-search-details-view-contribution';
+import { SearchStudioSearchDetailsWidget } from './search/search-studio-search-details-widget';
+import { SearchStudioSearchExecutionService } from './search/search-studio-search-execution-service';
+import { SearchStudioSearchResultsWidget } from './search/search-studio-search-results-widget';
+import { SearchStudioSearchService } from './search/search-studio-search-service';
+import { SearchStudioSearchViewContainerFactory } from './search/search-studio-search-view-container-factory';
+import { SearchStudioSearchViewContribution } from './search/search-studio-search-view-contribution';
+import { SearchStudioSearchWidget } from './search/search-studio-search-widget';
 import { SearchStudioApiConfigurationService } from './search-studio-api-configuration-service';
 import { SearchStudioCommandContribution } from './search-studio-command-contribution';
 import { SearchStudioShellLayoutContribution } from './search-studio-shell-layout-contribution';
@@ -43,6 +51,9 @@ import {
     SearchStudioIngestionWidgetId,
     SearchStudioOutputWidgetId,
     SearchStudioProvidersContextMenuPath,
+    SearchStudioSearchDetailsWidgetId,
+    SearchStudioSearchResultsWidgetFactoryId,
+    SearchStudioSearchWidgetId,
     SearchStudioRulesContextMenuPath,
     SearchStudioRulesWidgetId,
     SearchStudioWidgetId
@@ -63,8 +74,13 @@ export default new ContainerModule(bind => {
     bind(SearchStudioDocumentService).toSelf().inSingletonScope();
     bind(SearchStudioHomeService).toSelf().inSingletonScope();
     bind(SearchStudioHomeNavigationService).toSelf().inSingletonScope();
+    bind(SearchStudioSearchService).toSelf().inSingletonScope();
+    bind(SearchStudioSearchExecutionService).toSelf().inSingletonScope();
     bind(SearchStudioProviderTreeModel).toSelf().inSingletonScope();
     bind(SearchStudioHomeWidget).toSelf();
+    bind(SearchStudioSearchResultsWidget).toSelf();
+    bind(SearchStudioSearchDetailsWidget).toSelf();
+    bind(SearchStudioSearchWidget).toSelf();
     bind(SearchStudioWidget).toSelf();
     bind(SearchStudioRulesTreeModel).toSelf().inSingletonScope();
     bind(SearchStudioRulesWidget).toSelf();
@@ -78,6 +94,7 @@ export default new ContainerModule(bind => {
     bind(SearchStudioProvidersViewContainerFactory).toSelf().inSingletonScope();
     bind(SearchStudioRulesViewContainerFactory).toSelf().inSingletonScope();
     bind(SearchStudioIngestionViewContainerFactory).toSelf().inSingletonScope();
+    bind(SearchStudioSearchViewContainerFactory).toSelf().inSingletonScope();
     bind(SearchStudioShellLayoutContribution).toSelf().inSingletonScope();
     bind(WidgetFactory).toDynamicValue(context => ({
         id: SearchStudioWidgetId,
@@ -130,6 +147,18 @@ export default new ContainerModule(bind => {
         }
     })).inSingletonScope();
     bind(WidgetFactory).toDynamicValue(context => ({
+        id: SearchStudioSearchWidgetId,
+        createWidget: () => context.container.get<SearchStudioSearchWidget>(SearchStudioSearchWidget)
+    })).inSingletonScope();
+    bind(WidgetFactory).toDynamicValue(context => ({
+        id: SearchStudioSearchResultsWidgetFactoryId,
+        createWidget: () => context.container.get<SearchStudioSearchResultsWidget>(SearchStudioSearchResultsWidget)
+    })).inSingletonScope();
+    bind(WidgetFactory).toDynamicValue(context => ({
+        id: SearchStudioSearchDetailsWidgetId,
+        createWidget: () => context.container.get<SearchStudioSearchDetailsWidget>(SearchStudioSearchDetailsWidget)
+    })).inSingletonScope();
+    bind(WidgetFactory).toDynamicValue(context => ({
         id: SearchStudioOutputWidgetId,
         createWidget: () => context.container.get<SearchStudioOutputWidget>(SearchStudioOutputWidget)
     }));
@@ -152,12 +181,16 @@ export default new ContainerModule(bind => {
     bind(WidgetFactory).toDynamicValue(context => context.container.get<SearchStudioProvidersViewContainerFactory>(SearchStudioProvidersViewContainerFactory));
     bind(WidgetFactory).toDynamicValue(context => context.container.get<SearchStudioRulesViewContainerFactory>(SearchStudioRulesViewContainerFactory));
     bind(WidgetFactory).toDynamicValue(context => context.container.get<SearchStudioIngestionViewContainerFactory>(SearchStudioIngestionViewContainerFactory));
+    bind(WidgetFactory).toDynamicValue(context => context.container.get<SearchStudioSearchViewContainerFactory>(SearchStudioSearchViewContainerFactory));
     bindViewContribution(bind, SearchStudioViewContribution);
     bindViewContribution(bind, SearchStudioRulesViewContribution);
     bindViewContribution(bind, SearchStudioIngestionViewContribution);
+    bindViewContribution(bind, SearchStudioSearchViewContribution);
+    bindViewContribution(bind, SearchStudioSearchDetailsViewContribution);
     bindViewContribution(bind, SearchStudioOutputViewContribution);
     bind(TabBarToolbarContribution).toService(SearchStudioRulesToolbarContribution);
     bind(TabBarToolbarContribution).toService(SearchStudioIngestionToolbarContribution);
     bind(TabBarToolbarContribution).toService(SearchStudioOutputToolbarContribution);
     bind(FrontendApplicationContribution).toService(SearchStudioShellLayoutContribution);
+    bind(FrontendApplicationContribution).toService(SearchStudioSearchExecutionService);
 });

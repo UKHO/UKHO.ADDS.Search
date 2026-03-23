@@ -59,7 +59,7 @@ flowchart LR
 - `src/Studio/StudioApiHost` — studio-facing minimal API host for development-time tooling, exposing `/providers`, read-only `/rules`, and the temporary `/echo` proof endpoint while validating provider-backed rules at startup
 - `tools/FileShareEmulator` — local File Share emulator UI/API
 - `tools/RulesWorkbench` — rule inspection, evaluation, and checker tooling
-- `src/Studio/Server` — browser-hosted Eclipse Theia studio shell
+- `src/Studio/Server` — browser-hosted Eclipse Theia studio shell, including `Home`, `Providers`, `Rules`, `Ingestion`, `Search`, and `Studio Output` work areas
 
 ### Core libraries
 
