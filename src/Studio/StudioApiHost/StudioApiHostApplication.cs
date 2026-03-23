@@ -39,6 +39,12 @@ namespace StudioApiHost
             builder.Services.AddFileShareProviderMetadata();
             builder.Services.AddFileShareStudioProvider();
 
+            builder.AddElasticsearchClient(ServiceNames.ElasticSearch);
+            builder.AddAzureQueueServiceClient(ServiceNames.Queues);
+            builder.AddAzureBlobServiceClient(ServiceNames.Blobs);
+
+            builder.AddSqlServerClient(StorageNames.FileShareEmulatorDatabase);
+
             var app = builder.Build();
 
             app.Services.GetRequiredService<IStudioProviderRegistrationValidator>()
