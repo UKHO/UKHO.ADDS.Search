@@ -1,9 +1,22 @@
+import { CompositeTreeNode } from '@theia/core/lib/browser/tree/tree';
 import {
     SearchStudioApiProviderDescriptor,
     SearchStudioApiRuleDiscoveryResponse,
     SearchStudioApiRuleSummaryResponse
 } from '../api/search-studio-api-types';
+import {
+    createSearchStudioCompositeTreeNode,
+    createSearchStudioTreeLeafNode,
+    createSearchStudioTreeRoot
+} from '../common/search-studio-tree-types';
 import { SearchStudioRulesCatalogSnapshot, SearchStudioRuleNode, SearchStudioRulesProviderGroup, SearchStudioRulesProviderSummary } from './search-studio-rules-types';
+import {
+    SearchStudioRulesCompositeTreeNode,
+    SearchStudioRulesTreeNode,
+    SearchStudioRulesTreeRoot
+} from './search-studio-rules-tree-types';
+
+export type SearchStudioRulesTreeOpenTarget = 'rules-overview' | 'rule-checker' | 'rule-editor';
 
 export function mapRuleDiscoveryResponseToRulesSnapshot(
     response: SearchStudioApiRuleDiscoveryResponse
@@ -14,6 +27,35 @@ export function mapRuleDiscoveryResponseToRulesSnapshot(
         schemaVersion: response.schemaVersion,
         providers: response.providers.map(provider => mapProviderRulesToGroup(provider))
     };
+}
+
+export function mapRulesCatalogSnapshotToRulesTreeRoot(
+    snapshot: SearchStudioRulesCatalogSnapshot
+): SearchStudioRulesTreeRoot
+{
+    const root = createSearchStudioTreeRoot('search-studio.rules.root', 'Rules') as SearchStudioRulesTreeRoot;
+    const children = mapRulesCatalogSnapshotToTreeNodes(snapshot);
+
+    CompositeTreeNode.addChildren(root, [...children]);
+
+    return root;
+}
+
+export function resolveRulesTreeNodeOpenTarget(
+    node: Pick<SearchStudioRulesTreeNode, 'kind'>
+): SearchStudioRulesTreeOpenTarget | undefined
+{
+    switch (node.kind) {
+        case 'provider-root':
+        case 'rules-group':
+            return 'rules-overview';
+        case 'rule-checker':
+            return 'rule-checker';
+        case 'rule':
+            return 'rule-editor';
+        default:
+            return undefined;
+    }
 }
 
 function mapProviderRulesToGroup(provider: {
@@ -81,6 +123,64 @@ function mapProviderRulesToGroup(provider: {
     };
 }
 
+function mapRulesCatalogSnapshotToTreeNodes(
+    snapshot: SearchStudioRulesCatalogSnapshot
+): readonly SearchStudioRulesTreeNode[]
+{
+    switch (snapshot.status) {
+        case 'loading':
+            return [createStatusNode('search-studio.rules.status.loading', 'Loading Studio rules...', 'codicon codicon-loading')];
+        case 'error':
+            return [createStatusNode('search-studio.rules.status.error', snapshot.errorMessage ?? 'Studio rule discovery could not be loaded.', 'codicon codicon-error')];
+        case 'ready':
+            if (snapshot.providers.length === 0) {
+                return [createStatusNode('search-studio.rules.status.empty', 'No rules were returned by StudioApiHost.', 'codicon codicon-info')];
+            }
+
+            return snapshot.providers.map(group => mapRuleTreeNodeToRulesTreeNode(group.rootNode));
+        case 'idle':
+        default:
+            return [createStatusNode('search-studio.rules.status.idle', 'Loading Studio rules...', 'codicon codicon-loading')];
+    }
+}
+
+function mapRuleTreeNodeToRulesTreeNode(node: SearchStudioRuleNode): SearchStudioRulesTreeNode {
+    const commonNodeProperties = {
+        id: node.id,
+        kind: node.kind,
+        label: node.label,
+        iconClass: getRulesTreeNodeIcon(node.kind),
+        description: node.description,
+        data: {
+            provider: node.provider,
+            ruleNode: node.kind === 'rule' ? node : undefined
+        }
+    } as const;
+
+    if (node.children.length === 0) {
+        return createSearchStudioTreeLeafNode(commonNodeProperties) as SearchStudioRulesTreeNode;
+    }
+
+    return createSearchStudioCompositeTreeNode({
+        ...commonNodeProperties,
+        children: node.children.map(child => mapRuleTreeNodeToRulesTreeNode(child))
+    }) as SearchStudioRulesCompositeTreeNode;
+}
+
+function createStatusNode(
+    id: string,
+    label: string,
+    iconClass: string
+): SearchStudioRulesTreeNode
+{
+    return createSearchStudioTreeLeafNode({
+        id,
+        kind: 'status',
+        label,
+        iconClass
+    }) as SearchStudioRulesTreeNode;
+}
+
 function mapRuleToNode(
     provider: SearchStudioApiProviderDescriptor,
     rule: SearchStudioApiRuleSummaryResponse
@@ -120,4 +220,17 @@ function createRulesProviderSummary(rules: readonly SearchStudioApiRuleSummaryRe
         invalidRuleCount: 0,
         invalidRuleCountIsPlaceholder: true
     };
+}
+
+function getRulesTreeNodeIcon(kind: SearchStudioRuleNode['kind']): string {
+    switch (kind) {
+        case 'provider-root':
+            return 'codicon codicon-symbol-field';
+        case 'rule-checker':
+            return 'codicon codicon-symbol-event';
+        case 'rules-group':
+            return 'codicon codicon-folder-library';
+        case 'rule':
+            return 'codicon codicon-symbol-property';
+    }
 }

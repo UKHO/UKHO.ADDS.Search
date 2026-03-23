@@ -2,6 +2,10 @@
 
 This page describes the initial Eclipse Theia-based studio shell introduced for local development.
 
+See also:
+
+- [Theia Knowledgebase](./Theia-Knowledgebase.md)
+
 ## Purpose
 
 `UKHO Search Studio` is a browser-hosted Theia application rooted at:
@@ -12,12 +16,13 @@ It currently provides:
 
 - a branded Theia shell with dedicated `Providers`, `Rules`, and `Ingestion` activity-bar work areas
 - a native Theia extension named `search-studio`
-- a provider-backed `Providers` navigation tree using live `StudioApiHost` `GET /providers` data
+- provider-backed native Theia navigation trees for `Providers` and `Ingestion` using live `StudioApiHost` `GET /providers` data
 - placeholder editor surfaces for provider overview, queue inspection, and dead-letter inspection
-- a rules-backed `Rules` navigation tree using live `StudioApiHost` `GET /rules` data
+- a rules-backed native Theia `Rules` navigation tree using live `StudioApiHost` `GET /rules` data
 - placeholder rules overview, rule-checker, existing-rule, and new-rule editor surfaces opened from the live rules tree
-- an ingestion work area with provider overview plus explicit `By id`, `All unindexed`, and `By context` mode nodes
+- an ingestion work area with provider overview plus explicit `By id`, `All unindexed`, and `By context` mode nodes beneath provider roots
 - placeholder ingestion overview and mode-specific editor surfaces driven by live provider metadata
+- native Theia view-toolbar actions for `New Rule`, `Refresh Rules`, and `Refresh Providers` where those actions remain visible
 - a lower `Studio Output` panel for shell diagnostics and placeholder action feedback
 - runtime configuration for the local `StudioApiHost` API base URL
 - access to `StudioApiHost` read-only rule discovery through `GET /rules`
@@ -256,14 +261,14 @@ The purpose of the current shell is to review the overall look, navigation model
 1. Start the local stack through `AppHost`
 2. Open `http://localhost:3000`
 3. Confirm the `Providers`, `Rules`, and `Ingestion` activity-bar items are visible
-4. Open `Providers`
-5. Confirm provider roots load from live `GET /providers` data
-6. Open a provider overview, then open `Queue` and `Dead letters`
-7. Open `Rules` and confirm the same provider list appears there, with `Rule checker`, a `Rules` grouping node, and live rule entries from `GET /rules`
-8. Open a rules overview, a rule checker placeholder, an existing rule, and `New Rule`
-9. Open `Ingestion` and confirm the same provider list appears there with `By id`, `All unindexed`, and `By context` beneath each provider root
-10. Open an ingestion overview, then open each ingestion mode and trigger `Reset indexing status`
-11. Open the `Studio Output` panel and confirm loading, navigation, and placeholder action entries appear there
+4. Open `Providers` and confirm it renders as a native tree fed by live `GET /providers` data
+5. Double-click a provider root to open its overview, expand it, then open `Queue` and `Dead letters`
+6. Open `Rules` and confirm it renders as a native tree with provider roots, `Rule checker`, a `Rules` grouping node, and live rule entries from `GET /rules`
+7. Confirm the `Rules` view toolbar exposes `New Rule` and `Refresh Rules`, then open a rules overview, a rule checker placeholder, an existing rule, and `New Rule`
+8. Open `Ingestion` and confirm it renders as a native tree with provider roots plus `By id`, `All unindexed`, and `By context` beneath each provider root
+9. Confirm the `Ingestion` view toolbar exposes `Refresh Providers`, then open an ingestion overview, open each ingestion mode, and trigger `Reset indexing status`
+10. Open the `Studio Output` panel and confirm loading, navigation, and placeholder action entries appear there
+11. Confirm all three work areas feel visually consistent, with no body-level CTA buttons, duplicate in-body titles, or persistent provider description text in the side bar
 
 At this stage, success means the shell feels coherent and reviewable, not that queue, rules, or ingestion functionality has been implemented yet.
 

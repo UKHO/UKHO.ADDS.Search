@@ -64,7 +64,10 @@ export class SearchStudioCommandContribution implements CommandContribution {
         });
 
         registry.registerCommand(SearchStudioNewRuleCommand, {
-            execute: async (providerName?: string) => {
+            execute: async (providerNameOrWidget?: unknown) => {
+                const providerName = typeof providerNameOrWidget === 'string'
+                    ? providerNameOrWidget
+                    : undefined;
                 const provider = await this.resolveProvider(providerName);
 
                 if (!provider) {
