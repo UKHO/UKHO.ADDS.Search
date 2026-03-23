@@ -10,18 +10,25 @@ This page describes the initial Eclipse Theia-based studio shell introduced for 
 
 It currently provides:
 
-- a minimal branded Theia shell
+- a branded Theia shell with dedicated `Providers`, `Rules`, and `Ingestion` activity-bar work areas
 - a native Theia extension named `search-studio`
-- a lightweight welcome panel in the standard Theia workbench
-- a simple greeting action proving the custom extension wiring is active
+- a provider-backed `Providers` navigation tree using live `StudioApiHost` `GET /providers` data
+- placeholder editor surfaces for provider overview, queue inspection, and dead-letter inspection
+- a rules-backed `Rules` navigation tree using live `StudioApiHost` `GET /rules` data
+- placeholder rules overview, rule-checker, existing-rule, and new-rule editor surfaces opened from the live rules tree
+- an ingestion work area with provider overview plus explicit `By id`, `All unindexed`, and `By context` mode nodes
+- placeholder ingestion overview and mode-specific editor surfaces driven by live provider metadata
+- a lower `Studio Output` panel for shell diagnostics and placeholder action feedback
 - runtime configuration for the local `StudioApiHost` API base URL
-- a temporary welcome-page proof that calls `StudioApiHost` `GET /echo` and displays the returned value
-- access to `StudioApiHost` provider metadata discovery through `GET /providers`
 - access to `StudioApiHost` read-only rule discovery through `GET /rules`
 
 This work package does **not** migrate existing repository tooling into the shell yet.
 
-The Theia UI currently surfaces only the echo connectivity proof directly. The provider and rules discovery endpoints are available from `StudioApiHost` for follow-on studio workflows and manual local inspection.
+The current Studio skeleton deliberately keeps live backend usage narrow:
+
+- `GET /providers` supplies real provider metadata for the shell navigation
+- `GET /rules` supplies real provider-scoped rule discovery for the `Rules` work area
+- queue, dead-letter, rules-authoring, and ingestion surfaces remain placeholder-driven for UX review
 
 ## How it is hosted locally
 
@@ -143,7 +150,7 @@ This builds:
 - `src/Studio/Server/package.json` — root workspace scripts
 - `src/Studio/Server/browser-app/package.json` — browser application build/start scripts
 - `src/Studio/Server/search-studio/package.json` — native Theia extension package metadata and scripts
-- `src/Studio/Server/search-studio/src/browser/` — welcome panel, command, menu, and view contribution sources
+- `src/Studio/Server/search-studio/src/browser/` — Studio shell browser-side services, views, trees, commands, and document surfaces
 
 ## Workspace structure
 
@@ -164,13 +171,22 @@ The shell is designed to run as part of the wider local Aspire stack.
 5. In the Aspire dashboard, verify the `tools-studio-shell` resource is healthy
 6. Open the shell with `http://localhost:3000`
 
-`StudioApiHost` remains a separate API host, but the shell now consumes a temporary runtime configuration path so the welcome page can prove connectivity.
+`StudioApiHost` remains a separate API host, and the shell consumes a runtime configuration bridge so its browser-side services can discover the correct API base URL at startup.
 
 ## Current `StudioApiHost` integration
 
-For work package `058-studio-config`, the shell proves the local API callback mechanism end to end.
+For work package `058-studio-config`, the shell introduced the local API callback mechanism end to end.
 
-Later work packages extended `StudioApiHost` so that, alongside the temporary echo proof, it now also exposes read-only provider and rules discovery APIs for studio tooling.
+Later work packages extended `StudioApiHost` so that the shell now has read-only provider and rules discovery APIs for studio tooling.
+
+For work package `064-studio-skeleton`, the shell actively uses:
+
+- `GET /providers` for the live `Providers`, `Rules`, and `Ingestion` provider roots
+- `GET /rules` for the live `Rules` provider grouping, rule lists, and rule overview counts
+
+The shell intentionally does **not** yet call deeper queue, dead-letter, or ingestion APIs. Those screens are placeholders whose job is to validate workbench layout, editor behavior, and navigation before real functionality is lifted from existing Blazor tools.
+
+The shell also intentionally does **not** write rules yet. `New Rule` currently opens a placeholder authoring surface only.
 
 This section describes the implemented mechanism in detail, including why it uses a Theia backend proxy and how Aspire, Theia, and `StudioApiHost` each participate.
 
@@ -217,25 +233,41 @@ The browser does **not** read Node.js process environment directly.
 
 ### End-to-end request flow
 
-The current proof flow is:
+The current shell flow is:
 
 1. `AppHost` starts in `runmode=services`
 2. Aspire allocates the effective `StudioApiHost` endpoints
 3. `AppHost` injects `STUDIO_API_HOST_API_BASE_URL` into the Theia JavaScript app using the resolved `StudioApiHost` **HTTPS** endpoint
 4. The Theia backend starts on `http://localhost:3000`
-5. The browser loads the welcome widget
-6. The welcome widget calls the Theia same-origin configuration endpoint:
+5. The browser loads the Theia shell and the `Providers` work area
+6. the browser-side Studio API client calls the Theia same-origin configuration endpoint:
    - `/search-studio/api/configuration`
-7. The welcome widget calls the Theia same-origin probe endpoint:
-   - `/search-studio/api/echo`
-8. The Theia backend probe reads the configured `StudioApiHost` URL from process environment
-9. The Theia backend probe performs the server-side request to `StudioApiHost` `GET /echo`
-10. The probe returns structured diagnostics plus the echo result to the browser
-11. The welcome widget renders:
-   - success state with the returned echo value, or
-   - failure state with detailed diagnostic information
+7. the browser-side Studio API client calls `StudioApiHost` `GET /providers` using the configured base URL
+8. provider metadata is mapped into the shell trees for `Providers`, `Rules`, and `Ingestion`
+9. selecting provider nodes opens placeholder editor surfaces in the main workbench area
+10. shell loading and placeholder actions are written to the lower `Studio Output` panel
 
-### Why the welcome page uses a Theia backend probe instead of a direct browser call
+## Reviewing the Studio skeleton
+
+The purpose of the current shell is to review the overall look, navigation model, and workbench shape before real `RulesWorkbench` and `FileShareEmulator` functionality is lifted into Studio.
+
+### Recommended manual smoke path
+
+1. Start the local stack through `AppHost`
+2. Open `http://localhost:3000`
+3. Confirm the `Providers`, `Rules`, and `Ingestion` activity-bar items are visible
+4. Open `Providers`
+5. Confirm provider roots load from live `GET /providers` data
+6. Open a provider overview, then open `Queue` and `Dead letters`
+7. Open `Rules` and confirm the same provider list appears there, with `Rule checker`, a `Rules` grouping node, and live rule entries from `GET /rules`
+8. Open a rules overview, a rule checker placeholder, an existing rule, and `New Rule`
+9. Open `Ingestion` and confirm the same provider list appears there with `By id`, `All unindexed`, and `By context` beneath each provider root
+10. Open an ingestion overview, then open each ingestion mode and trigger `Reset indexing status`
+11. Open the `Studio Output` panel and confirm loading, navigation, and placeholder action entries appear there
+
+At this stage, success means the shell feels coherent and reviewable, not that queue, rules, or ingestion functionality has been implemented yet.
+
+### Why the Theia backend uses a probe/configuration bridge
 
 The first implementation attempted to have the browser call `StudioApiHost` directly.
 
@@ -299,9 +331,9 @@ The probe uses Node.js `http` / `https` request handling rather than browser `fe
   - includes known providers with no rules as empty `rules` arrays
   - fails startup clearly if configured rules reference an unknown provider
 - `GET /echo`
-  - temporary connectivity proof used by the current welcome page
+  - temporary connectivity proof kept for backend-bridge diagnosis
 
-The Theia welcome flow still uses only `GET /echo` today. The `/providers` and `/rules` endpoints are available for later studio features and for manual API inspection.
+The visible Studio shell now uses `/providers` and `/rules` for navigation. `GET /echo` remains available only as a lightweight backend-bridge diagnostic endpoint.
 
 ### Temporary proof endpoint
 
@@ -313,7 +345,7 @@ Current temporary response:
 
 - `Hello from StudioApiHost echo.`
 
-This endpoint is only a lightweight proof mechanism and is intended to be replaced by real studio APIs in later work.
+This endpoint remains only a lightweight diagnostic mechanism and is not part of the stakeholder-reviewable Studio workbench experience.
 
 ### HTTPS selection
 
@@ -343,9 +375,9 @@ The current `StudioApiHost` CORS policy still allows the local shell origin:
 
 That allowance is harmless for the current proof and preserves flexibility, but the important detail is that the browser-facing widget now relies on the Theia same-origin backend probe rather than a direct cross-origin browser call.
 
-### Debug information shown in the welcome page
+### Debug information available through the shell and backend bridge
 
-The welcome panel intentionally shows detailed diagnostics while this work remains in proof mode.
+The current shell keeps the backend probe/configuration path available for local diagnosis while the visible Studio experience has moved on to the multi-work-area skeleton.
 
 Current fields include:
 
@@ -386,7 +418,7 @@ The current proof path is spread across the following files:
 - `src/Studio/Server/search-studio/src/browser/search-studio-echo-probe-service.ts`
   - calls the same-origin Theia probe endpoint
 - `src/Studio/Server/search-studio/src/browser/search-studio-widget.tsx`
-  - renders the echo result and diagnostics
+  - renders the live provider-backed `Providers` work area
 
 If you build the solution in Visual Studio first, the Theia shell should already have been prepared by the `StudioApiHost` pre-build target.
 
@@ -425,12 +457,12 @@ If native dependency restore fails, retry from a clean PowerShell session with t
 The initial shell intentionally remains lightweight:
 
 - no bundled VS Code extensions
-- the Theia UI itself still only surfaces the temporary echo proof, even though `StudioApiHost` now also exposes `/providers` and read-only `/rules`
+- queue, dead-letter, rule-authoring persistence, and ingestion execution remain placeholder-only despite the live navigation data
 - no migrated `RulesWorkbench`, `FileShareEmulator`, or other tooling workflows
 
-Later work packages can expand the shell into a fuller studio experience.
+Later work packages can replace the remaining placeholder editors with real lifted tooling functionality.
 
-## Quick verification checklist for the temporary API proof
+## Quick verification checklist for the Studio skeleton
 
 1. Run `yarn build:browser` from `src/Studio/Server`
 2. Run `dotnet build src/Hosts/AppHost/AppHost.csproj`
@@ -438,9 +470,9 @@ Later work packages can expand the shell into a fuller studio experience.
 4. In the Aspire dashboard, prefer the `StudioApiHost` **HTTPS** URL
 5. Verify `StudioApiHost` responds on `/providers`, `/rules`, and `/echo` via HTTPS
 6. Open `http://localhost:3000`
-7. Confirm the welcome page shows the `StudioApiHost echo` value
-8. Optionally inspect `StudioApiHost` `/rules` and confirm canonical provider names and rule summaries are returned
-9. If the proof fails, inspect the welcome-page debug panel for:
+7. Confirm the `Providers`, `Rules`, and `Ingestion` activity-bar items appear
+8. Walk through the manual smoke path above for one provider across all three work areas
+9. If the shell cannot load its live data, inspect the Theia backend configuration/probe diagnostics for:
    - raw environment value
    - configured base URL
    - attempted echo URL

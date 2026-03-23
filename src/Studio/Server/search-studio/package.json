@@ -20,7 +20,8 @@
     "prepare": "yarn run clean && yarn run build",
     "clean": "rimraf lib",
     "build": "tsc",
-    "watch": "tsc -w"
+    "watch": "tsc -w",
+    "test": "yarn run build && node --test test"
   },
   "theiaExtensions": [
     {

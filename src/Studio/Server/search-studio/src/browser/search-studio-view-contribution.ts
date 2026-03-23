@@ -1,27 +1,25 @@
 import { injectable } from '@theia/core/shared/inversify';
-import { FrontendApplication, FrontendApplicationContribution } from '@theia/core/lib/browser';
 import { AbstractViewContribution } from '@theia/core/lib/browser/shell/view-contribution';
-import { SearchStudioToggleCommandId, SearchStudioWidgetId, SearchStudioWidgetLabel } from './search-studio-constants';
+import {
+    SearchStudioProvidersViewContainerId,
+    SearchStudioToggleCommandId,
+    SearchStudioWidgetId,
+    SearchStudioWidgetLabel
+} from './search-studio-constants';
 import { SearchStudioWidget } from './search-studio-widget';
 
 @injectable()
-export class SearchStudioViewContribution extends AbstractViewContribution<SearchStudioWidget> implements FrontendApplicationContribution {
+export class SearchStudioViewContribution extends AbstractViewContribution<SearchStudioWidget> {
 
     constructor() {
         super({
             widgetId: SearchStudioWidgetId,
+            viewContainerId: SearchStudioProvidersViewContainerId,
             widgetName: SearchStudioWidgetLabel,
             defaultWidgetOptions: {
-                area: 'main'
+                area: 'left'
             },
             toggleCommandId: SearchStudioToggleCommandId
-        });
-    }
-
-    async initializeLayout(_app: FrontendApplication): Promise<void> {
-        await this.openView({
-            activate: false,
-            reveal: true
         });
     }
 }

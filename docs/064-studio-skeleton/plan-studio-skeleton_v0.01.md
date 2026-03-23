@@ -1,0 +1,345 @@
+# Implementation Plan
+
+**Target output path:** `docs/064-studio-skeleton/plan-studio-skeleton_v0.01.md`
+
+**Based on:** `docs/064-studio-skeleton/spec-studio-skeleton_v0.01.md`
+
+**Version:** `v0.01` (`Draft`)
+
+---
+
+## Slice 1 — Provider-backed Studio shell foundation
+
+- [x] Work Item 1: Replace the welcome-only shell with a provider-backed Studio workbench skeleton and a runnable `Providers` vertical slice - Completed
+  - **Purpose**: Deliver the first meaningful end-to-end Studio capability by replacing the current welcome-only Theia extension surface with real Studio navigation, real provider loading from `StudioApiHost /providers`, a placeholder-driven `Providers` work area, and the lower `Panel` wired for development-time output.
+  - **Acceptance Criteria**:
+    - The Studio shell starts with dedicated `Activity Bar` items for `Providers`, `Rules`, and `Ingestion`.
+    - The `Providers` `view container` loads provider roots from `StudioApiHost /providers`.
+    - Selecting a provider root opens a provider overview editor in the `editor area`.
+    - Selecting `Queue` or `Dead letters` opens placeholder editors in the `editor area`.
+    - The shell uses normal default Theia editor-opening behavior rather than a custom interaction model.
+    - The lower `Panel` is available for output/diagnostic feedback in the shell.
+    - The runnable path works without implementing queue/dead-letter functionality beyond placeholders.
+  - **Definition of Done**:
+    - Multi-view Studio shell wiring implemented in the Theia extension
+    - Provider API client and mapping layer implemented for `/providers`
+    - `Providers` tree and placeholder editors implemented end to end
+    - Provider root selection opens provider overview editors using live provider metadata
+    - Panel/output contribution added for shell feedback
+    - Tests added for provider API contract assumptions and provider tree/data mapping
+    - Documentation updated in the work package plan/spec if implementation details need alignment
+    - Can execute end to end via: `AppHost` or direct Theia browser shell startup, then navigating `Providers`
+  - [x] Task 1.1: Establish the Studio shell frontend composition for multiple work areas - Completed
+    - [x] Step 1: Replace or refactor the current single welcome widget pattern into multiple Theia contributions aligned to `Providers`, `Rules`, `Ingestion`, and panel/output support. - Completed
+    - [x] Step 2: Introduce shared Studio browser-side models for provider nodes, tree node kinds, editor descriptors, and provider selection context. - Completed
+    - [x] Step 3: Keep the frontend structure ready for later replacement of placeholder editors with real tool implementations. - Completed
+    - [x] Step 4: Preserve the current shell startup path and Theia application identity. - Completed
+    - **Completed Summary**:
+      - Reworked the `search-studio` Theia frontend module so the shell now contributes dedicated `Providers`, `Rules`, `Ingestion`, and `Studio Output` views instead of a single welcome-only widget.
+      - Added shared browser-side shell contracts for provider tree nodes, document descriptors, output entries, and provider selection state to support later work items without reworking the shell foundation.
+      - Preserved the existing Theia browser-app startup path and `UKHO Search Studio` application identity.
+  - [x] Task 1.2: Add a shared Studio API client and provider metadata adapter - Completed
+    - [x] Step 1: Introduce a browser-side Studio API client service that uses the existing Theia backend proxy/configuration pattern. - Completed
+    - [x] Step 2: Add a provider metadata service that loads `StudioApiHost /providers` and maps the response into tree-ready node models. - Completed
+    - [x] Step 3: Define loading, empty-state, and failure-state behavior suitable for placeholder-driven UX review. - Completed
+    - [x] Step 4: Ensure provider metadata is reused across all future work areas rather than fetched independently per widget. - Completed
+    - **Completed Summary**:
+      - Added a browser-side Studio API client that reads the configured `StudioApiHost` base URL and calls live `GET /providers`.
+      - Added a shared provider catalog service and provider tree mapper that produce reusable provider-root / queue / dead-letter node models for all work areas.
+      - Implemented loading, empty, and error states and surfaced provider-loading failures into both the shell widgets and the output panel.
+  - [x] Task 1.3: Deliver the first `Providers` vertical slice - Completed
+    - [x] Step 1: Create the `Providers` `Activity Bar` item and `Side Bar` tree contribution. - Completed
+    - [x] Step 2: Populate provider root nodes from `/providers`. - Completed
+    - [x] Step 3: Add child nodes limited to `Queue` and `Dead letters`. - Completed
+    - [x] Step 4: Implement a provider overview placeholder editor that shows real provider metadata plus placeholder cards for queue/dead-letter information when live counts are not yet available. - Completed
+    - [x] Step 5: Implement queue and dead-letter placeholder editors that clearly communicate placeholder status while fitting the intended long-term layout. - Completed
+    - **Completed Summary**:
+      - Implemented the provider-backed `Providers` side-bar tree with live provider roots plus `Queue` and `Dead letters` child nodes.
+      - Added reusable main-area placeholder document widgets for provider overview, queue, dead letters, and early placeholder cross-links into `Rules` and `Ingestion`.
+      - Provider overview documents now combine live provider metadata from `/providers` with clearly labelled placeholder operational cards for the first skeleton review.
+  - [x] Task 1.4: Introduce basic output/panel diagnostics for the shell - Completed
+    - [x] Step 1: Add a panel contribution for shell output, diagnostics, or operation traces. - Completed
+    - [x] Step 2: Log provider tree loading, selection changes, and obvious placeholder actions to the panel. - Completed
+    - [x] Step 3: Ensure API failures surface both in-panel and in-widget error states. - Completed
+    - **Completed Summary**:
+      - Added the `Studio Output` bottom-panel contribution for shell diagnostics.
+      - Added a shared output service and wired provider loading, provider selection, document opening, and failure reporting into the panel.
+      - Kept shell failures visible in both the output panel and the relevant sidebar widgets.
+  - [x] Task 1.5: Add targeted automated coverage for the first shell slice - Completed
+    - [x] Step 1: Extend `StudioApiHost` tests only if implementation reveals an additional contract assumption about `/providers` that needs protecting. - Completed
+    - [x] Step 2: Add browser-side unit tests for provider response mapping and tree node creation if the frontend test harness supports it. - Completed
+    - [x] Step 3: Add or document a manual smoke path for shell startup and provider navigation until broader shell e2e automation is in place. - Completed
+    - **Completed Summary**:
+      - Kept the existing `StudioApiHost` provider endpoint contract unchanged, so no additional backend contract test was required for this slice.
+      - Added a lightweight Node-based frontend test for provider tree mapping and wired it into the `search-studio` package test script.
+      - Updated the Studio wiki page with the new shell shape, narrowed live-data usage, and a recommended manual smoke-review path.
+  - **Files**:
+    - `src/Studio/Server/search-studio/src/browser/search-studio-frontend-module.ts`: bind new shell services, tree contributions, editors, and panel contribution.
+    - `src/Studio/Server/search-studio/src/browser/search-studio-view-contribution.ts`: refactor or replace welcome-only layout behavior.
+    - `src/Studio/Server/search-studio/src/browser/search-studio-widget.tsx`: retire or repurpose the current welcome widget if needed.
+    - `src/Studio/Server/search-studio/src/browser/api/*`: Studio API client and provider-loading services.
+    - `src/Studio/Server/search-studio/src/browser/providers/*`: `Providers` tree contribution, node models, and placeholder editors.
+    - `src/Studio/Server/search-studio/src/browser/common/*`: shared navigation/editor/provider-context abstractions.
+    - `src/Studio/Server/search-studio/src/browser/panel/*`: shell output/panel widgets and services.
+    - `test/StudioApiHost.Tests/*`: provider endpoint contract protection if needed.
+    - `src/Studio/Server/*` test files or equivalent frontend test location: mapping and shell smoke coverage.
+  - **Work Item Dependencies**: None.
+  - **Run / Verification Instructions**:
+    - `yarn --cwd .\src\Studio\Server build:browser`
+    - `dotnet run --project .\src\Hosts\AppHost\AppHost.csproj`
+    - Open the Studio shell using the configured port from `src/Hosts/AppHost/appsettings.json`.
+    - In the shell, open `Providers`, verify real provider roots load, and verify provider overview / queue / dead-letter placeholders open in the `editor area`.
+  - **User Instructions**: Ensure local prerequisites for the existing Theia shell are installed before running the browser app.
+  - **Completed Summary**:
+    - Replaced the welcome-only Studio shell with provider-backed `Providers`, `Rules`, and `Ingestion` activity-bar view containers plus a `Studio Output` panel.
+    - Implemented live provider loading from `StudioApiHost /providers`, reusable placeholder documents for provider overview / queue / dead letters, and placeholder provider entry points for the later `Rules` and `Ingestion` slices.
+    - Added shared shell services for provider loading, provider selection, document opening, and output logging, plus frontend mapping tests and updated Studio wiki guidance.
+    - Follow-up fix: refactored the left-side work areas into dedicated Theia view containers and added startup layout wiring so the activity-bar items are created and visible when the shell opens.
+    - Follow-up fix: updated the shell layout contribution to add the Studio view containers after both default-layout startup and restored-layout startup, so prior persisted Theia layouts no longer suppress the new activity-bar items.
+
+---
+
+## Slice 2 — Rules work area with live rule discovery and placeholder authoring surfaces
+
+- [x] Work Item 2: Deliver the `Rules` vertical slice with live `/rules` navigation, rules overview, checker placeholder, and `New rule` workflow shell - Completed
+  - **Purpose**: Add the second major Studio work area so users can review provider-scoped rules from real `StudioApiHost /rules` data, navigate a scalable rules tree, open rule-related placeholder editors, and assess whether the workbench shape fits long-term rule-authoring needs before lifting `RulesWorkbench` functionality.
+  - **Acceptance Criteria**:
+    - The `Rules` `Activity Bar` item and `view container` are available.
+    - Provider roots in `Rules` match the constant provider list already used elsewhere.
+    - The `Rules` tree groups rule nodes under a dedicated `Rules` grouping node per provider.
+    - Provider root selection opens a rules overview editor rather than the same editor as `Rule checker`.
+    - The `Rule checker` child node opens a dedicated checker placeholder editor.
+    - Individual rule nodes come from live `/rules` data and open placeholder rule editor documents.
+    - `New rule` is available from toolbar, context menu, and command palette surfaces relevant to `Rules`.
+    - Useful rule-node visual decoration is present in the tree, with exact badges/icons left refinable later.
+  - **Definition of Done**:
+    - `Rules` view container implemented with live rule discovery
+    - Rules overview, checker placeholder, existing-rule placeholder, and new-rule placeholder editors implemented
+    - Rules grouping node and rule-node decorations implemented
+    - Context menu, toolbar, and command palette support added for `New rule`
+    - Minimal contract/testing strategy added for `/rules`-backed UI behavior
+    - Can execute end to end via: Studio shell `Rules` navigation against the existing `StudioApiHost /rules` endpoint
+  - [x] Task 2.1: Build the browser-side rules data model and loading path - Completed
+    - [x] Step 1: Introduce a rules-loading service that consumes `StudioApiHost /rules` through the shared Studio API client. - Completed
+    - [x] Step 2: Map the `/rules` response into provider-grouped tree nodes and overview summary models. - Completed
+    - [x] Step 3: Identify which status signals are truly available from the current response and which must remain placeholder-derived for the first skeleton. - Completed
+    - [x] Step 4: If implementation requires additional rule-summary fields that are minimal and safe, capture them as a narrowly scoped backend contract extension instead of lifting real rule functionality. - Completed
+    - **Completed Summary**:
+      - Added typed `/rules` API contracts and a shared browser-side rules catalog service that loads live rule discovery through the existing Studio API client.
+      - Added pure rules-mapping logic that groups rules beneath providers, derives live total/active/disabled counts, and treats invalid counts as an explicit placeholder because invalid rules fail startup before discovery.
+      - No backend contract extension was required for this slice because the existing read-only `/rules` endpoint already carried enough data for the agreed skeleton shape.
+  - [x] Task 2.2: Deliver the `Rules` tree and navigation model - Completed
+    - [x] Step 1: Create the `Rules` `Activity Bar` item and associated `view container`. - Completed
+    - [x] Step 2: Reuse provider roots from the shared provider model rather than creating a disconnected provider picker. - Completed
+    - [x] Step 3: Add a dedicated `Rule checker` node and a dedicated `Rules` grouping node beneath each provider. - Completed
+    - [x] Step 4: Populate individual rule nodes from `/rules` under the `Rules` grouping node. - Completed
+    - [x] Step 5: Add rule-node status decoration with a useful first-pass indicator strategy. - Completed
+    - **Completed Summary**:
+      - Replaced the Rules placeholder list with a provider-grouped rules tree backed by live `/rules` data.
+      - Added provider roots, dedicated `Rule checker` nodes, a dedicated `Rules` grouping node, and nested rule entries per provider.
+      - Added first-pass rule-node badges for active/disabled state plus provider/root counts in the tree.
+  - [x] Task 2.3: Deliver rules overview and editor placeholders - Completed
+    - [x] Step 1: Implement a provider-scoped rules overview editor showing rule counts, active/invalid summaries, placeholder future versioning space, and quick actions. - Completed
+    - [x] Step 2: Implement a dedicated rule checker placeholder editor. - Completed
+    - [x] Step 3: Implement an existing-rule placeholder editor document shape that feels like a future node editor surface. - Completed
+    - [x] Step 4: Implement a new-rule placeholder editor launched from `New rule`. - Completed
+    - **Completed Summary**:
+      - Added live rules overview documents with provider-scoped summary cards, including placeholder invalid/versioning treatment and quick actions.
+      - Added dedicated placeholder editors for rule checker, existing rule documents, and new-rule authoring.
+      - Updated provider-overview cross-links so `Open Rules` now opens the live Rules overview instead of the earlier generic placeholder.
+  - [x] Task 2.4: Add command surfaces for rule authoring navigation - Completed
+    - [x] Step 1: Register `New rule` in the command registry. - Completed
+    - [x] Step 2: Expose `New rule` from the relevant `Rules` toolbar(s). - Completed
+    - [x] Step 3: Expose `New rule` from context menus on provider roots and/or the `Rules` grouping node. - Completed
+    - [x] Step 4: Ensure the command opens against the currently selected provider context. - Completed
+    - **Completed Summary**:
+      - Added `New Rule` and `Refresh Studio rules` commands to the shell command registry.
+      - Exposed `New Rule` from the Rules work-area action bar, the Rules context menu, and the standard File menu path for command discovery.
+      - Implemented shared provider-resolution logic so `New Rule` targets the explicit provider, current provider selection, or first available provider deterministically.
+  - [x] Task 2.5: Add targeted test coverage for the rules slice - Completed
+    - [x] Step 1: Extend `StudioApiHost` tests if a minimal `/rules` contract adjustment is required for the skeleton. - Completed
+    - [x] Step 2: Add browser-side tests for rules grouping, overview summary mapping, and command-target selection. - Completed
+    - [x] Step 3: Add manual or Playwright-backed verification for the core `Rules` navigation path if feasible within the existing shell toolchain. - Completed
+    - **Completed Summary**:
+      - Confirmed no backend `/rules` contract change was required for this slice, so existing `StudioApiHost` rule endpoint coverage remained sufficient.
+      - Added browser-side Node tests for rules grouping/summary mapping and provider-target selection for rule commands.
+      - Updated the Studio wiki smoke path to include the new live Rules work area review flow.
+  - **Files**:
+    - `src/Studio/Server/search-studio/src/browser/api/*`: rules-loading client/service additions.
+    - `src/Studio/Server/search-studio/src/browser/rules/*`: rules tree contribution, overview widget, checker placeholder, rule editors, command contributions, menus, and decorators.
+    - `src/Studio/Server/search-studio/src/browser/common/*`: shared provider-context and editor abstractions reused by rule surfaces.
+    - `src/Studio/StudioApiHost/*`: only if a minimal read-only `/rules` response tweak is required to support skeleton summaries/decorations.
+    - `test/StudioApiHost.Tests/*`: rule endpoint contract tests if amended.
+    - `src/Studio/Server/*` test files or equivalent frontend test location: rules mapping/command/navigation coverage.
+  - **Work Item Dependencies**: Work Item 1.
+  - **Run / Verification Instructions**:
+    - `yarn --cwd .\src\Studio\Server build:browser`
+    - `dotnet run --project .\src\Hosts\AppHost\AppHost.csproj`
+    - Open the Studio shell and navigate to `Rules`.
+    - Verify provider roots appear, `Rule checker` and `Rules` grouping nodes render, rule nodes load from `/rules`, and `New rule` opens a placeholder editor.
+  - **User Instructions**: Keep a valid rules configuration available so `/rules` returns representative live data.
+  - **Completed Summary**:
+    - Implemented the live `Rules` work area using `StudioApiHost /rules`, with provider roots, `Rule checker`, grouped rule entries, and rule-node status badges.
+    - Added provider-scoped rules overview, rule checker, existing-rule, and new-rule placeholder editors in the main workbench area.
+    - Added `New Rule` and refresh command surfaces across the Rules toolbar, context menu, File menu, and command palette, plus browser-side rules mapping and provider-resolution tests.
+
+---
+
+## Slice 3 — Ingestion work area with provider overview and separate mode placeholders
+
+- [x] Work Item 3: Deliver the `Ingestion` vertical slice with provider overview, explicit mode nodes, and placeholder ingestion work surfaces - Completed
+  - **Purpose**: Add the third Studio work area so users can review a provider-scoped ingestion dashboard and assess whether the separation of ingestion modes (`By id`, `All unindexed`, `By context`) provides enough room for future previews, progress, and execution feedback before lifting real `FileShareEmulator` functionality.
+  - **Acceptance Criteria**:
+    - The `Ingestion` `Activity Bar` item and `view container` are available.
+    - Provider roots are aligned with the same provider list used by `Providers` and `Rules`.
+    - Selecting a provider root opens an ingestion overview page, not a mode editor.
+    - Provider child nodes exist for `By id`, `All unindexed`, and `By context`.
+    - Selecting each ingestion-mode node opens a dedicated placeholder editor surface.
+    - The ingestion overview shows placeholder dashboard cards such as indexed vs non-indexed counts and supports pertinent actions such as resetting indexing status.
+    - The ingestion overview and mode editors clearly distinguish live versus placeholder data.
+  - **Definition of Done**:
+    - `Ingestion` tree and overview implemented end to end
+    - Explicit child nodes implemented for the three agreed ingestion modes
+    - Dedicated placeholder editors implemented for each mode
+    - Ingestion overview exposes dashboard cards and quick actions in the `editor area`
+    - Panel/log integration captures basic placeholder actions and navigation
+    - Tests or manual smoke coverage added for ingestion navigation behavior
+    - Can execute end to end via: Studio shell `Ingestion` navigation with provider root and mode editors
+  - [x] Task 3.1: Deliver the `Ingestion` tree and provider overview - Completed
+    - [x] Step 1: Create the `Ingestion` `Activity Bar` item and `view container`. - Completed
+    - [x] Step 2: Reuse shared provider roots and provider-selection context. - Completed
+    - [x] Step 3: Implement the provider-root ingestion overview editor. - Completed
+    - [x] Step 4: Show placeholder dashboard information such as indexed/non-indexed counts and clearly label it as placeholder until backed by real endpoints. - Completed
+    - [x] Step 5: Add pertinent quick actions, including navigation to the three mode editors and a placeholder reset-indexing-status action. - Completed
+    - **Completed Summary**:
+      - Replaced the single-provider Ingestion placeholder list with a provider-grouped ingestion tree that reuses live provider metadata from `StudioApiHost /providers`.
+      - Added provider-root ingestion overview documents with placeholder indexed/non-indexed dashboard cards and explicit quick actions into each ingestion mode.
+      - Added a deterministic placeholder `Reset indexing status` action for review purposes.
+  - [x] Task 3.2: Add explicit ingestion-mode nodes and dedicated placeholder editors - Completed
+    - [x] Step 1: Add `By id`, `All unindexed`, and `By context` child nodes beneath each provider root. - Completed
+    - [x] Step 2: Implement a `By id` placeholder editor with enough structure to support future payload preview and targeted execution flow. - Completed
+    - [x] Step 3: Implement an `All unindexed` placeholder editor with enough structure to support bulk progress/result presentation. - Completed
+    - [x] Step 4: Implement a `By context` placeholder editor using Studio terminology (`context`) and leaving room for future selection/filter controls. - Completed
+    - **Completed Summary**:
+      - Added explicit `By id`, `All unindexed`, and `By context` child nodes beneath each provider in the Ingestion work area.
+      - Added dedicated placeholder editors for each ingestion mode, each reserving mode-specific layout space for future preview, progress, filtering, and results.
+      - Ensured Studio terminology uses `context` rather than `business unit` in the new ingestion surfaces.
+  - [x] Task 3.3: Wire ingestion placeholder actions to the panel/output experience - Completed
+    - [x] Step 1: Emit panel/output entries for mode launches and placeholder action execution. - Completed
+    - [x] Step 2: Ensure placeholder actions produce deterministic, reviewable output rather than silently doing nothing. - Completed
+    - [x] Step 3: Keep all execution behavior clearly non-production in this work package. - Completed
+    - **Completed Summary**:
+      - Ingestion overview and mode openings now flow through the shared document service and are logged into `Studio Output`.
+      - The placeholder reset-indexing-status action now writes a clear output entry instead of silently doing nothing.
+      - All ingestion execution semantics remain explicitly placeholder-only in this work package.
+  - [x] Task 3.4: Add targeted verification for the ingestion slice - Completed
+    - [x] Step 1: Add browser-side mapping/tests for ingestion tree composition and provider-context reuse. - Completed
+    - [x] Step 2: Add smoke verification for root overview navigation and each mode editor. - Completed
+    - [x] Step 3: Confirm the UI still relies only on `/providers` and `/rules` for live data and does not accidentally introduce deeper ingestion dependencies in this slice. - Completed
+    - **Completed Summary**:
+      - Added browser-side Node tests for ingestion tree composition and provider metadata reuse.
+      - Extended the Studio wiki smoke path so reviewers can validate the ingestion overview, each mode editor, and the placeholder reset action.
+      - Confirmed the slice still relies only on `/providers` and `/rules` for live data, with no new ingestion runtime API dependency introduced.
+  - **Files**:
+    - `src/Studio/Server/search-studio/src/browser/ingestion/*`: ingestion tree contribution, provider overview, mode widgets, commands, and placeholder actions.
+    - `src/Studio/Server/search-studio/src/browser/common/*`: shared provider selection and editor abstractions.
+    - `src/Studio/Server/search-studio/src/browser/panel/*`: ingestion-oriented output/log entries.
+    - `src/Studio/Server/*` test files or equivalent frontend test location: ingestion navigation smoke coverage.
+  - **Work Item Dependencies**: Work Item 1.
+  - **Run / Verification Instructions**:
+    - `yarn --cwd .\src\Studio\Server build:browser`
+    - `dotnet run --project .\src\Hosts\AppHost\AppHost.csproj`
+    - Open the Studio shell and navigate to `Ingestion`.
+    - Verify provider roots, overview page, `By id`, `All unindexed`, and `By context` editors all open and provide placeholder feedback.
+  - **User Instructions**: None beyond standard shell startup prerequisites.
+  - **Completed Summary**:
+    - Implemented the `Ingestion` work area with provider overview documents, explicit `By id`, `All unindexed`, and `By context` mode nodes, and dedicated placeholder editors for each mode.
+    - Added ingestion quick actions and deterministic placeholder reset-status logging to the `Studio Output` panel.
+    - Added browser-side ingestion mapping tests and updated the Studio wiki walkthrough to cover the new ingestion surfaces.
+
+---
+
+## Slice 4 — Workbench polish, provider alignment, and review-ready UX refinement
+
+- [x] Work Item 4: Add cross-work-area provider alignment, decorations, and review-ready shell polish without lifting real business functionality - Completed
+  - **Purpose**: Turn the three separate vertical slices into a coherent reviewable Studio skeleton that feels sophisticated enough for design review, while still keeping the implementation firmly in placeholder mode outside the live `/providers` and `/rules` navigation data.
+  - **Acceptance Criteria**:
+    - Switching between `Providers`, `Rules`, and `Ingestion` preserves the selected provider context.
+    - Provider-level decorations appear on provider roots where useful data exists or can be safely represented as placeholder state.
+    - Rules and provider overview/editor titles, breadcrumbs, and labels make the current provider obvious.
+    - Panel/output behavior is consistent across all work areas.
+    - Context menus and toolbar actions feel coherent rather than one-off per widget.
+    - The final skeleton is suitable for stakeholder review of look, navigation, and information architecture before functionality uplift begins.
+  - **Definition of Done**:
+    - Shared provider-selection context aligned across all three work areas
+    - Provider/root/rule decorations applied consistently
+    - Editor titles, captions, breadcrumbs, and panel entries standardized
+    - Command palette, toolbars, and context menus reviewed for consistency
+    - Review-focused manual verification path documented
+    - Optional Playwright or equivalent shell smoke coverage added if practical
+    - Can execute end to end via: full shell walkthrough across all three work areas
+  - [x] Task 4.1: Implement shared provider-context alignment across the shell - Completed
+    - [x] Step 1: Introduce a shared provider-selection state/service. - Completed
+    - [x] Step 2: Auto-focus the same provider when users switch between `Providers`, `Rules`, and `Ingestion`. - Completed
+    - [x] Step 3: Ensure provider selection remains intuitive when editors, trees, and commands interact. - Completed
+    - **Completed Summary**:
+      - Extended the existing shared provider-selection service with synchronization logic so it preserves the active provider when each work area refreshes and falls back gracefully when the selected provider is no longer available.
+      - Updated `Providers`, `Rules`, and `Ingestion` to synchronize against the shared provider state on live-data changes and to display the current provider explicitly in each work-area header.
+      - Added browser-side tests covering provider selection synchronization and fallback behavior.
+  - [x] Task 4.2: Apply review-ready decorations and labels - Completed
+    - [x] Step 1: Add provider-root badges or warning decorations where available and appropriate. - Completed
+    - [x] Step 2: Standardize rule-node invalid-state decoration and any first-pass provider/rule iconography. - Completed
+    - [x] Step 3: Standardize editor titles and captions such as `file-share / Rules overview` and `file-share / By id`. - Completed
+    - [x] Step 4: Add clear placeholder messaging so review participants can distinguish skeleton UX from implemented tooling. - Completed
+    - **Completed Summary**:
+      - Preserved provider, rules, and ingestion root badges while making provider context more explicit across sidebars and documents.
+      - Added a consistent placeholder callout to document surfaces and richer rule summary rendering in rule documents.
+      - Kept document labels and captions consistently provider-scoped across overview and mode surfaces.
+  - [x] Task 4.3: Harmonize command, menu, and panel behavior - Completed
+    - [x] Step 1: Review toolbar actions across overview and placeholder editors for consistency. - Completed
+    - [x] Step 2: Review context menus on provider roots, `Rules`, and ingestion-mode nodes. - Completed
+    - [x] Step 3: Ensure command palette naming follows Studio terminology consistently. - Completed
+    - [x] Step 4: Ensure the lower `Panel` communicates navigation, placeholder actions, and API-loading issues in a uniform style. - Completed
+    - **Completed Summary**:
+      - Standardized command naming/categories for provider, rules, ingestion, and output actions so they are coherent in the command palette.
+      - Added consistent context-menu support for provider roots, Rules, ingestion roots, and ingestion mode nodes.
+      - Kept output-panel messaging uniform by routing additional placeholder actions and navigation through the same shared logging service.
+  - [x] Task 4.4: Add review-ready verification coverage and documentation notes - Completed
+    - [x] Step 1: Add smoke coverage for switching work areas while preserving provider context. - Completed
+    - [x] Step 2: Document the primary review path for stakeholders: open Studio, inspect all three work areas, and assess overall shape. - Completed
+    - [x] Step 3: Confirm the final slice still does not start lifting real `RulesWorkbench` or `FileShareEmulator` functionality beyond the already agreed live navigation endpoints. - Completed
+    - **Completed Summary**:
+      - Added browser-side test coverage for provider-selection synchronization, complementing the existing navigation-mapping tests.
+      - Cleaned up and updated the Studio wiki so the review walkthrough matches the current multi-work-area shell without stale welcome-page guidance.
+      - Confirmed the final polish slice still relies only on live `/providers` and `/rules` navigation data while keeping operational/editor functionality placeholder-only.
+  - **Files**:
+    - `src/Studio/Server/search-studio/src/browser/common/*`: provider-context state, shared labels, editor title helpers, and shared node decoration helpers.
+    - `src/Studio/Server/search-studio/src/browser/providers/*`: provider decoration and overview polish.
+    - `src/Studio/Server/search-studio/src/browser/rules/*`: rule decoration and rules overview polish.
+    - `src/Studio/Server/search-studio/src/browser/ingestion/*`: ingestion overview/mode polish and provider alignment.
+    - `src/Studio/Server/search-studio/src/browser/panel/*`: consistent output/log presentation.
+    - `src/Studio/Server/*` test files or equivalent frontend test location: full-shell smoke verification.
+    - `docs/064-studio-skeleton/*`: wording alignment if implementation reveals useful clarifications.
+  - **Work Item Dependencies**: Work Item 1, Work Item 2, Work Item 3.
+  - **Run / Verification Instructions**:
+    - `yarn --cwd .\src\Studio\Server build:browser`
+    - `dotnet run --project .\src\Hosts\AppHost\AppHost.csproj`
+    - Walk through `Providers`, `Rules`, and `Ingestion` for the same provider and verify aligned selection, decorations, placeholder editors, and panel feedback.
+  - **User Instructions**: Use this slice for stakeholder walkthroughs focused on navigation, information architecture, and visual sophistication rather than real data manipulation.
+  - **Completed Summary**:
+    - Completed cross-work-area provider alignment, context menus, command-palette polish, and uniform placeholder messaging for the full shell.
+    - Added provider-selection synchronization tests and refreshed the Studio wiki review guidance to match the implemented shell.
+    - Kept the Studio skeleton UX-focused and review-ready without lifting real `RulesWorkbench` or `FileShareEmulator` functionality into the editors yet.
+
+---
+
+## Summary / key considerations
+
+- Implement this package as a UX-first Theia shell refinement, not as a real functionality uplift.
+- Keep live backend usage deliberately narrow: use `StudioApiHost /providers` and `StudioApiHost /rules` for real navigation data, and keep all other work surfaces placeholder-driven.
+- Start with the smallest meaningful vertical slice in `Providers` so the shell becomes reviewable early.
+- Add `Rules` and `Ingestion` as separate vertical slices so each major work area becomes runnable before cross-shell polish work begins.
+- Treat any backend contract changes as minimal, read-only, and justified only where the current live data is insufficient for agreed skeleton-only summaries or decorations.
+- Use the lower `Panel`, command palette, toolbars, and context menus from the beginning so stakeholders can assess the real workbench feel, not just the tree layout.
+- Preserve Theia-native interaction behavior and default editor semantics so the shell feels consistent with the platform.
+- The final outcome of this work package should be a stakeholder-reviewable Studio skeleton whose look, navigation, and information architecture can be refined before the next work package starts lifting functionality from `RulesWorkbench` and `FileShareEmulator`.
