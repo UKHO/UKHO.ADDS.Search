@@ -1,6 +1,6 @@
 # Theia Knowledgebase
 
-This page captures practical Eclipse Theia lessons learned while implementing work packages `064-studio-skeleton` and `065-studio-tree-widget` in this repository.
+This page captures practical Eclipse Theia lessons learned while implementing work packages `064-studio-skeleton`, `065-studio-tree-widget`, and later Studio shell refinements such as `067-studio-output-enhancements` and `069-search-ui` in this repository.
 
 It is intentionally an internal working knowledge base, not a replacement for official Theia documentation.
 
@@ -269,6 +269,42 @@ Then restart the shell.
 ### Practical rule
 
 If a Theia UI change is not visible, do not trust package compilation alone. Rebuild the browser bundle.
+
+## Shell layout and activity ordering patterns that worked
+
+### Use explicit left-side ranks for Studio-owned activities
+
+The built-in Theia `Explore` activity already carries a left-side rank.
+
+To keep Studio-owned activities above it consistently, the working pattern here was to assign explicit `rank` values in each view contribution's `defaultWidgetOptions`.
+
+Relevant files:
+
+- `src/Studio/Server/search-studio/src/browser/search-studio-view-contribution.ts`
+- `src/Studio/Server/search-studio/src/browser/rules/search-studio-rules-view-contribution.ts`
+- `src/Studio/Server/search-studio/src/browser/ingestion/search-studio-ingestion-view-contribution.ts`
+- `src/Studio/Server/search-studio/src/browser/search/search-studio-search-view-contribution.ts`
+
+Practical takeaway:
+
+- if a Studio activity should sort above built-in `Explore`, give it an explicit rank lower than the navigator rank rather than relying only on widget creation order
+
+### Activate the desired startup activity after the shell layout has been created
+
+Revealing left-side views during initial layout ensures the activity icons exist, but it does not by itself guarantee which activity finishes startup as the active one.
+
+The working pattern here was:
+
+1. reveal the Studio views during layout initialization
+2. after the layout is initialized, explicitly open the intended default activity with `activate: true`
+
+Relevant file:
+
+- `src/Studio/Server/search-studio/src/browser/search-studio-shell-layout-contribution.ts`
+
+Practical takeaway:
+
+- when startup should land on a specific Studio activity such as `Providers`, make that an explicit post-layout activation step
 
 ## Symptom: icons do not appear in tree rows
 

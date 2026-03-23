@@ -16,7 +16,9 @@ It currently provides:
 
 - a default `Home` tab document that opens on Studio startup and can be reopened from the Theia `View` menu
 - task-focused `Home` jump points for `Start ingestion`, `Manage rules`, and `Browse providers`, each reusing the normal Studio destination-opening behavior for the current or first available provider
-- a branded Theia shell with dedicated `Providers`, `Rules`, and `Ingestion` activity-bar work areas
+- a branded Theia shell with dedicated `Providers`, `Rules`, `Ingestion`, and `Search` activity-bar work areas
+- `Providers` as the default startup activity once the shell has finished initializing
+- explicit left-side activity ordering so the built-in Theia `Explore` activity stays below the Studio-specific work areas
 - a native Theia extension named `search-studio`
 - a reduced-size UKHO logo rendered from a copied runtime asset within the `search-studio` package rather than from the repository `docs/` folder
 - provider-backed native Theia navigation trees for `Providers` and `Ingestion` using live `StudioApiHost` `GET /providers` data
@@ -26,6 +28,7 @@ It currently provides:
 - placeholder rules overview, rule-checker, existing-rule, and new-rule editor surfaces opened from the live rules tree
 - an ingestion work area with provider overview plus explicit `By id`, `All unindexed`, and `By context` mode nodes beneath provider roots
 - placeholder ingestion overview and mode-specific editor surfaces driven by live provider metadata
+- a mock `Search` work area with a left query/facets panel, a central `Search results` document, and a right-hand `Search Details` panel for screenshot-aligned review
 - native Theia view-toolbar actions for `New Rule`, `Refresh Rules`, and `Refresh Providers` where those actions remain visible
 - a lower `Studio Output` panel for shell diagnostics and placeholder action feedback, now rendered through a read-only `xterm.js` surface with reveal-latest behavior, pastel `INFO` / `ERROR` severity styling, and native toolbar `Copy all` and `Clear output` actions
 - runtime configuration for the local `StudioApiHost` API base URL
@@ -91,6 +94,23 @@ The tracked inputs currently include:
 - `src/Studio/Server/search-studio/package.json`
 - `src/Studio/Server/search-studio/tsconfig.json`
 - `src/Studio/Server/search-studio/src/**`
+
+## Current startup shell behavior
+
+The current Studio shell startup is intentionally opinionated:
+
+- `Home` still opens as the default document in the main area
+- `Providers` becomes the active left-side activity after the shell layout finishes initializing
+- `Rules`, `Ingestion`, and `Search` are pre-revealed so their Studio activity icons are present immediately
+- the built-in Theia `Explore` activity remains available, but Studio-specific activities are ranked ahead of it so `Explore` appears at the bottom of the left activity list
+
+The current left-side order is:
+
+1. `Providers`
+2. `Rules`
+3. `Ingestion`
+4. `Search`
+5. `Explore`
 
 ## Prerequisite tooling
 
@@ -195,6 +215,7 @@ The shell is designed to run as part of the wider local Aspire stack.
 4. Start `AppHost`
 5. In the Aspire dashboard, verify the `tools-studio-shell` resource is healthy
 6. Open the shell with `http://localhost:3000`
+7. Confirm `Providers` is the active left-side activity on first load and that `Explore` appears below the Studio work areas
 
 `StudioApiHost` remains a separate API host, and the shell consumes a runtime configuration bridge so its browser-side services can discover the correct API base URL at startup.
 
@@ -308,7 +329,7 @@ The purpose of the current shell is to review the overall look, navigation model
 
 1. Start the local stack through `AppHost`
 2. Open `http://localhost:3000`
-3. Confirm the `Providers`, `Rules`, and `Ingestion` activity-bar items are visible
+3. Confirm the `Providers`, `Rules`, `Ingestion`, and `Search` activity-bar items are visible, and that built-in `Explore` sits below them
 4. Open `Providers` and confirm it renders as a native tree fed by live `GET /providers` data
 5. Confirm only the first visible provider root is expanded automatically, then collapse or expand a root manually and confirm a refresh preserves that top-level state
 6. Double-click a provider root to open its overview, then open `Queue` and `Dead letters`
@@ -316,8 +337,10 @@ The purpose of the current shell is to review the overall look, navigation model
 8. Confirm the `Rules` view toolbar exposes `New Rule` and `Refresh Rules`, verify only the first visible provider root auto-expands, then open a rules overview, a rule checker placeholder, an existing rule, and `New Rule`
 9. Open `Ingestion` and confirm it renders as a native tree with provider roots plus `By id`, `All unindexed`, and `By context` beneath each provider root
 10. Confirm the `Ingestion` view toolbar exposes `Refresh Providers`, verify only the first visible provider root auto-expands, then open an ingestion overview, open each ingestion mode, and trigger `Reset indexing status`
-11. Open the `Studio Output` panel and confirm loading, navigation, and placeholder action entries appear there in a dense log-style layout
-12. Confirm the output toolbar exposes `Clear output`, use it, and verify the panel clears immediately without a body-level clear button
+11. Open `Search`, enter a query, confirm the `Search` button enables only when text is present, then trigger search and verify the mock `Search results` document plus empty `Search Details` panel appear
+12. Select a mock result and confirm the right-hand `Search Details` panel updates with fake values
+13. Open the `Studio Output` panel and confirm loading, navigation, and placeholder action entries appear there in a dense log-style layout
+14. Confirm the output toolbar exposes `Clear output`, use it, and verify the panel clears immediately without a body-level clear button
 13. Note that the current `067-studio-output-enhancements` baseline also plans a toolbar `Copy all` action for the merged output stream once that slice is delivered
 14. Confirm all three work areas and the output panel feel visually consistent, with no body-level CTA buttons, duplicate in-body titles, or persistent provider description text in the side bar
 
