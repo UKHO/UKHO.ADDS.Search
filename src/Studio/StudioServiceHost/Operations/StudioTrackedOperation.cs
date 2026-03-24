@@ -1,7 +1,7 @@
 using System.Threading.Channels;
 using UKHO.Search.Studio.Ingestion;
 
-namespace StudioApiHost.Operations
+namespace StudioServiceHost.Operations
 {
     /// <summary>
     /// Represents a single tracked Studio ingestion operation together with its live subscribers.
@@ -37,6 +37,9 @@ namespace StudioApiHost.Operations
             };
         }
 
+        /// <summary>
+        /// Gets the stable identifier assigned to the tracked operation.
+        /// </summary>
         public Guid OperationId { get; }
 
         /// <summary>
@@ -152,6 +155,16 @@ namespace StudioApiHost.Operations
                 "progress");
         }
 
+        /// <summary>
+        /// Replaces the retained operation snapshot and broadcasts the corresponding event payload.
+        /// </summary>
+        /// <param name="status">The new operation status.</param>
+        /// <param name="message">The user-facing message that describes the new state.</param>
+        /// <param name="completed">The completed item count, when known.</param>
+        /// <param name="total">The total item count, when known.</param>
+        /// <param name="failureCode">The provider-neutral failure code, when the operation failed.</param>
+        /// <param name="completedUtc">The completion timestamp, when the operation reached a terminal state.</param>
+        /// <param name="eventType">The event type emitted to live subscribers.</param>
         private void UpdateState(
             string status,
             string message,
@@ -163,6 +176,12 @@ namespace StudioApiHost.Operations
         {
             lock (_syncRoot)
             {
+                // Ignore late lifecycle or progress callbacks once the operation has already reached a terminal state.
+                if (IsTerminal(_state.Status))
+                {
+                    return;
+                }
+
                 // Replace the retained snapshot atomically so readers always observe a coherent operation state.
                 _state = new StudioIngestionOperationStateResponse
                 {
@@ -197,6 +216,10 @@ namespace StudioApiHost.Operations
             }
         }
 
+        /// <summary>
+        /// Publishes the latest operation event to all current subscribers.
+        /// </summary>
+        /// <param name="eventPayload">The operation event payload to broadcast.</param>
         private void Publish(StudioIngestionOperationEventResponse eventPayload)
         {
             // Attempt to push the event to every current subscriber.
@@ -220,6 +243,11 @@ namespace StudioApiHost.Operations
             _subscribers.Clear();
         }
 
+        /// <summary>
+        /// Clones the retained operation snapshot before it leaves the tracked operation.
+        /// </summary>
+        /// <param name="state">The retained operation snapshot to clone.</param>
+        /// <returns>A cloned operation snapshot.</returns>
         private static StudioIngestionOperationStateResponse CloneState(StudioIngestionOperationStateResponse state)
         {
             // Create a new snapshot object so external callers cannot mutate the retained state instance.
@@ -239,6 +267,11 @@ namespace StudioApiHost.Operations
             };
         }
 
+        /// <summary>
+        /// Determines whether an operation status represents a terminal lifecycle state.
+        /// </summary>
+        /// <param name="status">The operation status value to evaluate.</param>
+        /// <returns><see langword="true"/> when the operation has finished; otherwise <see langword="false"/>.</returns>
         private static bool IsTerminal(string status)
         {
             // Treat only succeeded and failed states as terminal because queued and running operations can still emit updates.

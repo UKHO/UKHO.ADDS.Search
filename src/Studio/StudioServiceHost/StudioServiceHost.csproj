@@ -4,6 +4,8 @@
     <TargetFramework>net10.0</TargetFramework>
     <Nullable>enable</Nullable>
     <ImplicitUsings>enable</ImplicitUsings>
+    <AssemblyName>StudioServiceHost</AssemblyName>
+    <RootNamespace>StudioServiceHost</RootNamespace>
     <TheiaWorkspaceRoot>$(MSBuildProjectDirectory)\..\Server</TheiaWorkspaceRoot>
     <TheiaBuildScript>$(TheiaWorkspaceRoot)\build.ps1</TheiaBuildScript>
     <TheiaBuildStamp>$(MSBuildProjectDirectory)\obj\$(Configuration)\$(TargetFramework)\theia-shell-build.stamp</TheiaBuildStamp>

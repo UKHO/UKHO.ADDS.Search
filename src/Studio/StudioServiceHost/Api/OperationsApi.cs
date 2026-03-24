@@ -2,15 +2,15 @@ using System.Text.Json;
 using Microsoft.AspNetCore.Http.HttpResults;
 using Microsoft.AspNetCore.Http.Json;
 using Microsoft.Extensions.Options;
-using StudioApiHost.Operations;
+using StudioServiceHost.Operations;
 using UKHO.Search.Studio.Ingestion;
 
-namespace StudioApiHost.Api
+namespace StudioServiceHost.Api
 {
     /// <summary>
     /// Defines the API surface for inspecting tracked Studio ingestion operations.
     /// </summary>
-    public static class StudioOperationsApi
+    public static class OperationsApi
     {
         /// <summary>
         /// Maps the Studio operation inspection endpoints onto the supplied endpoint builder.
@@ -50,6 +50,11 @@ namespace StudioApiHost.Api
             return endpoints;
         }
 
+        /// <summary>
+        /// Loads the currently active tracked operation, when one exists.
+        /// </summary>
+        /// <param name="operationStore">The shared store that retains active and completed operations.</param>
+        /// <returns>The active operation response or a standardized not-found response.</returns>
         private static Results<Ok<StudioIngestionOperationStateResponse>, NotFound<StudioIngestionErrorResponse>> GetActiveOperation(
             StudioIngestionOperationStore operationStore)
         {
@@ -62,6 +67,12 @@ namespace StudioApiHost.Api
                 : TypedResults.Ok(activeOperation);
         }
 
+        /// <summary>
+        /// Loads a tracked operation by its identifier.
+        /// </summary>
+        /// <param name="operationId">The identifier of the tracked operation to load.</param>
+        /// <param name="operationStore">The shared store that retains active and completed operations.</param>
+        /// <returns>The retained operation response or a standardized not-found response.</returns>
         private static Results<Ok<StudioIngestionOperationStateResponse>, NotFound<StudioIngestionErrorResponse>> GetOperationById(
             Guid operationId,
             StudioIngestionOperationStore operationStore)
@@ -75,6 +86,15 @@ namespace StudioApiHost.Api
                 : TypedResults.Ok(operation);
         }
 
+        /// <summary>
+        /// Streams live server-sent operation events for a tracked operation.
+        /// </summary>
+        /// <param name="operationId">The identifier of the tracked operation to observe.</param>
+        /// <param name="httpContext">The current HTTP context whose response stream carries the SSE payload.</param>
+        /// <param name="jsonOptions">The JSON options used to serialize each streamed event.</param>
+        /// <param name="operationStore">The shared store that retains active and completed operations.</param>
+        /// <param name="cancellationToken">The token that cancels the streaming loop when the client disconnects.</param>
+        /// <returns>A not-found response when the operation does not exist, or an empty result after the SSE stream completes.</returns>
         private static async Task<IResult> StreamOperationEventsAsync(
             Guid operationId,
             HttpContext httpContext,

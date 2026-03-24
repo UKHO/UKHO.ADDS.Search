@@ -1,6 +1,6 @@
 using UKHO.Search.Studio.Ingestion;
 
-namespace StudioApiHost.Operations
+namespace StudioServiceHost.Operations
 {
     /// <summary>
     /// Coordinates the lifecycle of tracked Studio ingestion operations.
@@ -73,6 +73,12 @@ namespace StudioApiHost.Operations
             return true;
         }
 
+        /// <summary>
+        /// Executes a tracked provider callback and translates its lifecycle into stored operation state.
+        /// </summary>
+        /// <param name="operationId">The identifier of the tracked operation being executed.</param>
+        /// <param name="executeAsync">The provider callback that performs the long-running work and reports progress.</param>
+        /// <returns>A task that completes when the tracked operation reaches a terminal state.</returns>
         private async Task ExecuteOperationAsync(
             Guid operationId,
             Func<IProgress<StudioIngestionOperationProgressUpdate>, CancellationToken, Task<StudioIngestionOperationExecutionResult>> executeAsync)
@@ -81,7 +87,7 @@ namespace StudioApiHost.Operations
             _operationStore.MarkRunning(operationId, "Processing operation.");
 
             // Forward provider progress callbacks into the shared in-memory operation store.
-            var progress = new Progress<StudioIngestionOperationProgressUpdate>(update =>
+            var progress = new SynchronousProgress<StudioIngestionOperationProgressUpdate>(update =>
             {
                 _operationStore.ReportProgress(operationId, update);
             });

@@ -108,7 +108,7 @@ namespace AppHost
                                                 .WaitFor(sqlServer)
                                                 .WaitFor(storageBlob);
 
-                    var studioApi = builder.AddProject<StudioApiHost>(ServiceNames.StudioApi)
+                    var studioApi = builder.AddProject<StudioServiceHost>(ServiceNames.StudioApi)
                                                 .WithExternalHttpEndpoints()
                                                 .WithReference(sqlServer)
                                                 .WithReference(storageQueue)

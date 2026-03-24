@@ -1,14 +1,14 @@
 using Microsoft.AspNetCore.Http.HttpResults;
-using StudioApiHost.Operations;
+using StudioServiceHost.Operations;
 using UKHO.Search.Studio.Ingestion;
 using UKHO.Search.Studio.Providers;
 
-namespace StudioApiHost.Api
+namespace StudioServiceHost.Api
 {
     /// <summary>
     /// Defines the API surface for Studio ingestion payload and operation endpoints.
     /// </summary>
-    public static class StudioIngestionApi
+    public static class IngestionApi
     {
         /// <summary>
         /// Maps the Studio ingestion endpoints onto the supplied endpoint builder.
@@ -89,6 +89,15 @@ namespace StudioApiHost.Api
             return endpoints;
         }
 
+        /// <summary>
+        /// Loads a provider payload by its provider-defined identifier.
+        /// </summary>
+        /// <param name="provider">The provider name supplied in the request route.</param>
+        /// <param name="id">The provider-defined item identifier to load.</param>
+        /// <param name="studioProviderCatalog">The catalog used to resolve Studio ingestion providers.</param>
+        /// <param name="loggerFactory">The logger factory used to create the endpoint logger.</param>
+        /// <param name="cancellationToken">The token that cancels the provider fetch operation.</param>
+        /// <returns>A successful payload response, a validation error, a not-found response, or a generic problem response.</returns>
         private static async Task<Results<Ok<StudioIngestionPayloadEnvelope>, BadRequest<StudioIngestionErrorResponse>, NotFound<StudioIngestionErrorResponse>, ProblemHttpResult>> GetPayloadByIdAsync(
             string provider,
             string id,
@@ -128,6 +137,16 @@ namespace StudioApiHost.Api
             }
         }
 
+        /// <summary>
+        /// Submits an ingestion payload for a specific provider.
+        /// </summary>
+        /// <param name="provider">The provider name supplied in the request route.</param>
+        /// <param name="request">The wrapped ingestion payload to submit.</param>
+        /// <param name="studioProviderCatalog">The catalog used to resolve Studio ingestion providers.</param>
+        /// <param name="operationStore">The shared store that enforces the single active-operation rule.</param>
+        /// <param name="loggerFactory">The logger factory used to create the endpoint logger.</param>
+        /// <param name="cancellationToken">The token that cancels the provider submission operation.</param>
+        /// <returns>A successful submission response, a validation error, a conflict response, or a generic problem response.</returns>
         private static async Task<Results<Ok<StudioIngestionSubmitPayloadResponse>, BadRequest<StudioIngestionErrorResponse>, Conflict<StudioIngestionOperationConflictResponse>, ProblemHttpResult>> SubmitPayloadAsync(
             string provider,
             StudioIngestionPayloadEnvelope request,
@@ -180,6 +199,14 @@ namespace StudioApiHost.Api
             }
         }
 
+        /// <summary>
+        /// Starts a provider-wide indexing operation.
+        /// </summary>
+        /// <param name="provider">The provider name supplied in the request route.</param>
+        /// <param name="studioProviderCatalog">The catalog used to resolve Studio ingestion providers.</param>
+        /// <param name="operationCoordinator">The coordinator that starts tracked background operations.</param>
+        /// <param name="loggerFactory">The logger factory used to create the endpoint logger.</param>
+        /// <returns>An accepted operation response, a validation error, a conflict response, or a generic problem response.</returns>
         private static Results<Accepted<StudioIngestionAcceptedOperationResponse>, BadRequest<StudioIngestionErrorResponse>, Conflict<StudioIngestionOperationConflictResponse>, ProblemHttpResult> StartIndexAllAsync(
             string provider,
             IStudioProviderCatalog studioProviderCatalog,
@@ -220,6 +247,14 @@ namespace StudioApiHost.Api
             return TypedResults.Accepted($"/operations/{acceptedResponse.OperationId}", acceptedResponse);
         }
 
+        /// <summary>
+        /// Loads the provider-neutral contexts exposed by a provider.
+        /// </summary>
+        /// <param name="provider">The provider name supplied in the request route.</param>
+        /// <param name="studioProviderCatalog">The catalog used to resolve Studio ingestion providers.</param>
+        /// <param name="loggerFactory">The logger factory used to create the endpoint logger.</param>
+        /// <param name="cancellationToken">The token that cancels the provider context lookup.</param>
+        /// <returns>A context response, a validation error, or a generic problem response.</returns>
         private static async Task<Results<Ok<StudioIngestionContextsResponse>, BadRequest<StudioIngestionErrorResponse>, ProblemHttpResult>> GetContextsAsync(
             string provider,
             IStudioProviderCatalog studioProviderCatalog,
@@ -261,6 +296,16 @@ namespace StudioApiHost.Api
             }
         }
 
+        /// <summary>
+        /// Starts a context-scoped indexing operation.
+        /// </summary>
+        /// <param name="provider">The provider name supplied in the request route.</param>
+        /// <param name="context">The provider-neutral context to index.</param>
+        /// <param name="studioProviderCatalog">The catalog used to resolve Studio ingestion providers.</param>
+        /// <param name="operationCoordinator">The coordinator that starts tracked background operations.</param>
+        /// <param name="loggerFactory">The logger factory used to create the endpoint logger.</param>
+        /// <param name="cancellationToken">The token that cancels context validation work.</param>
+        /// <returns>An accepted operation response, a validation error, a conflict response, or a generic problem response.</returns>
         private static async Task<Results<Accepted<StudioIngestionAcceptedOperationResponse>, BadRequest<StudioIngestionErrorResponse>, Conflict<StudioIngestionOperationConflictResponse>, ProblemHttpResult>> StartIndexContextAsync(
             string provider,
             string context,
@@ -314,6 +359,16 @@ namespace StudioApiHost.Api
             return TypedResults.Accepted($"/operations/{acceptedResponse.OperationId}", acceptedResponse);
         }
 
+        /// <summary>
+        /// Starts a context-scoped reset-indexing-status operation.
+        /// </summary>
+        /// <param name="provider">The provider name supplied in the request route.</param>
+        /// <param name="context">The provider-neutral context to reset.</param>
+        /// <param name="studioProviderCatalog">The catalog used to resolve Studio ingestion providers.</param>
+        /// <param name="operationCoordinator">The coordinator that starts tracked background operations.</param>
+        /// <param name="loggerFactory">The logger factory used to create the endpoint logger.</param>
+        /// <param name="cancellationToken">The token that cancels context validation work.</param>
+        /// <returns>An accepted operation response, a validation error, a conflict response, or a generic problem response.</returns>
         private static async Task<Results<Accepted<StudioIngestionAcceptedOperationResponse>, BadRequest<StudioIngestionErrorResponse>, Conflict<StudioIngestionOperationConflictResponse>, ProblemHttpResult>> ResetIndexingStatusForContextAsync(
             string provider,
             string context,
@@ -367,6 +422,14 @@ namespace StudioApiHost.Api
             return TypedResults.Accepted($"/operations/{acceptedResponse.OperationId}", acceptedResponse);
         }
 
+        /// <summary>
+        /// Starts a provider-wide reset-indexing-status operation.
+        /// </summary>
+        /// <param name="provider">The provider name supplied in the request route.</param>
+        /// <param name="studioProviderCatalog">The catalog used to resolve Studio ingestion providers.</param>
+        /// <param name="operationCoordinator">The coordinator that starts tracked background operations.</param>
+        /// <param name="loggerFactory">The logger factory used to create the endpoint logger.</param>
+        /// <returns>An accepted operation response, a validation error, a conflict response, or a generic problem response.</returns>
         private static Results<Accepted<StudioIngestionAcceptedOperationResponse>, BadRequest<StudioIngestionErrorResponse>, Conflict<StudioIngestionOperationConflictResponse>, ProblemHttpResult> ResetIndexingStatusAsync(
             string provider,
             IStudioProviderCatalog studioProviderCatalog,
@@ -407,6 +470,14 @@ namespace StudioApiHost.Api
             return TypedResults.Accepted($"/operations/{acceptedResponse.OperationId}", acceptedResponse);
         }
 
+        /// <summary>
+        /// Logs a missing-payload result before returning the standardized not-found response.
+        /// </summary>
+        /// <param name="logger">The logger that records the not-found event.</param>
+        /// <param name="provider">The provider name supplied in the request route.</param>
+        /// <param name="id">The provider-defined item identifier that was not found.</param>
+        /// <param name="error">The standardized not-found payload to return.</param>
+        /// <returns>The standardized not-found payload.</returns>
         private static NotFound<StudioIngestionErrorResponse> LogNotFoundAndReturn(
             ILogger logger,
             string provider,
@@ -418,6 +489,14 @@ namespace StudioApiHost.Api
             return TypedResults.NotFound(error);
         }
 
+        /// <summary>
+        /// Resolves and validates a Studio ingestion provider from the shared catalog.
+        /// </summary>
+        /// <param name="provider">The provider name supplied in the request route.</param>
+        /// <param name="studioProviderCatalog">The catalog used to resolve Studio ingestion providers.</param>
+        /// <param name="ingestionProvider">When this method succeeds, receives the typed Studio ingestion provider.</param>
+        /// <param name="errorResponse">When this method fails, receives the standardized validation error.</param>
+        /// <returns><see langword="true"/> when the provider exists and supports ingestion; otherwise <see langword="false"/>.</returns>
         private static bool TryGetIngestionProvider(
             string provider,
             IStudioProviderCatalog studioProviderCatalog,
@@ -453,6 +532,14 @@ namespace StudioApiHost.Api
             return true;
         }
 
+        /// <summary>
+        /// Validates that a provider-neutral context exists for the selected provider.
+        /// </summary>
+        /// <param name="provider">The provider name supplied in the request route.</param>
+        /// <param name="context">The provider-neutral context to validate.</param>
+        /// <param name="ingestionProvider">The provider used to load the current context list.</param>
+        /// <param name="cancellationToken">The token that cancels the provider context lookup.</param>
+        /// <returns>A validation error when the context is invalid; otherwise <see langword="null"/>.</returns>
         private static async Task<StudioIngestionErrorResponse?> ValidateContextAsync(
             string provider,
             string context,

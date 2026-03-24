@@ -4,6 +4,8 @@
     <TargetFramework>net10.0</TargetFramework>
     <ImplicitUsings>enable</ImplicitUsings>
     <Nullable>enable</Nullable>
+    <AssemblyName>StudioServiceHost.Tests</AssemblyName>
+    <RootNamespace>StudioServiceHost.Tests</RootNamespace>
   </PropertyGroup>
 
   <ItemGroup>
@@ -26,7 +28,7 @@
   </ItemGroup>
 
   <ItemGroup>
-    <ProjectReference Include="..\..\src\Studio\StudioApiHost\StudioApiHost.csproj" />
+    <ProjectReference Include="..\..\src\Studio\StudioServiceHost\StudioServiceHost.csproj" />
   </ItemGroup>
 
 </Project>

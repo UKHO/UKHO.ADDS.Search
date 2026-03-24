@@ -1,7 +1,7 @@
 using System.Threading.Channels;
 using UKHO.Search.Studio.Ingestion;
 
-namespace StudioApiHost.Operations
+namespace StudioServiceHost.Operations
 {
     /// <summary>
     /// Stores the current and historical Studio ingestion operations in memory.
@@ -166,6 +166,12 @@ namespace StudioApiHost.Operations
             Update(operationId, operation => operation.MarkFailed(message, failureCode, completed, total), true);
         }
 
+        /// <summary>
+        /// Applies a state transition to a tracked operation stored in memory.
+        /// </summary>
+        /// <param name="operationId">The identifier of the tracked operation to update.</param>
+        /// <param name="updateOperation">The callback that applies the specific state transition.</param>
+        /// <param name="clearActiveOperation">Indicates whether the active-operation slot should be released after the update.</param>
         private void Update(Guid operationId, Action<StudioTrackedOperation> updateOperation, bool clearActiveOperation = false)
         {
             lock (_syncRoot)
@@ -187,6 +193,11 @@ namespace StudioApiHost.Operations
             }
         }
 
+        /// <summary>
+        /// Creates the standardized conflict payload for a currently active operation.
+        /// </summary>
+        /// <param name="operation">The active operation snapshot to project into the conflict payload.</param>
+        /// <returns>The standardized conflict payload returned by the host APIs.</returns>
         private static StudioIngestionOperationConflictResponse CreateConflictResponse(StudioIngestionOperationStateResponse operation)
         {
             // Translate the current active operation snapshot into the standardized conflict payload returned by the APIs.
