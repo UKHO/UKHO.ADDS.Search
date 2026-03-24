@@ -1,4 +1,6 @@
-﻿# Copilot Instructions (High-Level)
+﻿File: .github\copilot-instructions.md
+````````markdown
+# Copilot Instructions (High-Level)
 
 You are an agent. Continue working until queries are fully resolved.  
 Be concise but complete. Prefer current research (Microsoft Learn) for Microsoft technologies.
@@ -25,6 +27,7 @@ Be concise but complete. Prefer current research (Microsoft Learn) for Microsoft
 - When asking open questions from a spec, record each answer directly in that same spec file and do not create a new version.
 - When collaborating on specifications in this repository, do not repeat the draft spec in chat before clarification questions; ask the next question directly and keep the evolving draft in the spec file instead.
 - When documentation references repository wiki pages, prefer proper markdown links rather than inline code-formatted URLs or plain page names.
+- Repository documentation standards should be captured in `.github/instructions/documentation-pass.instructions.md` and referenced as a non-negotiable requirement from planning and execution prompts so they are enforced in every coding task.
 
 ## Blazor Server Guidelines
 - For Blazor Server (Razor Components) pages, explicitly add `@rendermode InteractiveServer` on pages that must handle input/click events; otherwise, pages may render non-interactively even when other pages (e.g., Counter) are interactive.
