@@ -31,6 +31,8 @@ All documents for this piece of work MUST be created under a single subfolder of
 7. Do not show or repeat the current state of the spec (snapshot) in chat before asking the next clarification question.
 8. Flag technical challenges or important decisions.
 
+For work items that include documentation-pass or code-documentation requirements, treat internal and other non-public types as requiring the same developer-level documentation standard as public types. Do not scope documentation requirements only to public API surface when specifying implementation expectations.
+
 **Output Requirements:**
 - Only generate the requested proposal and specifications.
 - Always output documents in markdown format.

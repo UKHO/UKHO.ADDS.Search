@@ -3,7 +3,7 @@ using Microsoft.Extensions.Logging.Abstractions;
 using Shouldly;
 using UKHO.Search.ProviderModel;
 using UKHO.Search.ProviderModel.Injection;
-using UKHO.Search.Studio;
+using UKHO.Search.Studio.Providers;
 using UKHO.Search.Studio.Providers.FileShare;
 using UKHO.Search.Studio.Providers.FileShare.Injection;
 using UKHO.Search.Studio.Providers.FileShare.Tests.TestDoubles;

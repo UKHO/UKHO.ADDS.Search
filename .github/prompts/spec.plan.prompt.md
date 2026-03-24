@@ -47,8 +47,9 @@ Evolution Strategy:
    - Ensure each Task and its steps are actionable and testable.
 3. Ensure the plan explicitly includes developer-level code commenting work.
    - Explicitly reference `./.github/instructions/documentation-pass.instructions.md` as mandatory for every code-writing task.
-   - Add tasks or steps requiring comments on every public method.
-   - Add tasks or steps requiring comments on every public constructor.
+   - Add tasks or steps requiring comments on every class, including internal and other non-public classes.
+   - Add tasks or steps requiring comments on every method, including methods on internal and other non-public types.
+   - Add tasks or steps requiring comments on every constructor, including constructors on internal and other non-public types.
    - Add tasks or steps requiring comments for every public method and constructor parameter, documenting the purpose of each parameter.
    - Add tasks or steps requiring comments on every property whose meaning is not obvious from its name.
    - Require sufficient inline or block comments so developers can understand purpose, logical flow, and any algorithms used.
@@ -98,7 +99,7 @@ After presenting your plan, provide a brief summary of the overall approach and 
 - Sequence Work Items logically, addressing dependencies while maintaining runnable state.
 - Encourage thoroughness and clarity in each Task and its steps.
 - Include test strategy (unit, integration, e2e) per slice.
-- MANDATORY: Every implementation plan must explicitly require fully commented code for all code written during execution. Ensure the plan includes work to add developer-level comments to every public method and every public constructor, comments for every public method and constructor parameter explaining that parameter's purpose, and comments on every property whose meaning is not obvious from its name. Plans must also require sufficient inline or block comments so a developer reading the code can understand its purpose, logical flow, and any algorithms used. Code is not acceptable unless this commenting standard is planned for and delivered.
+- MANDATORY: Every implementation plan must explicitly require fully commented code for all code written during execution. Ensure the plan includes work to add developer-level comments to every class, every method, and every constructor, including internal and other non-public types and members; comments for every public method and constructor parameter explaining that parameter's purpose; and comments on every property whose meaning is not obvious from its name. Plans must also require sufficient inline or block comments so a developer reading the code can understand its purpose, logical flow, and any algorithms used. Code is not acceptable unless this commenting standard is planned for and delivered.
 - MANDATORY: The plan must explicitly require compliance with `./.github/instructions/documentation-pass.instructions.md` and must treat that file as a hard gate for implementation completion.
 
 **Architecture Output:**

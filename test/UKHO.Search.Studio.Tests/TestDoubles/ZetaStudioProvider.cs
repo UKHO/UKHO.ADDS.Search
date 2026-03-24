@@ -1,4 +1,4 @@
-using UKHO.Search.Studio;
+using UKHO.Search.Studio.Providers;
 
 namespace UKHO.Search.Studio.Tests.TestDoubles
 {

@@ -3,7 +3,8 @@ using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
 using UKHO.Search.Ingestion.Requests;
 using UKHO.Search.Ingestion.Requests.Serialization;
-using UKHO.Search.Studio;
+using UKHO.Search.Studio.Ingestion;
+using UKHO.Search.Studio.Providers;
 
 namespace UKHO.Search.Studio.Providers.FileShare
 {

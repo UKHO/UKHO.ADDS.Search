@@ -28,8 +28,9 @@ Workflow Per Work Item / Task / Step:
 ## Important Mandatory Requirements
 - Fully comply with `./.github/instructions/documentation-pass.instructions.md` for every code-writing task.
 - Fully comment all code you write.
-- Every public method and every public constructor must include developer-level comments explaining purpose, behavior, inputs/outputs, and any important implementation details.
-- Every public method parameter and every public constructor parameter must be commented, documenting the purpose of each parameter.
+- Every class, including internal and other non-public classes, must include explicit local documentation describing purpose and responsibility.
+- Every constructor and every method, including constructors and methods on internal and other non-public types, must include developer-level comments explaining purpose, behavior, inputs/outputs, and any important implementation details.
+- Every public method parameter and every public constructor parameter must be commented, documenting the purpose of each parameter, and internal/non-public constructors and methods should receive the same explicit local parameter documentation style where practical.
 - Every property whose meaning is not obvious from its name must also be commented.
 - Add sufficient inline or block comments so a developer reading the code can understand its purpose, logical flow, and any algorithms used.
 - Code is not acceptable unless this commenting standard is met.

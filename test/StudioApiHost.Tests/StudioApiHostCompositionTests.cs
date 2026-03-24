@@ -3,7 +3,7 @@ using Microsoft.Extensions.DependencyInjection;
 using Shouldly;
 using UKHO.Search.Ingestion.Providers;
 using UKHO.Search.ProviderModel;
-using UKHO.Search.Studio;
+using UKHO.Search.Studio.Providers;
 using Xunit;
 
 namespace StudioApiHost.Tests

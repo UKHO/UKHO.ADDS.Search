@@ -3,16 +3,26 @@ using Microsoft.AspNetCore.Http.HttpResults;
 using Microsoft.AspNetCore.Http.Json;
 using Microsoft.Extensions.Options;
 using StudioApiHost.Operations;
-using UKHO.Search.Studio;
+using UKHO.Search.Studio.Ingestion;
 
 namespace StudioApiHost.Api
 {
+    /// <summary>
+    /// Defines the API surface for inspecting tracked Studio ingestion operations.
+    /// </summary>
     public static class StudioOperationsApi
     {
+        /// <summary>
+        /// Maps the Studio operation inspection endpoints onto the supplied endpoint builder.
+        /// </summary>
+        /// <param name="endpoints">The endpoint builder that receives the operations endpoints.</param>
+        /// <returns>The same <paramref name="endpoints"/> instance so endpoint configuration can continue fluently.</returns>
         public static IEndpointRouteBuilder MapStudioOperationsApi(this IEndpointRouteBuilder endpoints)
         {
+            // Guard the extension entrypoint because the host must provide a valid route builder.
             ArgumentNullException.ThrowIfNull(endpoints);
 
+            // Group the operation endpoints under a shared route prefix and OpenAPI tag.
             var group = endpoints.MapGroup("/operations")
                                  .WithTags("Operations");
 
@@ -43,7 +53,10 @@ namespace StudioApiHost.Api
         private static Results<Ok<StudioIngestionOperationStateResponse>, NotFound<StudioIngestionErrorResponse>> GetActiveOperation(
             StudioIngestionOperationStore operationStore)
         {
+            // Read the active operation snapshot once so the response reflects a consistent in-memory view.
             var activeOperation = operationStore.GetActive();
+
+            // Return a standard not-found payload when nothing is currently queued or running.
             return activeOperation is null
                 ? TypedResults.NotFound(new StudioIngestionErrorResponse { Message = "No active operation was found." })
                 : TypedResults.Ok(activeOperation);
@@ -53,7 +66,10 @@ namespace StudioApiHost.Api
             Guid operationId,
             StudioIngestionOperationStore operationStore)
         {
+            // Query the retained in-memory operation history for the supplied identifier.
             var operation = operationStore.GetById(operationId);
+
+            // Return a provider-neutral not-found response when the requested operation is unknown.
             return operation is null
                 ? TypedResults.NotFound(new StudioIngestionErrorResponse { Message = $"Operation '{operationId:D}' was not found." })
                 : TypedResults.Ok(operation);
@@ -66,6 +82,7 @@ namespace StudioApiHost.Api
             StudioIngestionOperationStore operationStore,
             CancellationToken cancellationToken)
         {
+            // Resolve the event stream for the requested operation before any response body is written.
             var eventReader = operationStore.Subscribe(operationId);
             if (eventReader is null)
             {
@@ -75,15 +92,18 @@ namespace StudioApiHost.Api
                 });
             }
 
+            // Configure the response for server-sent events so proxies and clients do not buffer the stream.
             httpContext.Response.Headers.CacheControl = "no-cache";
             httpContext.Response.Headers.Append("X-Accel-Buffering", "no");
             httpContext.Response.ContentType = "text/event-stream";
 
+            // Emit an initial keep-alive comment so clients can detect that the SSE stream is connected.
             await httpContext.Response.WriteAsync(": connected\n\n", cancellationToken)
                                       .ConfigureAwait(false);
             await httpContext.Response.Body.FlushAsync(cancellationToken)
                                   .ConfigureAwait(false);
 
+            // Stream each retained event as an SSE data record until the tracked operation closes the channel.
             await foreach (var operationEvent in eventReader.ReadAllAsync(cancellationToken))
             {
                 await httpContext.Response.WriteAsync("data: ", cancellationToken)
@@ -99,6 +119,7 @@ namespace StudioApiHost.Api
                                       .ConfigureAwait(false);
             }
 
+            // Return an empty result because the SSE payload has already been written directly to the response body.
             return Results.Empty;
         }
     }

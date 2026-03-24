@@ -4,6 +4,7 @@ using Shouldly;
 using UKHO.Search.ProviderModel;
 using UKHO.Search.ProviderModel.Injection;
 using UKHO.Search.Studio.Injection;
+using UKHO.Search.Studio.Providers;
 using UKHO.Search.Studio.Tests.TestDoubles;
 using Xunit;
 

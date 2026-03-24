@@ -4,7 +4,7 @@ using Microsoft.Extensions.Logging.Abstractions;
 using Shouldly;
 using UKHO.Search.Ingestion.Requests;
 using UKHO.Search.Ingestion.Requests.Serialization;
-using UKHO.Search.Studio;
+using UKHO.Search.Studio.Ingestion;
 using UKHO.Search.Studio.Providers.FileShare;
 using Xunit;
 

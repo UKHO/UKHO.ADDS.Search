@@ -11,7 +11,8 @@ using Shouldly;
 using StudioApiHost.Tests.TestDoubles;
 using UKHO.Search.ProviderModel;
 using UKHO.Search.ProviderModel.Injection;
-using UKHO.Search.Studio;
+using UKHO.Search.Studio.Ingestion;
+using UKHO.Search.Studio.Providers;
 using Xunit;
 
 namespace StudioApiHost.Tests

@@ -1,6 +1,7 @@
 using Microsoft.Extensions.DependencyInjection;
 using Shouldly;
 using UKHO.Search.Studio.Injection;
+using UKHO.Search.Studio.Providers;
 using UKHO.Search.Studio.Tests.TestDoubles;
 using Xunit;
 

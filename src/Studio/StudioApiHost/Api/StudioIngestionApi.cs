@@ -1,15 +1,26 @@
 using Microsoft.AspNetCore.Http.HttpResults;
 using StudioApiHost.Operations;
-using UKHO.Search.Studio;
+using UKHO.Search.Studio.Ingestion;
+using UKHO.Search.Studio.Providers;
 
 namespace StudioApiHost.Api
 {
+    /// <summary>
+    /// Defines the API surface for Studio ingestion payload and operation endpoints.
+    /// </summary>
     public static class StudioIngestionApi
     {
+        /// <summary>
+        /// Maps the Studio ingestion endpoints onto the supplied endpoint builder.
+        /// </summary>
+        /// <param name="endpoints">The endpoint builder that receives the ingestion endpoints.</param>
+        /// <returns>The same <paramref name="endpoints"/> instance so endpoint configuration can continue fluently.</returns>
         public static IEndpointRouteBuilder MapStudioIngestionApi(this IEndpointRouteBuilder endpoints)
         {
+            // Guard the extension entrypoint because the host must provide a valid route builder.
             ArgumentNullException.ThrowIfNull(endpoints);
 
+            // Group ingestion endpoints under a shared route prefix and OpenAPI tag.
             var group = endpoints.MapGroup("/ingestion")
                                  .WithTags("Ingestion");
 
@@ -85,8 +96,10 @@ namespace StudioApiHost.Api
             ILoggerFactory loggerFactory,
             CancellationToken cancellationToken)
         {
+            // Create the endpoint logger once so all validation and failure paths share the same category.
             var logger = loggerFactory.CreateLogger("StudioIngestionApi");
 
+            // Resolve the provider before invoking provider-specific payload lookup logic.
             if (!TryGetIngestionProvider(provider, studioProviderCatalog, out var ingestionProvider, out var errorResponse))
             {
                 logger.LogWarning("Rejected ingestion fetch for unknown provider {ProviderName}.", provider);
@@ -95,6 +108,7 @@ namespace StudioApiHost.Api
 
             try
             {
+                // Delegate the provider-specific fetch and translate the normalized result into HTTP responses.
                 var result = await ingestionProvider.FetchPayloadByIdAsync(id, cancellationToken)
                                                     .ConfigureAwait(false);
 
@@ -108,6 +122,7 @@ namespace StudioApiHost.Api
             }
             catch (Exception ex) when (ex is not OperationCanceledException)
             {
+                // Convert unexpected provider failures into a generic problem response after logging the context.
                 logger.LogError(ex, "Failed to fetch an ingestion payload. ProviderName={ProviderName} Id={Id}", provider, id);
                 return TypedResults.Problem(statusCode: StatusCodes.Status500InternalServerError);
             }
@@ -121,14 +136,17 @@ namespace StudioApiHost.Api
             ILoggerFactory loggerFactory,
             CancellationToken cancellationToken)
         {
+            // Create the endpoint logger once so validation and execution paths emit consistent diagnostics.
             var logger = loggerFactory.CreateLogger("StudioIngestionApi");
 
+            // Resolve the provider before attempting to submit the wrapped payload.
             if (!TryGetIngestionProvider(provider, studioProviderCatalog, out var ingestionProvider, out var errorResponse))
             {
                 logger.LogWarning("Rejected ingestion payload submit for unknown provider {ProviderName}.", provider);
                 return TypedResults.BadRequest(errorResponse!);
             }
 
+            // Enforce the single active-operation constraint before queue submission occurs.
             var activeOperationConflict = operationStore.GetActiveConflict();
             if (activeOperationConflict is not null)
             {
@@ -141,6 +159,7 @@ namespace StudioApiHost.Api
 
             try
             {
+                // Delegate the provider-specific submission and translate the normalized result into HTTP responses.
                 var result = await ingestionProvider.SubmitPayloadAsync(request, cancellationToken)
                                                     .ConfigureAwait(false);
 
@@ -155,6 +174,7 @@ namespace StudioApiHost.Api
             }
             catch (Exception ex) when (ex is not OperationCanceledException)
             {
+                // Convert unexpected provider failures into a generic problem response after logging the context.
                 logger.LogError(ex, "Failed to submit an ingestion payload. ProviderName={ProviderName} Id={Id}", provider, request.Id);
                 return TypedResults.Problem(statusCode: StatusCodes.Status500InternalServerError);
             }
@@ -166,14 +186,17 @@ namespace StudioApiHost.Api
             StudioIngestionOperationCoordinator operationCoordinator,
             ILoggerFactory loggerFactory)
         {
+            // Create the endpoint logger once so validation and acceptance paths emit consistent diagnostics.
             var logger = loggerFactory.CreateLogger("StudioIngestionApi");
 
+            // Resolve the provider before attempting to queue a long-running provider-wide operation.
             if (!TryGetIngestionProvider(provider, studioProviderCatalog, out var ingestionProvider, out var errorResponse))
             {
                 logger.LogWarning("Rejected provider-wide ingestion for unknown provider {ProviderName}.", provider);
                 return TypedResults.BadRequest(errorResponse!);
             }
 
+            // Ask the coordinator to claim the single active-operation slot and start the provider callback.
             if (!operationCoordinator.TryStartOperation(
                     provider,
                     StudioIngestionOperationTypes.IndexAll,
@@ -203,8 +226,10 @@ namespace StudioApiHost.Api
             ILoggerFactory loggerFactory,
             CancellationToken cancellationToken)
         {
+            // Create the endpoint logger once so validation and provider lookup paths emit consistent diagnostics.
             var logger = loggerFactory.CreateLogger("StudioIngestionApi");
 
+            // Resolve the provider before asking it for provider-neutral context values.
             if (!TryGetIngestionProvider(provider, studioProviderCatalog, out var ingestionProvider, out var errorResponse))
             {
                 logger.LogWarning("Rejected ingestion context discovery for unknown provider {ProviderName}.", provider);
@@ -213,6 +238,7 @@ namespace StudioApiHost.Api
 
             try
             {
+                // Load the provider contexts and normalize the ordering for a deterministic Studio experience.
                 var response = await ingestionProvider.GetContextsAsync(cancellationToken)
                                                     .ConfigureAwait(false);
 
@@ -229,6 +255,7 @@ namespace StudioApiHost.Api
             }
             catch (Exception ex) when (ex is not OperationCanceledException)
             {
+                // Convert unexpected provider failures into a generic problem response after logging the context.
                 logger.LogError(ex, "Failed to load ingestion contexts. ProviderName={ProviderName}", provider);
                 return TypedResults.Problem(statusCode: StatusCodes.Status500InternalServerError);
             }
@@ -242,14 +269,17 @@ namespace StudioApiHost.Api
             ILoggerFactory loggerFactory,
             CancellationToken cancellationToken)
         {
+            // Create the endpoint logger once so validation and acceptance paths emit consistent diagnostics.
             var logger = loggerFactory.CreateLogger("StudioIngestionApi");
 
+            // Resolve the provider before validating and scheduling the context-scoped operation.
             if (!TryGetIngestionProvider(provider, studioProviderCatalog, out var ingestionProvider, out var errorResponse))
             {
                 logger.LogWarning("Rejected context ingestion for unknown provider {ProviderName}.", provider);
                 return TypedResults.BadRequest(errorResponse!);
             }
 
+            // Validate the requested context against the provider's current context list before creating the operation.
             var contextValidationError = await ValidateContextAsync(provider, context, ingestionProvider, cancellationToken)
                 .ConfigureAwait(false);
             if (contextValidationError is not null)
@@ -258,6 +288,7 @@ namespace StudioApiHost.Api
                 return TypedResults.BadRequest(contextValidationError);
             }
 
+            // Ask the coordinator to claim the active-operation slot and start the provider callback for the selected context.
             if (!operationCoordinator.TryStartOperation(
                     provider,
                     StudioIngestionOperationTypes.ContextIndex,
@@ -291,14 +322,17 @@ namespace StudioApiHost.Api
             ILoggerFactory loggerFactory,
             CancellationToken cancellationToken)
         {
+            // Create the endpoint logger once so validation and acceptance paths emit consistent diagnostics.
             var logger = loggerFactory.CreateLogger("StudioIngestionApi");
 
+            // Resolve the provider before validating and scheduling the context-scoped reset operation.
             if (!TryGetIngestionProvider(provider, studioProviderCatalog, out var ingestionProvider, out var errorResponse))
             {
                 logger.LogWarning("Rejected context reset for unknown provider {ProviderName}.", provider);
                 return TypedResults.BadRequest(errorResponse!);
             }
 
+            // Validate the requested context before creating the reset operation.
             var contextValidationError = await ValidateContextAsync(provider, context, ingestionProvider, cancellationToken)
                 .ConfigureAwait(false);
             if (contextValidationError is not null)
@@ -307,6 +341,7 @@ namespace StudioApiHost.Api
                 return TypedResults.BadRequest(contextValidationError);
             }
 
+            // Ask the coordinator to claim the active-operation slot and start the reset callback for the selected context.
             if (!operationCoordinator.TryStartOperation(
                     provider,
                     StudioIngestionOperationTypes.ResetIndexingStatus,
@@ -338,14 +373,17 @@ namespace StudioApiHost.Api
             StudioIngestionOperationCoordinator operationCoordinator,
             ILoggerFactory loggerFactory)
         {
+            // Create the endpoint logger once so validation and acceptance paths emit consistent diagnostics.
             var logger = loggerFactory.CreateLogger("StudioIngestionApi");
 
+            // Resolve the provider before scheduling the provider-wide reset operation.
             if (!TryGetIngestionProvider(provider, studioProviderCatalog, out var ingestionProvider, out var errorResponse))
             {
                 logger.LogWarning("Rejected provider-wide reset for unknown provider {ProviderName}.", provider);
                 return TypedResults.BadRequest(errorResponse!);
             }
 
+            // Ask the coordinator to claim the active-operation slot and start the provider callback.
             if (!operationCoordinator.TryStartOperation(
                     provider,
                     StudioIngestionOperationTypes.ResetIndexingStatus,
@@ -375,6 +413,7 @@ namespace StudioApiHost.Api
             string id,
             StudioIngestionErrorResponse error)
         {
+            // Log missing payloads before returning the provider-neutral not-found payload to the caller.
             logger.LogWarning("No ingestion payload was found. ProviderName={ProviderName} Id={Id}", provider, id);
             return TypedResults.NotFound(error);
         }
@@ -385,9 +424,11 @@ namespace StudioApiHost.Api
             out IStudioIngestionProvider ingestionProvider,
             out StudioIngestionErrorResponse? errorResponse)
         {
+            // Initialize the out parameters before entering validation branches.
             ingestionProvider = null!;
             errorResponse = null;
 
+            // Reject missing provider names before attempting any catalog lookup.
             if (string.IsNullOrWhiteSpace(provider))
             {
                 errorResponse = new StudioIngestionErrorResponse
@@ -397,6 +438,7 @@ namespace StudioApiHost.Api
                 return false;
             }
 
+            // Resolve the provider from the shared Studio catalog and confirm that it supports ingestion operations.
             if (!studioProviderCatalog.TryGetProvider(provider, out var studioProvider) || studioProvider is not IStudioIngestionProvider typedProvider)
             {
                 errorResponse = new StudioIngestionErrorResponse
@@ -406,6 +448,7 @@ namespace StudioApiHost.Api
                 return false;
             }
 
+            // Return the typed provider to the caller once validation and catalog lookup succeed.
             ingestionProvider = typedProvider;
             return true;
         }
@@ -416,6 +459,7 @@ namespace StudioApiHost.Api
             IStudioIngestionProvider ingestionProvider,
             CancellationToken cancellationToken)
         {
+            // Reject empty context values before performing the more expensive provider context lookup.
             if (string.IsNullOrWhiteSpace(context))
             {
                 return new StudioIngestionErrorResponse
@@ -424,9 +468,11 @@ namespace StudioApiHost.Api
                 };
             }
 
+            // Load the provider contexts once and compare against the requested provider-neutral value.
             var contextsResponse = await ingestionProvider.GetContextsAsync(cancellationToken)
                                                          .ConfigureAwait(false);
 
+            // Return null for a valid context or a standardized validation error when the context is unknown.
             return contextsResponse.Contexts.Any(contextResponse => string.Equals(contextResponse.Value, context, StringComparison.Ordinal))
                 ? null
                 : new StudioIngestionErrorResponse

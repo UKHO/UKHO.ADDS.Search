@@ -68,14 +68,21 @@ XML documentation must be high-depth and should include, where applicable:
 ## Developer-Level Commenting Standard
 Developer comments are mandatory throughout the implementation, not only on public APIs.
 
+- The same developer-level documentation standard applies to internal and other non-public types, not only to public API surface.
+- Internal classes, internal records, internal structs, internal interfaces, and other non-public types must carry an explicit type-level comment describing purpose, context, and responsibility.
+- Constructors and methods on internal and other non-public types must receive the same explicit local documentation treatment as constructors and methods on public types.
+- When XML documentation syntax is supported and keeps the source readable, prefer explicit local XML documentation for internal types and their constructors/methods as well so the code reads in one consistent style.
+
 ### Methods and executable logic
 - Every method must contain a clear explanatory comment block describing purpose, logical flow, and rationale.
+- Every constructor must also contain a clear explanatory comment block describing purpose, dependencies, and initialization intent.
 - Multi-step methods must also include step-by-step inline comments where needed to explain the flow and why the code works the way it does.
 - This requirement applies even when the implementation is empty, trivial, or apparently self-evident.
 - Local functions and non-trivial lambda expressions must also receive developer-level explanatory comments when they contain meaningful logic.
 
 ### Non-public members and types
-- Non-public types do not require XML documentation by default, but their methods still require the mandatory developer-level comments.
+- Non-public types do not require XML documentation by default, but they do require explicit type-level documentation comments and their constructors and methods still require the mandatory developer-level comments.
+- Internal classes must not be left undocumented merely because they are not public.
 - Private properties, fields, and constants should receive explanatory comments where needed to explain non-obvious purpose, coupling, constraints, or behaviour.
 
 ### Top-level programs
