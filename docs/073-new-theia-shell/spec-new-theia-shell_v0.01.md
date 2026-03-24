@@ -18,7 +18,7 @@
 - `v0.01` — Clarified that `src/Studio/OldServer` does not need an explicit marker file because it is expected to be deleted soon; folder move, non-active status, and specification constraints are sufficient.
 - `v0.01` — Clarified that the home page should copy the acceptable old layout pattern, but the orientation wording can be refreshed and chosen sensibly because wording is not important in this work package.
 - `v0.01` — Clarified that the home page should be re-openable later through a normal Theia command or menu path, not only opened by default at startup.
-- `v0.01` — Clarified that the rebuilt local Studio shell must use HTTPS hosting, and that this protocol change is the intentional exception to otherwise unchanged local hosting and integration behavior.
+- `v0.01` — Clarified that the rebuilt local Studio shell should remain on the fixed local HTTP endpoint while still receiving the Studio API endpoint over HTTPS, matching the previous working developer flow.
 - `v0.01` — Clarified that the initial home page only needs a close-enough placeholder reuse of the old layout pattern and does not need close visual matching because visual style will change in a later work package.
 - `v0.01` — Clarified that the initial shell should expose only the absolute minimum Theia chrome needed to start and show the home page, with no placeholder activity/workbench structure yet.
 - `v0.01` — Clarified that this work item should keep an explicit `build.ps1` entrypoint for the Theia shell rather than only requiring an equivalent alternative mechanism.
@@ -276,7 +276,7 @@ At minimum, the new shell baseline shall:
 3. `AppHost` passes the resolved Studio API endpoint into the shell process as `STUDIO_API_HOST_API_BASE_URL`
 4. `AppHost` passes the configured shell port into the process
 5. the new shell starts and serves the Studio browser application
-6. the user opens the shell at the configured local HTTPS endpoint
+6. the user opens the shell at the configured local HTTP endpoint
 
 #### Runtime API configuration flow
 
@@ -450,11 +450,11 @@ The implementation shall keep the current fixed local port configuration pattern
 
 This work item shall deliver a browser-hosted Theia shell only and shall not introduce Electron or other packageable desktop application structure.
 
-### FR-012b Use HTTPS local hosting
+### FR-012b Use HTTP local shell hosting with HTTPS backend integration
 
-The rebuilt local Studio shell shall use HTTPS hosting for local Aspire integration rather than remaining HTTP-only.
+The rebuilt local Studio shell shall continue to use the fixed local HTTP endpoint for browser access.
 
-This protocol change is the intentional exception to the otherwise unchanged local hosting and integration model.
+The Studio API endpoint supplied through `STUDIO_API_HOST_API_BASE_URL` shall continue to use HTTPS.
 
 ### FR-013 Preserve `STUDIO_API_HOST_API_BASE_URL`
 
@@ -725,7 +725,7 @@ None at present.
 - The old `View` menu command naming for showing `Home` should be preserved where practical.
 - For remaining low-level shell-behavior choices not otherwise called out in this work package, the default should be to do what the old project did where practical.
 - The `Home` page should include a simple manual smoke-test button labelled `test` which calls the `StudioServiceHost` `/echo` endpoint and displays the returned text next to the button, with no formatting polish required.
-- The rebuilt local Studio shell must use HTTPS hosting, and this protocol change is the intentional exception to the otherwise unchanged local hosting and integration model.
+- The rebuilt local Studio shell must remain on the fixed local HTTP endpoint while continuing to call `StudioServiceHost` over its Aspire-provided HTTPS endpoint.
 - The generated Theia scaffold should remain close to generator output and should only be customized where needed for build, Aspire, configuration, and home-page integration.
 - Exact generator version pinning is not required for this work item, but the implementation must still follow the documented Node/Yarn/nvm and toolchain lessons from the repository wiki.
 - `src/Studio/OldServer` does not require a dedicated marker file in this work item because it is expected to be deleted soon.

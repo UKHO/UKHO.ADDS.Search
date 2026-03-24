@@ -28,7 +28,7 @@ namespace StudioServiceHost
         /// <returns>The fully configured <see cref="WebApplication"/> instance.</returns>
         public static WebApplication BuildApp(string[] args, Action<WebApplicationBuilder>? configureBuilder = null)
         {
-            // Create the web application builder and define the trusted Studio shell origin used by local development.
+            // Create the web application builder and define the trusted HTTP Studio shell origin used by local development.
             var builder = WebApplication.CreateBuilder(args);
             var studioShellOrigin = "http://localhost:3000";
 

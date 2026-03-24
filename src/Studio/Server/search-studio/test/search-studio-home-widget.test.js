@@ -1,6 +1,7 @@
 const test = require('node:test');
 const assert = require('node:assert/strict');
 
+// Provide the minimal browser-like globals that Theia widget imports expect when the tests run under Node.
 global.navigator = { platform: 'Win32', userAgent: 'node.js' };
 global.document = {
     createElement: () => ({
@@ -44,6 +45,9 @@ require.extensions['.png'] = module => {
 
 const { SearchStudioHomeWidget } = require('../lib/browser/home/search-studio-home-widget.js');
 
+/**
+ * Verifies that the restored Home widget remains a normal closable document tab and requests its first render.
+ */
 test('SearchStudioHomeWidget requests an initial render and stays closable', () => {
     const originalUpdate = SearchStudioHomeWidget.prototype.update;
     let updateCalls = 0;
@@ -53,12 +57,16 @@ test('SearchStudioHomeWidget requests an initial render and stays closable', () 
     };
 
     try {
+        // Construct the widget once so the test can validate the restored Home tab contract.
         const widget = new SearchStudioHomeWidget();
 
+        assert.equal(widget.id, 'search-studio.home');
         assert.equal(widget.title.label, 'Home');
         assert.equal(widget.title.closable, true);
+        assert.equal(widget.title.iconClass, 'codicon codicon-home');
         assert.equal(updateCalls, 1);
     } finally {
+        // Restore the original widget update method so later tests keep the real implementation.
         SearchStudioHomeWidget.prototype.update = originalUpdate;
     }
 });

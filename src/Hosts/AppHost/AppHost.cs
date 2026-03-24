@@ -9,10 +9,18 @@ using UKHO.Search.Configuration;
 
 namespace AppHost
 {
+    /// <summary>
+    /// Orchestrates the local Aspire developer environment for UKHO Search.
+    /// </summary>
     public class AppHost
     {
+        /// <summary>
+        /// Builds and runs the distributed application that hosts the local developer stack.
+        /// </summary>
+        /// <param name="args">The command-line arguments supplied to the AppHost process.</param>
         public static async Task Main(string[] args)
         {
+            // Create the Aspire application model and read the fixed Studio shell port from AppHost configuration.
             var builder = DistributedApplication.CreateBuilder(args);
             var studioShellPort = builder.Configuration.GetValue<int>("Studio:Server:Port");
 
@@ -118,6 +126,7 @@ namespace AppHost
                                                 .WaitFor(storageBlob)
                                                 .WithScalar("Studio API");
 
+                    // Host the active Studio shell from the fresh Theia workspace while preserving the established script names and environment handoff.
                     var studioShell = builder.AddJavaScriptApp(ServiceNames.StudioShell, "../../Studio/Server", "start:browser")
                                              .WithBuildScript("build:browser")
                                              .WithEnvironment("GYP_MSVS_VERSION", "2022")
@@ -204,8 +213,14 @@ namespace AppHost
                          .RunAsync();
         }
 
+        /// <summary>
+        /// Reads Docker image metadata used by the import workflow so the loader can surface traceability details.
+        /// </summary>
+        /// <param name="imageReference">The Docker image reference to inspect.</param>
+        /// <returns>The discovered Docker image metadata, or an empty metadata object when inspection fails.</returns>
         private static async Task<DockerImageMetadata> GetDockerImageMetadataAsync(string imageReference)
         {
+            // Inspect the Docker image metadata so the import workflow can expose the resolved tags, digests, and creation details.
             try
             {
                 using var client = new DockerClientConfiguration().CreateClient();
@@ -232,6 +247,9 @@ namespace AppHost
             }
         }
 
+        /// <summary>
+        /// Carries the Docker image metadata needed by the import workflow annotations.
+        /// </summary>
         private sealed record DockerImageMetadata(string Tags, string Digest, long SizeBytes, string CreatedUtc);
     }
 }

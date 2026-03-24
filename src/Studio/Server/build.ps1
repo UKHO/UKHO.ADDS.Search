@@ -3,6 +3,7 @@ param(
     [string]$StampFile
 )
 
+# Stop immediately so Visual Studio and command-line callers surface the first failing step.
 $ErrorActionPreference = 'Stop'
 $requiredNodeVersion = '18.20.4'
 $requiredNodeVersionWithPrefix = "v$requiredNodeVersion"
@@ -16,6 +17,7 @@ function Invoke-ExternalCommand
         [string[]]$Arguments
     )
 
+    # Execute the external process and fail with the full command line when the tool exits unsuccessfully.
     & $FilePath @Arguments
 
     if ($LASTEXITCODE -ne 0)
@@ -26,6 +28,7 @@ function Invoke-ExternalCommand
 
 function Clear-VisualStudioToolchainEnvironment
 {
+    # Remove Visual Studio native-toolchain variables that can leak into Node native module builds.
     $variables = @(
         'VSINSTALLDIR',
         'VSCMD_VER',
@@ -48,12 +51,14 @@ function Clear-VisualStudioToolchainEnvironment
         }
     }
 
+    # Force the expected MSBuild toolchain selection for native Node dependencies.
     $env:npm_config_msvs_version = '2022'
     $env:GYP_MSVS_VERSION = '2022'
 }
 
 function Use-RequiredNodeVersion
 {
+    # Prefer nvm when it is available so the script self-corrects on developer machines with multiple Node versions.
     $nvmCommand = Get-Command 'nvm' -ErrorAction SilentlyContinue
 
     if ($null -ne $nvmCommand)
@@ -66,6 +71,7 @@ function Use-RequiredNodeVersion
         }
     }
 
+    # Validate the active Node version before restore or build work begins.
     $nodeCommand = Get-Command 'node' -ErrorAction SilentlyContinue
 
     if ($null -eq $nodeCommand)
@@ -83,18 +89,21 @@ function Use-RequiredNodeVersion
 
 function Get-ManifestPaths
 {
+    # Track the workspace manifests that affect restore and browser build output.
     return @(
         (Join-Path $WorkspaceRoot 'package.json'),
         (Join-Path $WorkspaceRoot 'yarn.lock'),
         (Join-Path $WorkspaceRoot 'lerna.json'),
         (Join-Path $WorkspaceRoot 'browser-app\package.json'),
         (Join-Path $WorkspaceRoot 'search-studio\package.json'),
-        (Join-Path $WorkspaceRoot 'search-studio\tsconfig.json')
+        (Join-Path $WorkspaceRoot 'search-studio\tsconfig.json'),
+        (Join-Path $WorkspaceRoot 'search-studio\scripts\copy-assets.js')
     )
 }
 
 function Get-BuildInputItems
 {
+    # Gather the file inputs used to decide whether the browser bundle must be rebuilt.
     $items = @()
 
     foreach ($path in (Get-ManifestPaths))
@@ -117,6 +126,7 @@ function Get-BuildInputItems
 
 function Test-BrowserBuildRequired
 {
+    # Always build when no stamp file was supplied or the previous output does not exist yet.
     if ([string]::IsNullOrWhiteSpace($StampFile))
     {
         return $true
@@ -130,7 +140,10 @@ function Test-BrowserBuildRequired
     $requiredOutputs = @(
         (Join-Path $WorkspaceRoot 'browser-app\lib\backend\main.js'),
         (Join-Path $WorkspaceRoot 'browser-app\lib\frontend\bundle.js'),
-        (Join-Path $WorkspaceRoot 'search-studio\lib\browser\search-studio-frontend-module.js')
+        (Join-Path $WorkspaceRoot 'search-studio\lib\browser\home\search-studio-home-widget.css'),
+        (Join-Path $WorkspaceRoot 'search-studio\lib\browser\search-studio-frontend-module.js'),
+        (Join-Path $WorkspaceRoot 'search-studio\lib\browser\assets\ukho-logo-transparent.png'),
+        (Join-Path $WorkspaceRoot 'search-studio\lib\node\search-studio-backend-module.js')
     )
 
     if (($requiredOutputs | Where-Object { -not (Test-Path $_) }).Count -gt 0)
@@ -152,6 +165,7 @@ function Test-BrowserBuildRequired
 
 function Test-YarnInstallRequired
 {
+    # Re-run yarn install when the workspace dependencies are missing or the manifests changed since the last restore.
     $nodeModulesPath = Join-Path $WorkspaceRoot 'node_modules'
     $installStampPath = Join-Path $nodeModulesPath '.install-stamp'
 
@@ -179,6 +193,7 @@ function Test-YarnInstallRequired
 
 function Write-StampFile
 {
+    # Persist the incremental build marker only when the caller requested one.
     if ([string]::IsNullOrWhiteSpace($StampFile))
     {
         return
@@ -198,6 +213,7 @@ Push-Location $WorkspaceRoot
 
 try
 {
+    # Normalize the toolchain environment before any JavaScript work starts.
     Clear-VisualStudioToolchainEnvironment
     Use-RequiredNodeVersion
 
@@ -230,5 +246,6 @@ try
 }
 finally
 {
+    # Restore the caller's working directory even when the build fails.
     Pop-Location
 }

@@ -1,11 +1,13 @@
-# StudioApiHost.Tests
+# StudioServiceHost.Tests
 
-Placeholder matching test project created by the test refactor audit.
+Focused integration and contract tests for the Studio service host.
 
 ## Scope
 
-- Placeholder smoke coverage for the matching `src/Studio/StudioApiHost` production project until real tests are added.
+- Protect the lightweight diagnostics endpoints such as `/echo`.
+- Protect the fixed HTTPS Studio shell origin used by the local CORS policy.
+- Protect the existing OpenAPI and provider-composition behavior.
 
 ## Execution
 
-Run dotnet test for this project when validating placeholder coverage.
+Run `dotnet test .\test\StudioServiceHost.Tests\StudioServiceHost.Tests.csproj` when validating Studio service host changes.

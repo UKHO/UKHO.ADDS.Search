@@ -1,6 +1,7 @@
 const test = require('node:test');
 const assert = require('node:assert/strict');
 
+// Provide the minimal browser-like globals that Theia command imports expect when the tests run under Node.
 global.navigator = { platform: 'Win32', userAgent: 'node.js' };
 global.document = {
     createElement: () => ({ style: {}, classList: { add() {}, remove() {} }, setAttribute() {}, removeAttribute() {}, nodeType: 1, ownerDocument: null }),
@@ -32,39 +33,22 @@ const {
     SearchStudioCommandContribution
 } = require('../lib/browser/search-studio-command-contribution.js');
 const {
-    SearchStudioCopyAllOutputCommand,
     SearchStudioShowHomeCommand
-} = require('../lib/browser/search-studio-constants.js');
+} = require('../lib/browser/search-studio-home-constants.js');
 
+/**
+ * Verifies that the registered Home command reuses the shared Home service reopen behavior.
+ */
 test('SearchStudioCommandContribution opens Home from the registered Show Home command', async () => {
-    const contribution = new SearchStudioCommandContribution();
     const registeredCommands = new Map();
     let openHomeCalls = 0;
 
-    contribution._messageService = {
-        info() {},
-        warn() {},
-        error() {}
-    };
-    contribution._outputService = { entries: [] };
-    contribution._providerCatalogService = {
-        refresh: async () => {},
-        ensureLoaded: async () => {},
-        snapshot: { providers: [] }
-    };
-    contribution._rulesCatalogService = {
-        refresh: async () => {}
-    };
-    contribution._providerSelectionService = {
-        selectedProviderName: undefined,
-        selectProvider() {}
-    };
-    contribution._documentService = {};
-    contribution._homeService = {
+    // Register the command against a lightweight fake registry so the test can invoke the exact handler that Theia would store.
+    const contribution = new SearchStudioCommandContribution({
         async openHome() {
             openHomeCalls += 1;
         }
-    };
+    });
 
     contribution.registerCommands({
         registerCommand: (command, handler) => {
@@ -75,123 +59,4 @@ test('SearchStudioCommandContribution opens Home from the registered Show Home c
     await registeredCommands.get(SearchStudioShowHomeCommand.id).execute();
 
     assert.equal(openHomeCalls, 1);
-});
-
-test('SearchStudioCommandContribution copies the full merged output stream to the clipboard', async () => {
-    const originalNavigator = global.navigator;
-    const clipboardWrites = [];
-    global.navigator = {
-        clipboard: {
-            async writeText(value) {
-                clipboardWrites.push(value);
-            }
-        }
-    };
-
-    try {
-        const contribution = new SearchStudioCommandContribution();
-        const registeredCommands = new Map();
-        const infoMessages = [];
-
-        contribution._messageService = {
-            info: message => infoMessages.push(message),
-            warn() {},
-            error() {}
-        };
-        contribution._outputService = {
-            entries: [
-                {
-                    id: 'entry-1',
-                    timestamp: '2026-03-23T10:03:37.280Z',
-                    level: 'info',
-                    source: 'providers',
-                    message: 'Loaded provider metadata.'
-                },
-                {
-                    id: 'entry-2',
-                    timestamp: '2026-03-23T10:03:38.280Z',
-                    level: 'error',
-                    source: 'rules',
-                    message: 'Rule validation failed.'
-                }
-            ]
-        };
-        contribution._providerCatalogService = {
-            refresh: async () => {},
-            ensureLoaded: async () => {},
-            snapshot: { providers: [] }
-        };
-        contribution._rulesCatalogService = {
-            refresh: async () => {}
-        };
-        contribution._providerSelectionService = {
-            selectedProviderName: undefined,
-            selectProvider() {}
-        };
-        contribution._documentService = {};
-        contribution._homeService = {
-            async openHome() {}
-        };
-
-        contribution.registerCommands({
-            registerCommand: (command, handler) => {
-                registeredCommands.set(command.id, handler);
-            }
-        });
-
-        await registeredCommands.get(SearchStudioCopyAllOutputCommand.id).execute();
-
-        assert.deepEqual(clipboardWrites, [
-            '10:03:37 INFO [providers] Loaded provider metadata.\r\n10:03:38 ERROR [rules] Rule validation failed.'
-        ]);
-        assert.deepEqual(infoMessages, ['Studio output copied to the clipboard.']);
-    } finally {
-        global.navigator = originalNavigator;
-    }
-});
-
-test('SearchStudioCommandContribution warns when clipboard copy is unavailable', async () => {
-    const originalNavigator = global.navigator;
-    global.navigator = {};
-
-    try {
-        const contribution = new SearchStudioCommandContribution();
-        const registeredCommands = new Map();
-        const warnMessages = [];
-
-        contribution._messageService = {
-            info() {},
-            warn: message => warnMessages.push(message),
-            error() {}
-        };
-        contribution._outputService = { entries: [] };
-        contribution._providerCatalogService = {
-            refresh: async () => {},
-            ensureLoaded: async () => {},
-            snapshot: { providers: [] }
-        };
-        contribution._rulesCatalogService = {
-            refresh: async () => {}
-        };
-        contribution._providerSelectionService = {
-            selectedProviderName: undefined,
-            selectProvider() {}
-        };
-        contribution._documentService = {};
-        contribution._homeService = {
-            async openHome() {}
-        };
-
-        contribution.registerCommands({
-            registerCommand: (command, handler) => {
-                registeredCommands.set(command.id, handler);
-            }
-        });
-
-        await registeredCommands.get(SearchStudioCopyAllOutputCommand.id).execute();
-
-        assert.deepEqual(warnMessages, ['Clipboard access is unavailable for Studio Output.']);
-    } finally {
-        global.navigator = originalNavigator;
-    }
 });

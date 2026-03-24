@@ -1,135 +1,74 @@
 import * as React from '@theia/core/shared/react';
-import { inject, injectable } from '@theia/core/shared/inversify';
+import { injectable } from '@theia/core/shared/inversify';
 import { ReactWidget } from '@theia/core/lib/browser/widgets/react-widget';
 import ukhoLogoPath = require('../assets/ukho-logo-transparent.png');
-import { SearchStudioHomeJumpPoints } from './search-studio-home-jump-points';
-import { SearchStudioHomeNavigationService } from './search-studio-home-navigation-service';
 import {
     SearchStudioHomeWidgetIconClass,
     SearchStudioHomeWidgetId,
     SearchStudioHomeWidgetLabel
-} from '../search-studio-constants';
+} from '../search-studio-home-constants';
+import './search-studio-home-widget.css';
 
+/**
+ * Renders the lightweight Studio Home document that orients users when the fresh Theia shell starts.
+ */
 @injectable()
 export class SearchStudioHomeWidget extends ReactWidget {
 
-    @inject(SearchStudioHomeNavigationService)
-    protected readonly _homeNavigationService!: SearchStudioHomeNavigationService;
-
+    /**
+     * Creates the Home widget and configures it as a normal closable document tab.
+     */
     constructor() {
         super();
+
+        // Reuse the previous shell identifiers so commands, menus, and tests align with the established Home contract.
         this.id = SearchStudioHomeWidgetId;
         this.title.label = SearchStudioHomeWidgetLabel;
         this.title.caption = 'Search Studio home';
         this.title.iconClass = SearchStudioHomeWidgetIconClass;
         this.title.closable = true;
         this.addClass('search-studio-home-widget');
+
+        // Request the initial render immediately so the startup-open experience shows the branded content without extra interaction.
         this.update();
     }
 
+    /**
+     * Renders the Home placeholder layout using the copied runtime-served UKHO logo asset and short orientation text.
+     *
+     * @returns The React node tree for the Home document tab.
+     */
     protected render(): React.ReactNode {
+        // Keep the presentation intentionally lightweight for this slice by restoring only the key branding and orientation surface.
         return (
-            <div style={{
-                display: 'grid',
-                gap: '1.5rem',
-                padding: '2rem',
-                maxWidth: '64rem'
-            }}>
-                <header style={{
-                    display: 'flex',
-                    alignItems: 'center',
-                    justifyContent: 'space-between',
-                    gap: '1rem',
-                    padding: '1.5rem',
-                    borderRadius: '12px',
-                    border: '1px solid var(--theia-panel-border)',
-                    background: 'linear-gradient(180deg, rgba(15, 23, 42, 0.92) 0%, rgba(15, 23, 42, 0.72) 100%)',
-                    flexWrap: 'wrap'
-                }}>
-                    <div style={{ display: 'grid', gap: '0.75rem', flex: '1 1 26rem', minWidth: '18rem' }}>
-                        <h1 style={{ margin: 0, fontSize: '2rem' }}>Search Studio</h1>
-                        <p style={{
-                            margin: 0,
-                            color: 'var(--theia-descriptionForeground)',
-                            lineHeight: 1.6
-                        }}>
+            <div className="search-studio-home-widget__content">
+                <header className="search-studio-home-widget__hero">
+                    <div className="search-studio-home-widget__copy">
+                        <h1 className="search-studio-home-widget__title">Search Studio</h1>
+                        <p className="search-studio-home-widget__summary">
                             Welcome to the Studio shell for provider operations, rules exploration, and ingestion workflow review.
                             Use the activity bar to move between the current work areas, and use the Theia View menu whenever you want to reopen this Home tab.
                         </p>
                     </div>
                     <img
+                        className="search-studio-home-widget__logo"
                         src={ukhoLogoPath}
                         alt="UKHO Search Studio"
-                        style={{
-                            display: 'block',
-                            width: '100%',
-                            maxWidth: '16rem',
-                            height: 'auto',
-                            flex: '0 0 auto'
-                        }}
                     />
                 </header>
-                <section style={{ display: 'grid', gap: '0.75rem' }}>
-                    <h2 style={{ margin: 0, fontSize: '1.1rem' }}>Get started</h2>
-                    <p style={{ margin: 0, color: 'var(--theia-descriptionForeground)', lineHeight: 1.6 }}>
-                        Jump straight into the current Studio workflows. Each action uses the same destination-opening behavior already used elsewhere in the shell.
+                <section className="search-studio-home-widget__section">
+                    <h2 className="search-studio-home-widget__section-title">Current scope</h2>
+                    <p className="search-studio-home-widget__summary">
+                        This restored Home page stays intentionally lightweight for now. It provides branding and orientation while later work items bring back deeper Studio-specific workflows.
                     </p>
-                    <div style={{
-                        display: 'grid',
-                        gap: '0.75rem',
-                        gridTemplateColumns: 'repeat(auto-fit, minmax(14rem, 1fr))'
-                    }}>
-                        {SearchStudioHomeJumpPoints.map(item => (
-                            <button
-                                key={item.id}
-                                type="button"
-                                className="theia-button"
-                                onClick={() => void this._homeNavigationService.openJumpPoint(item.id)}
-                                style={{
-                                    display: 'grid',
-                                    justifyItems: 'start',
-                                    gap: '0.5rem',
-                                    padding: '1rem',
-                                    borderRadius: '10px',
-                                    border: '1px solid var(--theia-panel-border)',
-                                    background: item.emphasis === 'primary'
-                                        ? 'var(--theia-button-background)'
-                                        : 'var(--theia-editor-background)',
-                                    color: item.emphasis === 'primary'
-                                        ? 'var(--theia-button-foreground)'
-                                        : 'var(--theia-editor-foreground)',
-                                    textAlign: 'left',
-                                    cursor: 'pointer'
-                                }}
-                            >
-                                <strong>{item.label}</strong>
-                                <span style={{
-                                    color: item.emphasis === 'primary'
-                                        ? 'var(--theia-button-foreground)'
-                                        : 'var(--theia-descriptionForeground)',
-                                    lineHeight: 1.5
-                                }}>
-                                    {item.description}
-                                </span>
-                            </button>
-                        ))}
-                    </div>
                 </section>
-                <section style={{
-                    display: 'grid',
-                    gap: '0.5rem',
-                    padding: '1rem 1.25rem',
-                    borderRadius: '10px',
-                    border: '1px solid var(--theia-panel-border)',
-                    background: 'var(--theia-editor-inactiveSelectionBackground)'
-                }}>
-                    <strong>Current scope</strong>
-                    <span style={{ color: 'var(--theia-descriptionForeground)', lineHeight: 1.5 }}>
-                        This first restored Home page stays intentionally lightweight. It provides branding and orientation only, without operational counts or dashboard summaries.
-                    </span>
+                <section className="search-studio-home-widget__note-panel">
+                    <strong>What to expect</strong>
+                    <p className="search-studio-home-widget__note">
+                        Generated Theia welcome surfaces may still appear alongside this tab while the new shell is rebuilt incrementally.
+                    </p>
                 </section>
             </div>
         );
     }
-
 }

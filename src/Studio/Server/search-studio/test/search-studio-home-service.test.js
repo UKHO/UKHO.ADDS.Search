@@ -1,6 +1,7 @@
 const test = require('node:test');
 const assert = require('node:assert/strict');
 
+// Provide the minimal browser-like globals that Theia service imports expect when the tests run under Node.
 global.navigator = { platform: 'Win32', userAgent: 'node.js' };
 global.document = {
     createElement: () => ({ style: {}, classList: { add() {}, remove() {} }, setAttribute() {}, removeAttribute() {}, nodeType: 1, ownerDocument: null }),
@@ -30,8 +31,10 @@ require.extensions['.css'] = () => {};
 
 const { SearchStudioHomeService } = require('../lib/browser/home/search-studio-home-service.js');
 
+/**
+ * Verifies that the Home service attaches Home as a standard main-area document and reuses the same tab on reopen.
+ */
 test('SearchStudioHomeService opens Home in the main area and activates the tab', async () => {
-    const service = new SearchStudioHomeService();
     const widget = {
         id: 'search-studio.home',
         isAttached: false
@@ -41,50 +44,55 @@ test('SearchStudioHomeService opens Home in the main area and activates the tab'
     };
     const addWidgetCalls = [];
     const activateWidgetCalls = [];
-    const outputMessages = [];
+    const originalConsoleInfo = console.info;
+    const infoMessages = [];
 
-    service._widgetManager = {
-        async getOrCreateWidget(factoryId) {
-            assert.equal(factoryId, 'search-studio.home');
-            return widget;
-        }
+    console.info = message => {
+        infoMessages.push(message);
     };
-    service._shell = {
-        mainPanel: {
-            *widgets() {
-                yield existingFirstWidget;
+
+    try {
+        // Use lightweight fakes so the test can focus on the Home tab placement contract instead of real Theia services.
+        const service = new SearchStudioHomeService(
+            {
+                mainPanel: {
+                    *widgets() {
+                        yield existingFirstWidget;
+                    }
+                },
+                async addWidget(targetWidget, options) {
+                    addWidgetCalls.push({ targetWidget, options });
+                    targetWidget.isAttached = true;
+                },
+                async activateWidget(widgetId) {
+                    activateWidgetCalls.push(widgetId);
+                }
+            },
+            {
+                async getOrCreateWidget(factoryId) {
+                    assert.equal(factoryId, 'search-studio.home');
+                    return widget;
+                }
             }
-        },
-        async addWidget(targetWidget, options) {
-            addWidgetCalls.push({ targetWidget, options });
-            targetWidget.isAttached = true;
-        },
-        async activateWidget(widgetId) {
-            activateWidgetCalls.push(widgetId);
-        }
-    };
-    service._outputService = {
-        info(message, source) {
-            outputMessages.push({ message, source });
-        }
-    };
+        );
 
-    await service.openHome();
-    await service.openHome();
+        await service.openHome();
+        await service.openHome();
 
-    assert.deepEqual(addWidgetCalls, [
-        {
-            targetWidget: widget,
-            options: {
-                area: 'main',
-                mode: 'tab-before',
-                ref: existingFirstWidget
+        assert.deepEqual(addWidgetCalls, [
+            {
+                targetWidget: widget,
+                options: {
+                    area: 'main',
+                    mode: 'tab-before',
+                    ref: existingFirstWidget
+                }
             }
-        }
-    ]);
-    assert.deepEqual(activateWidgetCalls, ['search-studio.home', 'search-studio.home']);
-    assert.deepEqual(outputMessages, [
-        { message: 'Opened Home.', source: 'home' },
-        { message: 'Opened Home.', source: 'home' }
-    ]);
+        ]);
+        assert.deepEqual(activateWidgetCalls, ['search-studio.home', 'search-studio.home']);
+        assert.deepEqual(infoMessages, ['Opened Studio Home.', 'Opened Studio Home.']);
+    } finally {
+        // Restore console state so later tests keep the normal logging implementation.
+        console.info = originalConsoleInfo;
+    }
 });

@@ -1,11 +1,12 @@
 # AppHost.Tests
 
-Placeholder matching test project created by the test refactor audit.
+Contract tests for the AppHost project.
 
 ## Scope
 
-- Placeholder smoke coverage for the matching production project until real tests are added.
+- Protect the fixed Studio shell port defined in `src/Hosts/AppHost/appsettings.json`.
+- Protect the preserved Studio shell Aspire wiring in `src/Hosts/AppHost/AppHost.cs`.
 
 ## Execution
 
-Run dotnet test for this project when validating placeholder coverage.
+Run `dotnet test .\test\AppHost.Tests\AppHost.Tests.csproj` when validating AppHost changes.

@@ -1,6 +1,6 @@
 # Tools: `UKHO Search Studio`
 
-This page describes the initial Eclipse Theia-based studio shell introduced for local development.
+This page describes the active Eclipse Theia-based Studio shell used for local development.
 
 See also:
 
@@ -12,27 +12,18 @@ See also:
 
 - `src/Studio/Server`
 
-It currently provides:
+The current bootstrap slice provides:
 
-- a default `Home` tab document that opens on Studio startup and can be reopened from the Theia `View` menu
-- task-focused `Home` jump points for `Start ingestion`, `Manage rules`, and `Browse providers`, each reusing the normal Studio destination-opening behavior for the current or first available provider
-- a branded Theia shell with dedicated `Providers`, `Rules`, `Ingestion`, and `Search` activity-bar work areas
-- `Providers` as the default startup activity once the shell has finished initializing
-- explicit left-side activity ordering so the built-in Theia `Explore` activity stays below the Studio-specific work areas
-- a native Theia extension named `search-studio`
-- a reduced-size UKHO logo rendered from a copied runtime asset within the `search-studio` package rather than from the repository `docs/` folder
-- provider-backed native Theia navigation trees for `Providers` and `Ingestion` using live `StudioApiHost` `GET /providers` data
-- first-root-only default expansion in `Providers`, `Rules`, and `Ingestion` so the first visible provider root opens automatically while other top-level roots remain collapsed
-- placeholder editor surfaces for provider overview, queue inspection, and dead-letter inspection
-- a rules-backed native Theia `Rules` navigation tree using live `StudioApiHost` `GET /rules` data
-- placeholder rules overview, rule-checker, existing-rule, and new-rule editor surfaces opened from the live rules tree
-- an ingestion work area with provider overview plus explicit `By id`, `All unindexed`, and `By context` mode nodes beneath provider roots
-- live ingestion editor surfaces driven by `StudioApiHost`, including payload fetch-by-id, provider-wide and context-scoped long-running ingestion, reset flows, active-operation recovery, and coarse progress/final-state feedback
-- a mock `Search` work area with a left query/facets panel, a central `Search results` document, and a right-hand `Search Details` panel for screenshot-aligned review
-- native Theia view-toolbar actions for `New Rule`, `Refresh Rules`, and `Refresh Providers` where those actions remain visible
-- a lower `Studio Output` panel for shell diagnostics and placeholder action feedback, now rendered through a read-only `xterm.js` surface with reveal-latest behavior, pastel `INFO` / `ERROR` severity styling, and native toolbar `Copy all` and `Clear output` actions
-- runtime configuration for the local `StudioApiHost` API base URL
-- access to `StudioApiHost` read-only rule discovery through `GET /rules`
+- a fresh active Theia workspace at `src/Studio/Server`
+- the previous Studio shell preserved at `src/Studio/OldServer` as reference-only source
+- the preserved root workspace script names `build:browser` and `start:browser`
+- the preserved package names `browser-app` and `search-studio`
+- Studio product branding through the browser-app Theia frontend configuration
+- a lightweight Studio `Home` document that opens by default and can be reopened from `View -> Home`
+- the copied UKHO logo served from the active runtime asset pipeline under `search-studio`
+- a same-origin runtime configuration bridge at `/search-studio/api/configuration`
+- browser-side startup validation that logs the resolved `STUDIO_API_HOST_API_BASE_URL` handoff
+- the preserved Visual Studio incremental build entrypoint `src/Studio/Server/build.ps1`
 
 This work package does **not** migrate existing repository tooling into the shell yet.
 
@@ -57,7 +48,7 @@ Current default:
 
 - `3000`
 
-The current shell endpoint is exposed as a direct **HTTP** endpoint.
+The current shell endpoint is exposed on the fixed local **HTTP** endpoint.
 
 Use:
 
@@ -67,7 +58,7 @@ Do **not** use:
 
 - `https://localhost:3000`
 
-At the moment, the shell is not configured with its own HTTPS endpoint.
+The shell continues to call `StudioServiceHost` over its Aspire-provided HTTPS endpoint through `STUDIO_API_HOST_API_BASE_URL`, while the browser shell itself stays on fixed-port HTTP for local development.
 
 ## Visual Studio build integration
 
@@ -75,9 +66,9 @@ The repository now includes a Theia build script at:
 
 - `src/Studio/Server/build.ps1`
 
-`src/Studio/StudioApiHost/StudioApiHost.csproj` invokes that script before build.
+`src/Studio/StudioServiceHost/StudioServiceHost.csproj` invokes that script before build.
 
-This was chosen so that, on a fresh clone, building the local Aspire solution in Visual Studio also prepares the Theia shell before the studio API host is built.
+This was chosen so that, on a fresh clone, building the local Aspire solution in Visual Studio also prepares the active Theia shell before the Studio service host is built.
 
 The integration is incremental:
 
@@ -94,24 +85,20 @@ The tracked inputs currently include:
 - `src/Studio/Server/browser-app/package.json`
 - `src/Studio/Server/search-studio/package.json`
 - `src/Studio/Server/search-studio/tsconfig.json`
+- `src/Studio/Server/search-studio/scripts/copy-assets.js`
 - `src/Studio/Server/search-studio/src/**`
 
 ## Current startup shell behavior
 
-The current Studio shell startup is intentionally opinionated:
+The current shell intentionally keeps the generated Theia workbench structure while restoring the first Studio-owned landing surface:
 
-- `Home` still opens as the default document in the main area
-- `Providers` becomes the active left-side activity after the shell layout finishes initializing
-- `Rules`, `Ingestion`, and `Search` are pre-revealed so their Studio activity icons are present immediately
-- the built-in Theia `Explore` activity remains available, but Studio-specific activities are ranked ahead of it so `Explore` appears at the bottom of the left activity list
-
-The current left-side order is:
-
-1. `Providers`
-2. `Rules`
-3. `Ingestion`
-4. `Search`
-5. `Explore`
+- the `Home` document opens automatically in the main workbench area as a normal closable tab
+- `View -> Home` reopens the same Home document after it is closed
+- the default Theia browser shell still coexists without the previous custom Studio activity layout
+- the `search-studio` extension preloads the same-origin runtime configuration bridge during startup
+- startup logs report whether the Studio API base URL handoff was resolved successfully
+- the Home surface uses the copied runtime-served UKHO logo plus lightweight orientation text only
+- later work items build on the restored Home document with follow-on Studio UI surfaces
 
 ## Prerequisite tooling
 
@@ -173,6 +160,7 @@ This builds:
 
 - the workspace packages
 - the native Theia extension `search-studio`
+- the copied static frontend assets used by the Home document
 - the browser application bundle under `browser-app`
 
 ### 5. Restart or refresh after frontend changes
@@ -216,7 +204,8 @@ The shell is designed to run as part of the wider local Aspire stack.
 4. Start `AppHost`
 5. In the Aspire dashboard, verify the `tools-studio-shell` resource is healthy
 6. Open the shell with `http://localhost:3000`
-7. Confirm `Providers` is the active left-side activity on first load and that `Explore` appears below the Studio work areas
+7. Confirm the `Home` tab opens automatically with the UKHO logo and Studio orientation text
+8. Close the `Home` tab and reopen it from `View -> Home`
 
 `StudioApiHost` remains a separate API host, and the shell consumes a runtime configuration bridge so its browser-side services can discover the correct API base URL at startup.
 
