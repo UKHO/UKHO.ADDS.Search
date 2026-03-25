@@ -10,7 +10,7 @@ import {
 import { SearchStudioPrimeReactDemoWidget } from './search-studio-primereact-demo-widget';
 
 /**
- * Opens and reactivates the temporary PrimeReact research pages from the Theia View menu.
+ * Opens and reactivates the single retained temporary PrimeReact research surface from the Theia View menu.
  */
 @injectable()
 export class SearchStudioPrimeReactDemoService {
@@ -31,12 +31,12 @@ export class SearchStudioPrimeReactDemoService {
     }
 
     /**
-     * Opens the temporary PrimeReact demo document in the main workbench area and activates the tab.
+     * Opens the temporary PrimeReact demo document in the main workbench area and activates the retained showcase tab.
      *
-     * @param pageId Identifies which temporary PrimeReact page should be shown inside the shared demo widget.
+     * @param pageId Identifies the retained PrimeReact showcase page that should be shown inside the shared demo widget.
      * @returns A promise that completes after the PrimeReact demo widget is attached and focused.
      */
-    async openDemo(pageId: SearchStudioPrimeReactDemoPageId = 'bootstrap'): Promise<void> {
+    async openDemo(pageId: SearchStudioPrimeReactDemoPageId = 'showcase'): Promise<void> {
         try {
             // Reuse the same temporary widget instance so toggled demo state behaves like a normal reopenable Theia document.
             const widget = await this.widgetManager.getOrCreateWidget<SearchStudioPrimeReactDemoWidget>(SearchStudioPrimeReactDemoWidgetFactoryId);

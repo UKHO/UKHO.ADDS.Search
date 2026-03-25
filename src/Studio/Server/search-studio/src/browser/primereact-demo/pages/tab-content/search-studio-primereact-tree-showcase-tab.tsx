@@ -7,7 +7,7 @@ import {
     createTreeDemoNodes,
     SearchStudioPrimeReactDemoStatus,
     SearchStudioPrimeReactDemoTreeNode
-} from '../data/search-studio-primereact-demo-data';
+} from '../../data/search-studio-primereact-demo-data';
 import {
     countSelectedTreeKeys,
     createExpandedTreeKeys,
@@ -15,8 +15,8 @@ import {
     SearchStudioPrimeReactDemoExpandedKeys,
     SearchStudioPrimeReactDemoScenario,
     SearchStudioPrimeReactDemoTreeSelectionKeys
-} from '../data/search-studio-primereact-demo-state';
-import { SearchStudioPrimeReactDemoPageProps } from '../search-studio-primereact-demo-page-props';
+} from '../../data/search-studio-primereact-demo-state';
+import { SearchStudioPrimeReactDemoPageProps } from '../../search-studio-primereact-demo-page-props';
 
 const scenarioOptions = [
     { label: 'Ready', value: 'ready' },
@@ -96,6 +96,10 @@ export function SearchStudioPrimeReactTreeDemoPage(props: SearchStudioPrimeReact
         () => countSelectedTreeKeys(selectionKeys),
         [selectionKeys]
     );
+    const hostedInsideTabbedShell = props.hostDisplayMode === 'tabbed';
+    const pageClassName = hostedInsideTabbedShell
+        ? 'search-studio-primereact-demo-page search-studio-primereact-demo-page--styled search-studio-primereact-demo-page--tab-hosted search-studio-primereact-demo-page--tab-hosted-data-heavy'
+        : 'search-studio-primereact-demo-page search-studio-primereact-demo-page--styled';
 
     /**
      * Updates the current high-level page scenario shown by the hierarchy surface.
@@ -192,7 +196,7 @@ export function SearchStudioPrimeReactTreeDemoPage(props: SearchStudioPrimeReact
 
     // Render the hierarchy evaluation surface using full styled PrimeReact so expand/collapse and selection can be reviewed in-context.
     return (
-        <div className="search-studio-primereact-demo-page search-studio-primereact-demo-page--styled">
+        <div className={pageClassName}>
             <header className="search-studio-primereact-demo-page__hero">
                 <div className="search-studio-primereact-demo-page__hero-copy">
                     <div className="search-studio-primereact-demo-page__hero-heading-row">
@@ -261,7 +265,7 @@ export function SearchStudioPrimeReactTreeDemoPage(props: SearchStudioPrimeReact
                     </div>
                 </article>
 
-                <article className="search-studio-primereact-demo-page__surface search-studio-primereact-demo-page__surface--flush">
+                <article className="search-studio-primereact-demo-page__surface search-studio-primereact-demo-page__surface--flush search-studio-primereact-demo-page__surface--contained">
                     <div className="search-studio-primereact-demo-page__section-heading-row">
                         <h2 className="search-studio-primereact-demo-page__section-title">Dense review hierarchy</h2>
                         <Tag value={scenarioSnapshot.isLoading ? 'Loading overlay' : scenarioSnapshot.isEmpty ? 'Empty state' : 'Ready'} severity="info" rounded className="search-studio-primereact-demo-page__section-tag" />
@@ -270,19 +274,21 @@ export function SearchStudioPrimeReactTreeDemoPage(props: SearchStudioPrimeReact
                         The tree starts fully expanded to show density immediately, while checkbox selection and toolbar shortcuts make it easy to
                         inspect deeper interaction states.
                     </p>
-                    <Tree
-                        value={Array.from(scenarioSnapshot.items) as never[]}
-                        selectionMode="checkbox"
-                        selectionKeys={selectionKeys as never}
-                        onSelectionChange={event => handleSelectionChanged(event as SearchStudioPrimeReactDemoTreeSelectionChangedEvent)}
-                        expandedKeys={expandedKeys as never}
-                        onToggle={event => handleExpansionChanged(event as SearchStudioPrimeReactDemoTreeToggleEvent)}
-                        loading={scenarioSnapshot.isLoading}
-                        filter
-                        filterPlaceholder="Filter generated nodes"
-                        nodeTemplate={renderNodeTemplate as never}
-                        className="search-studio-primereact-demo-page__tree"
-                    />
+                    <div className="search-studio-primereact-demo-page__pane-scroll-host search-studio-primereact-demo-page__pane-scroll-host--tree">
+                        <Tree
+                            value={Array.from(scenarioSnapshot.items) as never[]}
+                            selectionMode="checkbox"
+                            selectionKeys={selectionKeys as never}
+                            onSelectionChange={event => handleSelectionChanged(event as SearchStudioPrimeReactDemoTreeSelectionChangedEvent)}
+                            expandedKeys={expandedKeys as never}
+                            onToggle={event => handleExpansionChanged(event as SearchStudioPrimeReactDemoTreeToggleEvent)}
+                            loading={scenarioSnapshot.isLoading}
+                            filter
+                            filterPlaceholder="Filter generated nodes"
+                            nodeTemplate={renderNodeTemplate as never}
+                            className="search-studio-primereact-demo-page__tree"
+                        />
+                    </div>
                 </article>
             </section>
         </div>

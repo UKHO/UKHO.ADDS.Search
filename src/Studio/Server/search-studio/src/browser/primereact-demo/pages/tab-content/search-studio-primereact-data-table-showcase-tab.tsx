@@ -11,12 +11,12 @@ import {
     getSearchStudioPrimeReactDemoStatuses,
     SearchStudioPrimeReactDemoStatus,
     SearchStudioPrimeReactDemoTableRecord
-} from '../data/search-studio-primereact-demo-data';
+} from '../../data/search-studio-primereact-demo-data';
 import {
     createScenarioSnapshot,
     SearchStudioPrimeReactDemoScenario
-} from '../data/search-studio-primereact-demo-state';
-import { SearchStudioPrimeReactDemoPageProps } from '../search-studio-primereact-demo-page-props';
+} from '../../data/search-studio-primereact-demo-state';
+import { SearchStudioPrimeReactDemoPageProps } from '../../search-studio-primereact-demo-page-props';
 
 const scenarioOptions = [
     { label: 'Ready', value: 'ready' },
@@ -183,6 +183,11 @@ export function SearchStudioPrimeReactDataTableDemoPage(props: SearchStudioPrime
         () => createScenarioSnapshot(filteredRecords, scenario),
         [filteredRecords, scenario]
     );
+    const hostedInsideTabbedShell = props.hostDisplayMode === 'tabbed';
+    const pageClassName = hostedInsideTabbedShell
+        ? 'search-studio-primereact-demo-page search-studio-primereact-demo-page--styled search-studio-primereact-demo-page--tab-hosted search-studio-primereact-demo-page--tab-hosted-data-heavy'
+        : 'search-studio-primereact-demo-page search-studio-primereact-demo-page--styled';
+    const dataTableScrollHeight = hostedInsideTabbedShell ? 'flex' : '32rem';
 
     /**
      * Updates the current high-level page scenario shown by the `DataTable` surface.
@@ -384,7 +389,7 @@ export function SearchStudioPrimeReactDataTableDemoPage(props: SearchStudioPrime
 
     // Render the data-heavy evaluation surface using full styled PrimeReact so the grid can be judged in-context inside the Theia shell.
     return (
-        <div className="search-studio-primereact-demo-page search-studio-primereact-demo-page--styled">
+        <div className={pageClassName}>
             <header className="search-studio-primereact-demo-page__hero">
                 <div className="search-studio-primereact-demo-page__hero-copy">
                     <div className="search-studio-primereact-demo-page__hero-heading-row">
@@ -481,7 +486,7 @@ export function SearchStudioPrimeReactDataTableDemoPage(props: SearchStudioPrime
                     </div>
                 </article>
 
-                <article className="search-studio-primereact-demo-page__surface search-studio-primereact-demo-page__surface--flush">
+                <article className="search-studio-primereact-demo-page__surface search-studio-primereact-demo-page__surface--flush search-studio-primereact-demo-page__surface--contained">
                     <div className="search-studio-primereact-demo-page__section-heading-row">
                         <h2 className="search-studio-primereact-demo-page__section-title">Dense business-style grid</h2>
                         <Tag value={scenarioSnapshot.isLoading ? 'Loading overlay' : scenarioSnapshot.isEmpty ? 'Empty state' : 'Ready'} severity="info" rounded className="search-studio-primereact-demo-page__section-tag" />
@@ -490,34 +495,36 @@ export function SearchStudioPrimeReactDataTableDemoPage(props: SearchStudioPrime
                         Sort any business column, page through the generated dataset, edit the status and notes columns inline, and inspect the
                         disabled edit state on locked rows.
                     </p>
-                    <DataTable
-                        value={Array.from(scenarioSnapshot.items)}
-                        dataKey="id"
-                        paginator
-                        rows={12}
-                        rowsPerPageOptions={[12, 24, 48]}
-                        scrollable
-                        scrollHeight="32rem"
-                        sortMode="multiple"
-                        loading={scenarioSnapshot.isLoading}
-                        selection={selectedRecords}
-                        onSelectionChange={event => handleSelectionChanged(event as SearchStudioPrimeReactDemoSelectionChangedEvent)}
-                        selectionMode="multiple"
-                        editMode="cell"
-                        emptyMessage="No rows match the current demo scenario or filter combination."
-                        className="search-studio-primereact-demo-page__datatable">
-                        <Column selectionMode="multiple" headerStyle={{ width: '4rem' }} />
-                        <Column field="title" header="Dataset" sortable body={renderTitleBody} style={{ minWidth: '18rem' }} />
-                        <Column field="provider" header="Provider" sortable style={{ minWidth: '10rem' }} />
-                        <Column field="region" header="Region" sortable style={{ minWidth: '10rem' }} />
-                        <Column field="owner" header="Owner" sortable style={{ minWidth: '11rem' }} />
-                        <Column field="status" header="Status" sortable body={renderStatusBody} editor={options => renderStatusEditor(options as SearchStudioPrimeReactDemoColumnEditorOptions<SearchStudioPrimeReactDemoStatus>)} onCellEditComplete={event => handleCellEditComplete(event as SearchStudioPrimeReactDemoCellEditEvent)} style={{ minWidth: '10rem' }} />
-                        <Column field="priority" header="Priority" sortable style={{ minWidth: '8rem' }} />
-                        <Column field="itemCount" header="Items" sortable style={{ minWidth: '8rem' }} />
-                        <Column field="lastReviewedOn" header="Last reviewed" sortable style={{ minWidth: '11rem' }} />
-                        <Column field="reviewNotes" header="Reviewer notes" editor={options => renderReviewNotesEditor(options as SearchStudioPrimeReactDemoColumnEditorOptions<string>)} onCellEditComplete={event => handleCellEditComplete(event as SearchStudioPrimeReactDemoCellEditEvent)} style={{ minWidth: '16rem' }} />
-                        <Column field="isEditable" header="Edit state" body={renderEditStateBody} style={{ minWidth: '10rem' }} />
-                    </DataTable>
+                    <div className="search-studio-primereact-demo-page__pane-scroll-host search-studio-primereact-demo-page__pane-scroll-host--grid">
+                        <DataTable
+                            value={Array.from(scenarioSnapshot.items)}
+                            dataKey="id"
+                            paginator
+                            rows={12}
+                            rowsPerPageOptions={[12, 24, 48]}
+                            scrollable
+                            scrollHeight={dataTableScrollHeight}
+                            sortMode="multiple"
+                            loading={scenarioSnapshot.isLoading}
+                            selection={selectedRecords}
+                            onSelectionChange={event => handleSelectionChanged(event as SearchStudioPrimeReactDemoSelectionChangedEvent)}
+                            selectionMode="multiple"
+                            editMode="cell"
+                            emptyMessage="No rows match the current demo scenario or filter combination."
+                            className="search-studio-primereact-demo-page__datatable">
+                            <Column selectionMode="multiple" headerStyle={{ width: '4rem' }} />
+                            <Column field="title" header="Dataset" sortable body={renderTitleBody} style={{ minWidth: '18rem' }} />
+                            <Column field="provider" header="Provider" sortable style={{ minWidth: '10rem' }} />
+                            <Column field="region" header="Region" sortable style={{ minWidth: '10rem' }} />
+                            <Column field="owner" header="Owner" sortable style={{ minWidth: '11rem' }} />
+                            <Column field="status" header="Status" sortable body={renderStatusBody} editor={options => renderStatusEditor(options as SearchStudioPrimeReactDemoColumnEditorOptions<SearchStudioPrimeReactDemoStatus>)} onCellEditComplete={event => handleCellEditComplete(event as SearchStudioPrimeReactDemoCellEditEvent)} style={{ minWidth: '10rem' }} />
+                            <Column field="priority" header="Priority" sortable style={{ minWidth: '8rem' }} />
+                            <Column field="itemCount" header="Items" sortable style={{ minWidth: '8rem' }} />
+                            <Column field="lastReviewedOn" header="Last reviewed" sortable style={{ minWidth: '11rem' }} />
+                            <Column field="reviewNotes" header="Reviewer notes" editor={options => renderReviewNotesEditor(options as SearchStudioPrimeReactDemoColumnEditorOptions<string>)} onCellEditComplete={event => handleCellEditComplete(event as SearchStudioPrimeReactDemoCellEditEvent)} style={{ minWidth: '16rem' }} />
+                            <Column field="isEditable" header="Edit state" body={renderEditStateBody} style={{ minWidth: '10rem' }} />
+                        </DataTable>
+                    </div>
                 </article>
             </section>
         </div>

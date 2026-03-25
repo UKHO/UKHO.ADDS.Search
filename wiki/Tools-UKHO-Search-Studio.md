@@ -94,7 +94,7 @@ The current shell intentionally keeps the generated Theia workbench structure wh
 
 - the `Home` document opens automatically in the main workbench area as a normal closable tab
 - `View -> Home` reopens the same Home document after it is closed
-- `View -> PrimeReact Demo` opens a temporary research page that is not shown by default
+- `View -> PrimeReact Showcase Demo` opens the single retained PrimeReact research surface that is not shown by default
 - the active browser-app composition no longer includes the scaffold-owned Theia `Welcome` / getting-started surface
 - the `search-studio` extension preloads the same-origin runtime configuration bridge during startup
 - startup logs report whether the Studio API base URL handoff was resolved successfully
@@ -109,29 +109,34 @@ Work package `074-primereact-research` adds the temporary PrimeReact research su
 
 Current behavior:
 
-- the demo pages are exposed only from `View -> PrimeReact Demo`, `View -> PrimeReact Data Table Demo`, `View -> PrimeReact Forms Demo`, `View -> PrimeReact Data View Demo`, `View -> PrimeReact Layout Demo`, `View -> PrimeReact Showcase Demo`, `View -> PrimeReact Tree Demo`, and `View -> PrimeReact Tree Table Demo`
+- the demo research surface is exposed only from `View -> PrimeReact Showcase Demo`
 - the demo pages do **not** open by default on startup
 - every page now assumes full styled PrimeReact only
 - every page follows the active Theia `light` / `dark` theme by switching between the stock PrimeReact Lara light and dark themes
 - the temporary demo surfaces use in-memory datasets only and keep all actions mock-only for look-and-feel review
 - the `PrimeReact Showcase Demo` now uses a showcase-scoped compact density pass so the page reads more like a desktop workbench surface than a long-form web page
 - the `PrimeReact Showcase Demo` now configures its widget root, splitters, and pane wrappers for pane-owned scrolling so the hierarchy and grid can scroll internally instead of pushing the outer page downward
-- the temporary demo command and menu registrations are kept inside the isolated `primereact-demo` contribution area so the research package remains easy to remove later as one focused change set
+- the `PrimeReact Showcase Demo` now hosts the retained review surface inside one root tab shell with the fixed order `Showcase`, `Forms`, `Data View`, `Data Table`, `Tree`, and `Tree Table`
+- the root tab control now owns the whole showcase page without an extra toolbar or decorative header band above it
+- the `Forms`, `Data View`, `Data Table`, `Tree`, and `Tree Table` tabs now render inside that consolidated shell using the same tighter spacing baseline as the compact showcase page
+- switching retained tabs now moves keyboard focus into the newly displayed tab content so keyboard review can continue inside the active surface
+- retired standalone PrimeReact source pages and dead runtime branches are removed so the research package now reflects the final single-page review model directly
 
 Manual review steps:
 
 1. Start `AppHost` and open the Studio shell.
-2. Open `View -> PrimeReact Demo` and confirm the bootstrap page shows the initial controlled input, lane selector, status tags, buttons, and progress bars.
-3. Open `View -> PrimeReact Data Table Demo` and confirm sorting, filtering, pagination, selection, inline editing, loading, empty, and disabled states are all visible.
-4. Open `View -> PrimeReact Forms Demo` and confirm controlled inputs, inline validation, grouped selection controls, disabled controls, and the mock loading save action are all visible.
-5. Open `View -> PrimeReact Data View Demo` and confirm card/list layout switching, density changes, selection state, pagination, and empty-state presentation are all visible.
-6. Open `View -> PrimeReact Layout Demo` and confirm `TabView`, `Splitter`, `Panel`, and `Divider` composition plus draggable resizing interactions are all visible.
-7. Open `View -> PrimeReact Showcase Demo` and confirm the combined page shows tree, grid, and edit/detail form surfaces together with compact density, flatter chrome, smaller action controls, tighter row spacing, pane-owned grid scrolling, selection, filtering, mock editing, and styled-theme following.
-8. Resize the Studio content area vertically and confirm the outer page remains stable while the hierarchy pane and grid pane keep their own scrollbars.
-9. Narrow the content area moderately and confirm horizontal overflow stays with the grid region rather than introducing duplicate outer scrollbars.
-10. Open `View -> PrimeReact Tree Demo` and confirm expand/collapse, checkbox selection, filter, mock toolbar actions, loading, and empty states are all visible.
-11. Open `View -> PrimeReact Tree Table Demo` and confirm hierarchical rows, columns, checkbox selection, loading, empty, and expansion states are all visible.
-12. Switch Theia between light and dark themes and confirm each demo updates to the matching stock PrimeReact theme.
+2. Open `View -> PrimeReact Showcase Demo` and confirm the page opens directly on a root tab strip with no toolbar or decorative header band above the tabs.
+3. Confirm the tab order is `Showcase`, `Forms`, `Data View`, `Data Table`, `Tree`, and `Tree Table`, and that `Showcase` is selected by default.
+4. Review the default `Showcase` tab and confirm the combined page still shows tree, grid, and edit/detail form surfaces together with compact density, flatter chrome, smaller action controls, tighter row spacing, pane-owned grid scrolling, selection, filtering, mock editing, and styled-theme following.
+5. Switch to the `Forms` tab and confirm the migrated content keeps the same tighter shell density and does not introduce a new page toolbar above the root tabs.
+6. Switch to the `Data View` tab and confirm the migrated content keeps the same compact baseline and remains inside the shared tab shell rather than acting like a separate page.
+7. Switch to the `Data Table` tab and confirm sorting, filtering, pagination, selection, inline editing, loading, empty, and disabled states remain available with scrolling owned by the inner grid region.
+8. Switch to the `Tree` tab and confirm expand/collapse, checkbox selection, filtering, mock toolbar actions, loading, and empty states remain available with scrolling kept inside the hierarchy region.
+9. Switch to the `Tree Table` tab and confirm hierarchical rows, columns, checkbox selection, loading, empty, and expansion states remain available with scrolling kept inside the hierarchical grid region.
+10. After each tab switch, confirm keyboard focus moves into the newly displayed tab content instead of staying on the tab header.
+11. Resize the Studio content area vertically and confirm the outer page remains stable while the hierarchy and grid-heavy regions keep their own scrollbars.
+12. Narrow the content area moderately and confirm horizontal overflow stays with the root tab strip or the inner grid region rather than introducing duplicate outer scrollbars.
+13. Switch Theia between light and dark themes and confirm the consolidated showcase updates to the matching stock PrimeReact theme.
 
 ## Prerequisite tooling
 

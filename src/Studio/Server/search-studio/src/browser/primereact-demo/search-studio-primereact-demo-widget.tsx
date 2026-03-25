@@ -32,7 +32,7 @@ export class SearchStudioPrimeReactDemoWidget extends ReactWidget {
     /**
      * Tracks which logical PrimeReact demo page is currently shown inside the shared temporary widget.
      */
-    protected activeDemoPageId: SearchStudioPrimeReactDemoPageId = 'bootstrap';
+    protected activeDemoPageId: SearchStudioPrimeReactDemoPageId = 'showcase';
 
     /**
      * Stores the per-widget styled and theme-following state for the temporary PrimeReact demo page.
@@ -58,7 +58,7 @@ export class SearchStudioPrimeReactDemoWidget extends ReactWidget {
         // Configure the temporary research page using its own stable workbench identifiers so it can be reopened consistently from View.
         this.id = SearchStudioPrimeReactDemoWidgetId;
         this.title.label = SearchStudioPrimeReactDemoWidgetLabel;
-        this.title.caption = 'Temporary PrimeReact evaluation demo';
+        this.title.caption = 'Temporary PrimeReact combined showcase evaluation demo';
         this.title.iconClass = SearchStudioPrimeReactDemoWidgetIconClass;
         this.title.closable = true;
         this.addClass('search-studio-primereact-demo-widget');
@@ -104,9 +104,9 @@ export class SearchStudioPrimeReactDemoWidget extends ReactWidget {
      * @param oldState Supplies the serialized widget state captured during the previous workbench session.
      */
     restoreState(oldState: SearchStudioPrimeReactDemoWidgetState): void {
-        if (!oldState || !oldState.activeDemoPageId) {
-            // Fall back to the bootstrap page when no persisted state exists because the widget still needs a deterministic render target.
-            this.applyActiveDemoPageDefinition('bootstrap');
+        if (!oldState || oldState.activeDemoPageId !== 'showcase') {
+            // Fall back to the consolidated showcase page when no persisted state exists because it is now the only retained runtime entry.
+            this.applyActiveDemoPageDefinition('showcase');
             this.update();
             return;
         }
@@ -271,47 +271,8 @@ export class SearchStudioPrimeReactDemoWidget extends ReactWidget {
      * @returns The React node tree for the selected temporary PrimeReact page.
      */
     protected renderActiveDemoPage(pageProps: SearchStudioPrimeReactDemoPageProps): React.ReactNode {
-        switch (this.activeDemoPageId) {
-            case 'datatable': {
-                // Load the DataTable page lazily so the shell only evaluates the heavier grid code when the reviewer explicitly opens it.
-                const { SearchStudioPrimeReactDataTableDemoPage } = require('./pages/search-studio-primereact-data-table-demo-page') as typeof import('./pages/search-studio-primereact-data-table-demo-page');
-                return <SearchStudioPrimeReactDataTableDemoPage {...pageProps} />;
-            }
-            case 'forms': {
-                // Load the forms page lazily so the shell only evaluates the broader input demo when the reviewer explicitly opens it.
-                const { SearchStudioPrimeReactFormsDemoPage } = require('./pages/search-studio-primereact-forms-demo-page') as typeof import('./pages/search-studio-primereact-forms-demo-page');
-                return <SearchStudioPrimeReactFormsDemoPage {...pageProps} />;
-            }
-            case 'dataview': {
-                // Load the DataView page lazily so the shell only evaluates the card-list demo when the reviewer explicitly opens it.
-                const { SearchStudioPrimeReactDataViewDemoPage } = require('./pages/search-studio-primereact-data-view-demo-page') as typeof import('./pages/search-studio-primereact-data-view-demo-page');
-                return <SearchStudioPrimeReactDataViewDemoPage {...pageProps} />;
-            }
-            case 'layout': {
-                // Load the layout page lazily so the shell only evaluates the splitter and tabs demo when the reviewer explicitly opens it.
-                const { SearchStudioPrimeReactLayoutDemoPage } = require('./pages/search-studio-primereact-layout-demo-page') as typeof import('./pages/search-studio-primereact-layout-demo-page');
-                return <SearchStudioPrimeReactLayoutDemoPage {...pageProps} />;
-            }
-            case 'showcase': {
-                // Load the combined showcase page lazily so the shell only evaluates the broadest composite demo when the reviewer explicitly opens it.
-                const { SearchStudioPrimeReactShowcaseDemoPage } = require('./pages/search-studio-primereact-showcase-demo-page') as typeof import('./pages/search-studio-primereact-showcase-demo-page');
-                return <SearchStudioPrimeReactShowcaseDemoPage {...pageProps} />;
-            }
-            case 'tree': {
-                // Load the Tree page lazily so the shell only evaluates the hierarchy demo when the reviewer explicitly opens it.
-                const { SearchStudioPrimeReactTreeDemoPage } = require('./pages/search-studio-primereact-tree-demo-page') as typeof import('./pages/search-studio-primereact-tree-demo-page');
-                return <SearchStudioPrimeReactTreeDemoPage {...pageProps} />;
-            }
-            case 'treetable': {
-                // Load the TreeTable page lazily so the shell only evaluates the hierarchical grid code when the reviewer explicitly opens it.
-                const { SearchStudioPrimeReactTreeTableDemoPage } = require('./pages/search-studio-primereact-tree-table-demo-page') as typeof import('./pages/search-studio-primereact-tree-table-demo-page');
-                return <SearchStudioPrimeReactTreeTableDemoPage {...pageProps} />;
-            }
-            default: {
-                // Load the bootstrap page lazily so the Theia shell startup path does not evaluate PrimeReact component modules until the demo is explicitly opened.
-                const { SearchStudioPrimeReactDemoPage } = require('./search-studio-primereact-demo-page') as typeof import('./search-studio-primereact-demo-page');
-                return <SearchStudioPrimeReactDemoPage {...pageProps} />;
-            }
-        }
+        // Load the consolidated showcase page lazily so the shell only evaluates the retained PrimeReact research surface when the reviewer opens it.
+        const { SearchStudioPrimeReactShowcaseDemoPage } = require('./pages/search-studio-primereact-showcase-demo-page') as typeof import('./pages/search-studio-primereact-showcase-demo-page');
+        return <SearchStudioPrimeReactShowcaseDemoPage {...pageProps} />;
     }
 }

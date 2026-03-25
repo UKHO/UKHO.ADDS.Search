@@ -80,8 +80,8 @@ test('SearchStudioPrimeReactDemoService opens the temporary PrimeReact demo in t
             }
         );
 
-        await service.openDemo('datatable');
-        await service.openDemo('tree');
+        await service.openDemo();
+        await service.openDemo('showcase');
 
         assert.deepEqual(addWidgetCalls, [
             {
@@ -93,7 +93,7 @@ test('SearchStudioPrimeReactDemoService opens the temporary PrimeReact demo in t
                 }
             }
         ]);
-        assert.deepEqual(widget.openedPages, ['datatable', 'tree']);
+        assert.deepEqual(widget.openedPages, ['showcase', 'showcase']);
         assert.deepEqual(activateWidgetCalls, ['search-studio.primereact-demo', 'search-studio.primereact-demo']);
         assert.deepEqual(infoMessages, ['Opened temporary PrimeReact demo page.', 'Opened temporary PrimeReact demo page.']);
     } finally {

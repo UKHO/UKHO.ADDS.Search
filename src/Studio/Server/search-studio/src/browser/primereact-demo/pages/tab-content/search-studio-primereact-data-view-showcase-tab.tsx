@@ -8,12 +8,12 @@ import {
     createDataViewDemoRecords,
     SearchStudioPrimeReactDemoDataViewRecord,
     SearchStudioPrimeReactDemoStatus
-} from '../data/search-studio-primereact-demo-data';
+} from '../../data/search-studio-primereact-demo-data';
 import {
     createScenarioSnapshot,
     SearchStudioPrimeReactDemoScenario
-} from '../data/search-studio-primereact-demo-state';
-import { SearchStudioPrimeReactDemoPageProps } from '../search-studio-primereact-demo-page-props';
+} from '../../data/search-studio-primereact-demo-state';
+import { SearchStudioPrimeReactDemoPageProps } from '../../search-studio-primereact-demo-page-props';
 
 /**
  * Identifies the supported card/list density modes shown by the temporary `DataView` page.
@@ -94,6 +94,10 @@ export function SearchStudioPrimeReactDataViewDemoPage(props: SearchStudioPrimeR
         () => records.find(record => record.id === selectedRecordId),
         [records, selectedRecordId]
     );
+    const hostedInsideTabbedShell = props.hostDisplayMode === 'tabbed';
+    const pageClassName = hostedInsideTabbedShell
+        ? 'search-studio-primereact-demo-page search-studio-primereact-demo-page--styled search-studio-primereact-demo-page--tab-hosted'
+        : 'search-studio-primereact-demo-page search-studio-primereact-demo-page--styled';
 
     /**
      * Updates the current high-level page scenario shown by the `DataView` surface.
@@ -243,7 +247,7 @@ export function SearchStudioPrimeReactDataViewDemoPage(props: SearchStudioPrimeR
 
     // Render the card-list evaluation surface using full styled PrimeReact so non-tabular layouts can be judged in-context inside the Theia shell.
     return (
-        <div className="search-studio-primereact-demo-page search-studio-primereact-demo-page--styled">
+        <div className={pageClassName}>
             <header className="search-studio-primereact-demo-page__hero">
                 <div className="search-studio-primereact-demo-page__hero-copy">
                     <div className="search-studio-primereact-demo-page__hero-heading-row">

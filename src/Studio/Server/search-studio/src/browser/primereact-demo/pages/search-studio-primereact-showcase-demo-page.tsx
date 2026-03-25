@@ -8,6 +8,7 @@ import { InputTextarea } from 'primereact/inputtextarea';
 import { Panel } from 'primereact/panel';
 import { SelectButton, SelectButtonChangeEvent } from 'primereact/selectbutton';
 import { Splitter, SplitterPanel } from 'primereact/splitter';
+import { TabPanel, TabView } from 'primereact/tabview';
 import { Tag } from 'primereact/tag';
 import { Tree } from 'primereact/tree';
 import {
@@ -25,6 +26,11 @@ import {
     SearchStudioPrimeReactDemoTreeSelectionKeys
 } from '../data/search-studio-primereact-demo-state';
 import { SearchStudioPrimeReactDemoPageProps } from '../search-studio-primereact-demo-page-props';
+import { SearchStudioPrimeReactDataTableDemoPage } from './tab-content/search-studio-primereact-data-table-showcase-tab';
+import { SearchStudioPrimeReactDataViewDemoPage } from './tab-content/search-studio-primereact-data-view-showcase-tab';
+import { SearchStudioPrimeReactFormsDemoPage } from './tab-content/search-studio-primereact-forms-showcase-tab';
+import { SearchStudioPrimeReactTreeDemoPage } from './tab-content/search-studio-primereact-tree-showcase-tab';
+import { SearchStudioPrimeReactTreeTableDemoPage } from './tab-content/search-studio-primereact-tree-table-showcase-tab';
 
 /**
  * Describes the minimal event payload needed from PrimeReact row-selection callbacks.
@@ -57,6 +63,16 @@ interface SearchStudioPrimeReactShowcaseTreeToggleEvent {
 }
 
 /**
+ * Describes the minimal event payload needed from the PrimeReact root tab view.
+ */
+interface SearchStudioPrimeReactShowcaseTabChangedEvent {
+    /**
+     * Stores the zero-based tab index selected by the reviewer.
+     */
+    readonly index: number;
+}
+
+/**
  * Describes the controlled edit/detail form state rendered in the combined showcase page.
  */
 interface SearchStudioPrimeReactShowcaseDetailFormState {
@@ -79,6 +95,177 @@ interface SearchStudioPrimeReactShowcaseDetailFormState {
      * Stores whether the mock detail panel should highlight the publish route.
      */
     readonly requestPublish: boolean;
+}
+
+/**
+ * Identifies the supported root tabs shown by the consolidated PrimeReact showcase page.
+ */
+export type SearchStudioPrimeReactShowcaseTabId = 'showcase' | 'forms' | 'dataview' | 'datatable' | 'tree' | 'treetable';
+
+/**
+ * Describes the metadata required to render one root tab inside the consolidated showcase shell.
+ */
+export interface SearchStudioPrimeReactShowcaseTabDefinition {
+    /**
+     * Stores the stable tab identifier used by the root tab shell.
+     */
+    readonly id: SearchStudioPrimeReactShowcaseTabId;
+
+    /**
+     * Stores the visible tab label shown to reviewers.
+     */
+    readonly label: string;
+
+    /**
+     * Stores the decorative PrimeIcons class shown beside the tab label.
+     */
+    readonly iconClassName: string;
+}
+
+/**
+ * Describes which root tabs have already been rendered at least once.
+ */
+export type SearchStudioPrimeReactShowcaseTabRenderState = Record<SearchStudioPrimeReactShowcaseTabId, boolean>;
+
+/**
+ * Stores the fixed root-tab order required by the consolidated showcase shell.
+ */
+export const SearchStudioPrimeReactShowcaseTabOrder: ReadonlyArray<SearchStudioPrimeReactShowcaseTabId> = [
+    'showcase',
+    'forms',
+    'dataview',
+    'datatable',
+    'tree',
+    'treetable'
+];
+
+const searchStudioPrimeReactShowcaseTabDefinitions: ReadonlyArray<SearchStudioPrimeReactShowcaseTabDefinition> = [
+    {
+        id: 'showcase',
+        label: 'Showcase',
+        iconClassName: 'pi pi-desktop'
+    },
+    {
+        id: 'forms',
+        label: 'Forms',
+        iconClassName: 'pi pi-pencil'
+    },
+    {
+        id: 'dataview',
+        label: 'Data View',
+        iconClassName: 'pi pi-th-large'
+    },
+    {
+        id: 'datatable',
+        label: 'Data Table',
+        iconClassName: 'pi pi-table'
+    },
+    {
+        id: 'tree',
+        label: 'Tree',
+        iconClassName: 'pi pi-sitemap'
+    },
+    {
+        id: 'treetable',
+        label: 'Tree Table',
+        iconClassName: 'pi pi-list'
+    }
+];
+
+/**
+ * Gets the ordered root-tab metadata used by the consolidated showcase shell.
+ *
+ * @returns The immutable ordered tab-definition list used by the root tab view.
+ */
+export function getSearchStudioPrimeReactShowcaseTabDefinitions(): ReadonlyArray<SearchStudioPrimeReactShowcaseTabDefinition> {
+    // Keep the tab metadata centralized so the runtime shell and focused tests share one stable tab order.
+    return searchStudioPrimeReactShowcaseTabDefinitions;
+}
+
+/**
+ * Creates the initial lazy-render state used by the consolidated showcase shell.
+ *
+ * @returns The render-state dictionary with only the default `Showcase` tab marked as rendered.
+ */
+export function createSearchStudioPrimeReactShowcaseInitialRenderState(): SearchStudioPrimeReactShowcaseTabRenderState {
+    // Render only the default Showcase tab on first open so the consolidated page stays lightweight until reviewers activate other tabs.
+    return {
+        showcase: true,
+        forms: false,
+        dataview: false,
+        datatable: false,
+        tree: false,
+        treetable: false
+    };
+}
+
+/**
+ * Marks one tab as rendered while preserving all tabs already activated previously.
+ *
+ * @param currentRenderState Supplies the current per-tab render state.
+ * @param tabId Identifies the tab that was just activated.
+ * @returns The next render-state dictionary with the requested tab marked as rendered.
+ */
+export function activateSearchStudioPrimeReactShowcaseRenderState(
+    currentRenderState: SearchStudioPrimeReactShowcaseTabRenderState,
+    tabId: SearchStudioPrimeReactShowcaseTabId
+): SearchStudioPrimeReactShowcaseTabRenderState {
+    if (currentRenderState[tabId]) {
+        // Reuse the current dictionary when the tab has already been rendered so mounted tab content keeps its local state.
+        return currentRenderState;
+    }
+
+    // Mark the selected tab as rendered while preserving all previously activated tabs.
+    return {
+        ...currentRenderState,
+        [tabId]: true
+    };
+}
+
+/**
+ * Resolves the zero-based tab index for a supplied tab identifier.
+ *
+ * @param tabId Identifies the root tab whose index should be resolved.
+ * @returns The zero-based tab index used by the PrimeReact root tab view.
+ */
+export function getSearchStudioPrimeReactShowcaseTabIndex(tabId: SearchStudioPrimeReactShowcaseTabId): number {
+    // Resolve the tab index from the centralized ordered metadata so the default tab and tab-change logging stay aligned.
+    return SearchStudioPrimeReactShowcaseTabOrder.indexOf(tabId);
+}
+
+/**
+ * Resolves the stable DOM identifier used by the tab-focus transfer helper for one retained tab.
+ *
+ * @param tabId Identifies the retained tab whose focus target should be resolved.
+ * @returns The stable DOM identifier for the requested tab content wrapper.
+ */
+export function getSearchStudioPrimeReactShowcaseTabFocusTargetId(tabId: SearchStudioPrimeReactShowcaseTabId): string {
+    // Keep the DOM identifiers deterministic so the runtime focus helper and node-based tests share the same content targets.
+    return `search-studio-primereact-showcase-tab-focus-target-${tabId}`;
+}
+
+/**
+ * Moves browser keyboard focus into the active retained-tab content when the target element exists.
+ *
+ * @param tabId Identifies the retained tab whose content should receive focus.
+ * @returns `true` when focus moved successfully; otherwise, `false`.
+ */
+export function focusSearchStudioPrimeReactShowcaseTabContent(tabId: SearchStudioPrimeReactShowcaseTabId): boolean {
+    if (typeof document === 'undefined' || typeof document.getElementById !== 'function') {
+        // Skip focus transfer during server rendering or non-browser test contexts that do not expose document lookups.
+        return false;
+    }
+
+    const focusTarget = document.getElementById(getSearchStudioPrimeReactShowcaseTabFocusTargetId(tabId));
+
+    if (!focusTarget || typeof focusTarget.focus !== 'function') {
+        // Skip missing or non-focusable targets so tab activation never throws while content is still being rendered.
+        return false;
+    }
+
+    // Move focus into the tab content wrapper so keyboard review continues inside the newly displayed surface rather than staying on the tab header.
+    focusTarget.focus();
+    return document.activeElement === focusTarget;
 }
 
 const scenarioOptions = [
@@ -177,8 +364,11 @@ function getFilteredRecords(
  * @returns The React node tree for the temporary combined showcase evaluation surface.
  */
 export function SearchStudioPrimeReactShowcaseDemoPage(props: SearchStudioPrimeReactDemoPageProps): React.ReactNode {
+    const tabDefinitions = React.useMemo(() => getSearchStudioPrimeReactShowcaseTabDefinitions(), []);
     const initialRecords = React.useMemo(() => createDataTableDemoRecords(48), []);
     const treeNodes = React.useMemo(() => createTreeDemoNodes(4, 4, 4), []);
+    const [activeTabId, setActiveTabId] = React.useState<SearchStudioPrimeReactShowcaseTabId>('showcase');
+    const [renderedTabs, setRenderedTabs] = React.useState<SearchStudioPrimeReactShowcaseTabRenderState>(() => createSearchStudioPrimeReactShowcaseInitialRenderState());
     const [records, setRecords] = React.useState<SearchStudioPrimeReactDemoTableRecord[]>(() => Array.from(initialRecords));
     const [scenario, setScenario] = React.useState<SearchStudioPrimeReactDemoScenario>('ready');
     const [tableFilter, setTableFilter] = React.useState('');
@@ -204,7 +394,12 @@ export function SearchStudioPrimeReactShowcaseDemoPage(props: SearchStudioPrimeR
         () => countSelectedTreeKeys(treeSelectionKeys),
         [treeSelectionKeys]
     );
+    const activeTabIndex = React.useMemo(
+        () => getSearchStudioPrimeReactShowcaseTabIndex(activeTabId),
+        [activeTabId]
+    );
     const activeDetailRecord = selectedRecords[0];
+    const shouldTransferFocusRef = React.useRef(false);
 
     React.useEffect(() => {
         // Synchronize the mock detail form whenever the lead selected row changes so the edit panel always reflects the active table selection.
@@ -214,6 +409,32 @@ export function SearchStudioPrimeReactShowcaseDemoPage(props: SearchStudioPrimeR
             requestPublish: currentDetailFormState.requestPublish && Boolean(activeDetailRecord)
         }));
     }, [activeDetailRecord]);
+
+    React.useEffect(() => {
+        if (!shouldTransferFocusRef.current) {
+            // Skip the initial page render so the consolidated showcase opens normally without pulling focus unexpectedly.
+            return;
+        }
+
+        shouldTransferFocusRef.current = false;
+
+        // Defer the focus handoff until after React has committed the newly activated tab content to the DOM.
+        if (typeof window !== 'undefined' && typeof window.requestAnimationFrame === 'function') {
+            const animationFrameHandle = window.requestAnimationFrame(() => {
+                focusSearchStudioPrimeReactShowcaseTabContent(activeTabId);
+            });
+
+            return () => {
+                if (typeof window.cancelAnimationFrame === 'function') {
+                    // Cancel the deferred focus work if React replaces the active tab again before the frame executes.
+                    window.cancelAnimationFrame(animationFrameHandle);
+                }
+            };
+        }
+
+        focusSearchStudioPrimeReactShowcaseTabContent(activeTabId);
+        return undefined;
+    }, [activeTabId, renderedTabs]);
 
     /**
      * Updates the current high-level page scenario shown by the combined showcase.
@@ -405,6 +626,31 @@ export function SearchStudioPrimeReactShowcaseDemoPage(props: SearchStudioPrimeR
     }
 
     /**
+     * Updates the active root tab and marks the selected tab as rendered for future visits.
+     *
+     * @param event Supplies the zero-based tab index emitted by the PrimeReact root tab view.
+     */
+    function handleRootTabChanged(event: SearchStudioPrimeReactShowcaseTabChangedEvent): void {
+        const nextTabDefinition = tabDefinitions[event.index];
+
+        if (!nextTabDefinition) {
+            // Ignore out-of-range tab indices so unexpected PrimeReact event payloads cannot destabilize the showcase page.
+            return;
+        }
+
+        if (nextTabDefinition.id === activeTabId) {
+            // Ignore redundant activations so the currently visible tab does not steal focus back from content that the reviewer is already using.
+            return;
+        }
+
+        // Mark the selected tab as rendered before activating it so the first visit loads content and later visits keep that content mounted.
+        shouldTransferFocusRef.current = true;
+        setRenderedTabs(currentRenderState => activateSearchStudioPrimeReactShowcaseRenderState(currentRenderState, nextTabDefinition.id));
+        setActiveTabId(nextTabDefinition.id);
+        console.info('Switched consolidated PrimeReact showcase root tab.', { tabId: nextTabDefinition.id });
+    }
+
+    /**
      * Renders the primary dataset column with denser supporting metadata.
      *
      * @param record Supplies the current table row.
@@ -431,8 +677,7 @@ export function SearchStudioPrimeReactShowcaseDemoPage(props: SearchStudioPrimeR
         return <Tag value={record.status} severity={getStatusSeverity(record.status)} rounded />;
     }
 
-    // Render the broadest temporary PrimeReact review surface using tree, grid, and form controls together inside one Theia-hosted document.
-    return (
+    const showcaseTabContent = (
         <div className="search-studio-primereact-demo-page search-studio-primereact-demo-page--styled search-studio-primereact-demo-page--showcase-compact">
             <header className="search-studio-primereact-demo-page__showcase-header">
                 <div className="search-studio-primereact-demo-page__showcase-header-row">
@@ -640,6 +885,84 @@ export function SearchStudioPrimeReactShowcaseDemoPage(props: SearchStudioPrimeR
                     </SplitterPanel>
                 </Splitter>
             </section>
+        </div>
+    );
+
+    // Render the consolidated root tab shell first so the entire research surface now opens through one compact tabbed page.
+    return (
+        <div className="search-studio-primereact-demo-page search-studio-primereact-demo-page--styled search-studio-primereact-demo-page--tabbed-shell">
+            <TabView
+                activeIndex={activeTabIndex}
+                onTabChange={event => handleRootTabChanged(event as SearchStudioPrimeReactShowcaseTabChangedEvent)}
+                scrollable
+                className="search-studio-primereact-demo-page__root-tabview">
+                <TabPanel header="Showcase" leftIcon="pi pi-desktop mr-2" className="search-studio-primereact-demo-page__root-tab-panel">
+                    {renderedTabs.showcase ? (
+                        <section
+                            id={getSearchStudioPrimeReactShowcaseTabFocusTargetId('showcase')}
+                            tabIndex={-1}
+                            aria-label="PrimeReact Showcase tab content"
+                            className="search-studio-primereact-demo-page__tab-panel-content search-studio-primereact-demo-page__tab-panel-content--contained">
+                            {showcaseTabContent}
+                        </section>
+                    ) : null}
+                </TabPanel>
+                <TabPanel header="Forms" leftIcon="pi pi-pencil mr-2" className="search-studio-primereact-demo-page__root-tab-panel">
+                    {renderedTabs.forms ? (
+                        <section
+                            id={getSearchStudioPrimeReactShowcaseTabFocusTargetId('forms')}
+                            tabIndex={-1}
+                            aria-label="PrimeReact Forms tab content"
+                            className="search-studio-primereact-demo-page__tab-panel-content">
+                            <SearchStudioPrimeReactFormsDemoPage {...props} hostDisplayMode="tabbed" />
+                        </section>
+                    ) : null}
+                </TabPanel>
+                <TabPanel header="Data View" leftIcon="pi pi-th-large mr-2" className="search-studio-primereact-demo-page__root-tab-panel">
+                    {renderedTabs.dataview ? (
+                        <section
+                            id={getSearchStudioPrimeReactShowcaseTabFocusTargetId('dataview')}
+                            tabIndex={-1}
+                            aria-label="PrimeReact Data View tab content"
+                            className="search-studio-primereact-demo-page__tab-panel-content">
+                            <SearchStudioPrimeReactDataViewDemoPage {...props} hostDisplayMode="tabbed" />
+                        </section>
+                    ) : null}
+                </TabPanel>
+                <TabPanel header="Data Table" leftIcon="pi pi-table mr-2" className="search-studio-primereact-demo-page__root-tab-panel">
+                    {renderedTabs.datatable ? (
+                        <section
+                            id={getSearchStudioPrimeReactShowcaseTabFocusTargetId('datatable')}
+                            tabIndex={-1}
+                            aria-label="PrimeReact Data Table tab content"
+                            className="search-studio-primereact-demo-page__tab-panel-content search-studio-primereact-demo-page__tab-panel-content--contained">
+                            <SearchStudioPrimeReactDataTableDemoPage {...props} hostDisplayMode="tabbed" />
+                        </section>
+                    ) : null}
+                </TabPanel>
+                <TabPanel header="Tree" leftIcon="pi pi-sitemap mr-2" className="search-studio-primereact-demo-page__root-tab-panel">
+                    {renderedTabs.tree ? (
+                        <section
+                            id={getSearchStudioPrimeReactShowcaseTabFocusTargetId('tree')}
+                            tabIndex={-1}
+                            aria-label="PrimeReact Tree tab content"
+                            className="search-studio-primereact-demo-page__tab-panel-content search-studio-primereact-demo-page__tab-panel-content--contained">
+                            <SearchStudioPrimeReactTreeDemoPage {...props} hostDisplayMode="tabbed" />
+                        </section>
+                    ) : null}
+                </TabPanel>
+                <TabPanel header="Tree Table" leftIcon="pi pi-list mr-2" className="search-studio-primereact-demo-page__root-tab-panel">
+                    {renderedTabs.treetable ? (
+                        <section
+                            id={getSearchStudioPrimeReactShowcaseTabFocusTargetId('treetable')}
+                            tabIndex={-1}
+                            aria-label="PrimeReact Tree Table tab content"
+                            className="search-studio-primereact-demo-page__tab-panel-content search-studio-primereact-demo-page__tab-panel-content--contained">
+                            <SearchStudioPrimeReactTreeTableDemoPage {...props} hostDisplayMode="tabbed" />
+                        </section>
+                    ) : null}
+                </TabPanel>
+            </TabView>
         </div>
     );
 }

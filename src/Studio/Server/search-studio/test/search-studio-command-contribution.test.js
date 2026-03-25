@@ -36,14 +36,7 @@ const {
     SearchStudioShowHomeCommand
 } = require('../lib/browser/search-studio-home-constants.js');
 const {
-    SearchStudioShowPrimeReactDataTableDemoCommand,
-    SearchStudioShowPrimeReactDataViewDemoCommand,
-    SearchStudioShowPrimeReactDemoCommand,
-    SearchStudioShowPrimeReactFormsDemoCommand,
-    SearchStudioShowPrimeReactLayoutDemoCommand,
-    SearchStudioShowPrimeReactShowcaseDemoCommand,
-    SearchStudioShowPrimeReactTreeDemoCommand,
-    SearchStudioShowPrimeReactTreeTableDemoCommand
+    SearchStudioShowPrimeReactShowcaseDemoCommand
 } = require('../lib/browser/primereact-demo/search-studio-primereact-demo-constants.js');
 
 /**
@@ -95,97 +88,15 @@ test('SearchStudioCommandContribution opens Home from the registered Show Home c
 });
 
 /**
- * Verifies that the registered PrimeReact demo command reuses the shared demo service open behavior.
+ * Verifies that the command contribution keeps only the consolidated showcase command for the PrimeReact research surface.
  */
-test('SearchStudioCommandContribution opens the PrimeReact demo from the registered demo command', async () => {
+test('SearchStudioCommandContribution registers only the consolidated PrimeReact showcase command', async () => {
     const commandTestContext = createPrimeReactCommandTestContext();
 
-    await commandTestContext.registeredCommands.get(SearchStudioShowPrimeReactDemoCommand.id).execute();
-
-    assert.equal(commandTestContext.getOpenHomeCalls(), 0);
-    assert.deepEqual(commandTestContext.openedDemoPages, ['bootstrap']);
-});
-
-/**
- * Verifies that the registered PrimeReact DataTable demo command opens the data-heavy grid page.
- */
-test('SearchStudioCommandContribution opens the PrimeReact DataTable demo from the registered demo command', async () => {
-    const commandTestContext = createPrimeReactCommandTestContext();
-
-    await commandTestContext.registeredCommands.get(SearchStudioShowPrimeReactDataTableDemoCommand.id).execute();
-
-    assert.equal(commandTestContext.getOpenHomeCalls(), 0);
-    assert.deepEqual(commandTestContext.openedDemoPages, ['datatable']);
-});
-
-/**
- * Verifies that the registered PrimeReact Forms demo command opens the controlled-form page.
- */
-test('SearchStudioCommandContribution opens the PrimeReact Forms demo from the registered demo command', async () => {
-    const commandTestContext = createPrimeReactCommandTestContext();
-
-    await commandTestContext.registeredCommands.get(SearchStudioShowPrimeReactFormsDemoCommand.id).execute();
-
-    assert.equal(commandTestContext.getOpenHomeCalls(), 0);
-    assert.deepEqual(commandTestContext.openedDemoPages, ['forms']);
-});
-
-/**
- * Verifies that the registered PrimeReact DataView demo command opens the card-list page.
- */
-test('SearchStudioCommandContribution opens the PrimeReact DataView demo from the registered demo command', async () => {
-    const commandTestContext = createPrimeReactCommandTestContext();
-
-    await commandTestContext.registeredCommands.get(SearchStudioShowPrimeReactDataViewDemoCommand.id).execute();
-
-    assert.equal(commandTestContext.getOpenHomeCalls(), 0);
-    assert.deepEqual(commandTestContext.openedDemoPages, ['dataview']);
-});
-
-/**
- * Verifies that the registered PrimeReact Layout demo command opens the container-composition page.
- */
-test('SearchStudioCommandContribution opens the PrimeReact Layout demo from the registered demo command', async () => {
-    const commandTestContext = createPrimeReactCommandTestContext();
-
-    await commandTestContext.registeredCommands.get(SearchStudioShowPrimeReactLayoutDemoCommand.id).execute();
-
-    assert.equal(commandTestContext.getOpenHomeCalls(), 0);
-    assert.deepEqual(commandTestContext.openedDemoPages, ['layout']);
-});
-
-/**
- * Verifies that the registered PrimeReact Showcase demo command opens the combined review page.
- */
-test('SearchStudioCommandContribution opens the PrimeReact Showcase demo from the registered demo command', async () => {
-    const commandTestContext = createPrimeReactCommandTestContext();
+    assert.equal(commandTestContext.registeredCommands.size, 2);
 
     await commandTestContext.registeredCommands.get(SearchStudioShowPrimeReactShowcaseDemoCommand.id).execute();
 
     assert.equal(commandTestContext.getOpenHomeCalls(), 0);
     assert.deepEqual(commandTestContext.openedDemoPages, ['showcase']);
-});
-
-/**
- * Verifies that the registered PrimeReact Tree demo command opens the hierarchy page.
- */
-test('SearchStudioCommandContribution opens the PrimeReact Tree demo from the registered demo command', async () => {
-    const commandTestContext = createPrimeReactCommandTestContext();
-
-    await commandTestContext.registeredCommands.get(SearchStudioShowPrimeReactTreeDemoCommand.id).execute();
-
-    assert.equal(commandTestContext.getOpenHomeCalls(), 0);
-    assert.deepEqual(commandTestContext.openedDemoPages, ['tree']);
-});
-
-/**
- * Verifies that the registered PrimeReact TreeTable demo command opens the hierarchical grid page.
- */
-test('SearchStudioCommandContribution opens the PrimeReact TreeTable demo from the registered demo command', async () => {
-    const commandTestContext = createPrimeReactCommandTestContext();
-
-    await commandTestContext.registeredCommands.get(SearchStudioShowPrimeReactTreeTableDemoCommand.id).execute();
-
-    assert.equal(commandTestContext.getOpenHomeCalls(), 0);
-    assert.deepEqual(commandTestContext.openedDemoPages, ['treetable']);
 });

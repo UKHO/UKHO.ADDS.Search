@@ -1,9 +1,9 @@
 import { Command } from '@theia/core/lib/common';
 
 /**
- * Identifies the supported temporary PrimeReact demo pages that can be opened from the Theia `View` menu.
+ * Identifies the single retained temporary PrimeReact demo page that can be opened from the Theia `View` menu.
  */
-export type SearchStudioPrimeReactDemoPageId = 'bootstrap' | 'datatable' | 'forms' | 'dataview' | 'layout' | 'showcase' | 'tree' | 'treetable';
+export type SearchStudioPrimeReactDemoPageId = 'showcase';
 
 /**
  * Describes the metadata used to expose one temporary PrimeReact demo page through commands, menus, and widget titles.
@@ -63,57 +63,12 @@ export const SearchStudioPrimeReactDemoWidgetFactoryId = 'search-studio.primerea
 /**
  * Supplies the visible tab label used for the temporary PrimeReact research document.
  */
-export const SearchStudioPrimeReactDemoWidgetLabel = 'PrimeReact Demo';
+export const SearchStudioPrimeReactDemoWidgetLabel = 'PrimeReact Showcase Demo';
 
 /**
  * Supplies the workbench icon class used for the temporary PrimeReact research document tab.
  */
 export const SearchStudioPrimeReactDemoWidgetIconClass = 'codicon codicon-symbol-color';
-
-/**
- * Opens the temporary PrimeReact research page from commands and menus.
- */
-export const SearchStudioShowPrimeReactDemoCommand: Command = {
-    id: 'search-studio.primereact-demo.show',
-    category: 'UKHO Search Studio',
-    label: 'PrimeReact Demo'
-};
-
-/**
- * Opens the temporary PrimeReact `DataTable` research page from commands and menus.
- */
-export const SearchStudioShowPrimeReactDataTableDemoCommand: Command = {
-    id: 'search-studio.primereact-demo.datatable.show',
-    category: 'UKHO Search Studio',
-    label: 'PrimeReact Data Table Demo'
-};
-
-/**
- * Opens the temporary PrimeReact forms research page from commands and menus.
- */
-export const SearchStudioShowPrimeReactFormsDemoCommand: Command = {
-    id: 'search-studio.primereact-demo.forms.show',
-    category: 'UKHO Search Studio',
-    label: 'PrimeReact Forms Demo'
-};
-
-/**
- * Opens the temporary PrimeReact `DataView` research page from commands and menus.
- */
-export const SearchStudioShowPrimeReactDataViewDemoCommand: Command = {
-    id: 'search-studio.primereact-demo.dataview.show',
-    category: 'UKHO Search Studio',
-    label: 'PrimeReact Data View Demo'
-};
-
-/**
- * Opens the temporary PrimeReact layout and container research page from commands and menus.
- */
-export const SearchStudioShowPrimeReactLayoutDemoCommand: Command = {
-    id: 'search-studio.primereact-demo.layout.show',
-    category: 'UKHO Search Studio',
-    label: 'PrimeReact Layout Demo'
-};
 
 /**
  * Opens the temporary PrimeReact combined showcase research page from commands and menus.
@@ -124,115 +79,20 @@ export const SearchStudioShowPrimeReactShowcaseDemoCommand: Command = {
     label: 'PrimeReact Showcase Demo'
 };
 
-/**
- * Opens the temporary PrimeReact `Tree` research page from commands and menus.
- */
-export const SearchStudioShowPrimeReactTreeDemoCommand: Command = {
-    id: 'search-studio.primereact-demo.tree.show',
-    category: 'UKHO Search Studio',
-    label: 'PrimeReact Tree Demo'
-};
-
-/**
- * Opens the temporary PrimeReact `TreeTable` research page from commands and menus.
- */
-export const SearchStudioShowPrimeReactTreeTableDemoCommand: Command = {
-    id: 'search-studio.primereact-demo.treetable.show',
-    category: 'UKHO Search Studio',
-    label: 'PrimeReact Tree Table Demo'
-};
-
 const searchStudioPrimeReactDemoPageDefinitions: Record<SearchStudioPrimeReactDemoPageId, SearchStudioPrimeReactDemoPageDefinition> = {
-    bootstrap: {
-        pageId: 'bootstrap',
-        label: 'PrimeReact Demo',
-        widgetLabel: 'PrimeReact Demo',
-        widgetCaption: 'Temporary PrimeReact bootstrap evaluation demo'
-    },
-    datatable: {
-        pageId: 'datatable',
-        label: 'PrimeReact Data Table Demo',
-        widgetLabel: 'PrimeReact Data Table Demo',
-        widgetCaption: 'Temporary PrimeReact DataTable evaluation demo'
-    },
-    forms: {
-        pageId: 'forms',
-        label: 'PrimeReact Forms Demo',
-        widgetLabel: 'PrimeReact Forms Demo',
-        widgetCaption: 'Temporary PrimeReact forms evaluation demo'
-    },
-    dataview: {
-        pageId: 'dataview',
-        label: 'PrimeReact Data View Demo',
-        widgetLabel: 'PrimeReact Data View Demo',
-        widgetCaption: 'Temporary PrimeReact DataView evaluation demo'
-    },
-    layout: {
-        pageId: 'layout',
-        label: 'PrimeReact Layout Demo',
-        widgetLabel: 'PrimeReact Layout Demo',
-        widgetCaption: 'Temporary PrimeReact layout and container evaluation demo'
-    },
     showcase: {
         pageId: 'showcase',
         label: 'PrimeReact Showcase Demo',
         widgetLabel: 'PrimeReact Showcase Demo',
         widgetCaption: 'Temporary PrimeReact combined showcase evaluation demo'
-    },
-    tree: {
-        pageId: 'tree',
-        label: 'PrimeReact Tree Demo',
-        widgetLabel: 'PrimeReact Tree Demo',
-        widgetCaption: 'Temporary PrimeReact Tree evaluation demo'
-    },
-    treetable: {
-        pageId: 'treetable',
-        label: 'PrimeReact Tree Table Demo',
-        widgetLabel: 'PrimeReact Tree Table Demo',
-        widgetCaption: 'Temporary PrimeReact TreeTable evaluation demo'
     }
 };
 
 const searchStudioPrimeReactDemoCommandDefinitions: ReadonlyArray<SearchStudioPrimeReactDemoCommandDefinition> = [
     {
-        pageId: 'bootstrap',
-        command: SearchStudioShowPrimeReactDemoCommand,
-        menuLabel: 'PrimeReact Demo'
-    },
-    {
-        pageId: 'datatable',
-        command: SearchStudioShowPrimeReactDataTableDemoCommand,
-        menuLabel: 'PrimeReact Data Table Demo'
-    },
-    {
-        pageId: 'forms',
-        command: SearchStudioShowPrimeReactFormsDemoCommand,
-        menuLabel: 'PrimeReact Forms Demo'
-    },
-    {
-        pageId: 'dataview',
-        command: SearchStudioShowPrimeReactDataViewDemoCommand,
-        menuLabel: 'PrimeReact Data View Demo'
-    },
-    {
-        pageId: 'layout',
-        command: SearchStudioShowPrimeReactLayoutDemoCommand,
-        menuLabel: 'PrimeReact Layout Demo'
-    },
-    {
         pageId: 'showcase',
         command: SearchStudioShowPrimeReactShowcaseDemoCommand,
         menuLabel: 'PrimeReact Showcase Demo'
-    },
-    {
-        pageId: 'tree',
-        command: SearchStudioShowPrimeReactTreeDemoCommand,
-        menuLabel: 'PrimeReact Tree Demo'
-    },
-    {
-        pageId: 'treetable',
-        command: SearchStudioShowPrimeReactTreeTableDemoCommand,
-        menuLabel: 'PrimeReact Tree Table Demo'
     }
 ];
 

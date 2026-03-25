@@ -8,7 +8,7 @@ import {
     createTreeTableDemoNodes,
     SearchStudioPrimeReactDemoStatus,
     SearchStudioPrimeReactDemoTreeNode
-} from '../data/search-studio-primereact-demo-data';
+} from '../../data/search-studio-primereact-demo-data';
 import {
     countSelectedTreeKeys,
     createExpandedTreeKeys,
@@ -16,8 +16,8 @@ import {
     SearchStudioPrimeReactDemoExpandedKeys,
     SearchStudioPrimeReactDemoScenario,
     SearchStudioPrimeReactDemoTreeSelectionKeys
-} from '../data/search-studio-primereact-demo-state';
-import { SearchStudioPrimeReactDemoPageProps } from '../search-studio-primereact-demo-page-props';
+} from '../../data/search-studio-primereact-demo-state';
+import { SearchStudioPrimeReactDemoPageProps } from '../../search-studio-primereact-demo-page-props';
 
 const scenarioOptions = [
     { label: 'Ready', value: 'ready' },
@@ -97,6 +97,11 @@ export function SearchStudioPrimeReactTreeTableDemoPage(props: SearchStudioPrime
         () => countSelectedTreeKeys(selectionKeys),
         [selectionKeys]
     );
+    const hostedInsideTabbedShell = props.hostDisplayMode === 'tabbed';
+    const pageClassName = hostedInsideTabbedShell
+        ? 'search-studio-primereact-demo-page search-studio-primereact-demo-page--styled search-studio-primereact-demo-page--tab-hosted search-studio-primereact-demo-page--tab-hosted-data-heavy'
+        : 'search-studio-primereact-demo-page search-studio-primereact-demo-page--styled';
+    const treeTableScrollHeight = hostedInsideTabbedShell ? 'flex' : '32rem';
 
     /**
      * Updates the current high-level page scenario shown by the tree-table surface.
@@ -183,7 +188,7 @@ export function SearchStudioPrimeReactTreeTableDemoPage(props: SearchStudioPrime
 
     // Render the hierarchical grid evaluation surface using full styled PrimeReact so nested rows and columns can be reviewed in-context.
     return (
-        <div className="search-studio-primereact-demo-page search-studio-primereact-demo-page--styled">
+        <div className={pageClassName}>
             <header className="search-studio-primereact-demo-page__hero">
                 <div className="search-studio-primereact-demo-page__hero-copy">
                     <div className="search-studio-primereact-demo-page__hero-heading-row">
@@ -252,7 +257,7 @@ export function SearchStudioPrimeReactTreeTableDemoPage(props: SearchStudioPrime
                     </div>
                 </article>
 
-                <article className="search-studio-primereact-demo-page__surface search-studio-primereact-demo-page__surface--flush">
+                <article className="search-studio-primereact-demo-page__surface search-studio-primereact-demo-page__surface--flush search-studio-primereact-demo-page__surface--contained">
                     <div className="search-studio-primereact-demo-page__section-heading-row">
                         <h2 className="search-studio-primereact-demo-page__section-title">Dense hierarchical grid</h2>
                         <Tag value={scenarioSnapshot.isLoading ? 'Loading overlay' : scenarioSnapshot.isEmpty ? 'Empty state' : 'Ready'} severity="info" rounded className="search-studio-primereact-demo-page__section-tag" />
@@ -261,25 +266,27 @@ export function SearchStudioPrimeReactTreeTableDemoPage(props: SearchStudioPrime
                         The tree-table starts fully expanded to show column density immediately, while checkbox selection and toolbar shortcuts make
                         it easy to inspect nested row behavior.
                     </p>
-                    <TreeTable
-                        value={Array.from(scenarioSnapshot.items) as never[]}
-                        selectionMode="checkbox"
-                        selectionKeys={selectionKeys as never}
-                        onSelectionChange={event => handleSelectionChanged(event as SearchStudioPrimeReactDemoTreeTableSelectionChangedEvent)}
-                        expandedKeys={expandedKeys as never}
-                        onToggle={event => handleExpansionChanged(event as SearchStudioPrimeReactDemoTreeTableToggleEvent)}
-                        loading={scenarioSnapshot.isLoading}
-                        scrollable
-                        scrollHeight="32rem"
-                        tableStyle={{ minWidth: '76rem' }}
-                        className="search-studio-primereact-demo-page__treetable">
-                        <Column field="name" header="Name" expander style={{ minWidth: '20rem' }} sortable />
-                        <Column field="type" header="Type" style={{ minWidth: '10rem' }} sortable />
-                        <Column field="owner" header="Owner" style={{ minWidth: '11rem' }} sortable />
-                        <Column field="status" header="Status" body={renderStatusBody} style={{ minWidth: '10rem' }} sortable />
-                        <Column field="itemCount" header="Items" style={{ minWidth: '8rem' }} sortable />
-                        <Column field="lastUpdatedOn" header="Last updated" style={{ minWidth: '11rem' }} sortable />
-                    </TreeTable>
+                    <div className="search-studio-primereact-demo-page__pane-scroll-host search-studio-primereact-demo-page__pane-scroll-host--grid">
+                        <TreeTable
+                            value={Array.from(scenarioSnapshot.items) as never[]}
+                            selectionMode="checkbox"
+                            selectionKeys={selectionKeys as never}
+                            onSelectionChange={event => handleSelectionChanged(event as SearchStudioPrimeReactDemoTreeTableSelectionChangedEvent)}
+                            expandedKeys={expandedKeys as never}
+                            onToggle={event => handleExpansionChanged(event as SearchStudioPrimeReactDemoTreeTableToggleEvent)}
+                            loading={scenarioSnapshot.isLoading}
+                            scrollable
+                            scrollHeight={treeTableScrollHeight}
+                            tableStyle={{ minWidth: '76rem' }}
+                            className="search-studio-primereact-demo-page__treetable">
+                            <Column field="name" header="Name" expander style={{ minWidth: '20rem' }} sortable />
+                            <Column field="type" header="Type" style={{ minWidth: '10rem' }} sortable />
+                            <Column field="owner" header="Owner" style={{ minWidth: '11rem' }} sortable />
+                            <Column field="status" header="Status" body={renderStatusBody} style={{ minWidth: '10rem' }} sortable />
+                            <Column field="itemCount" header="Items" style={{ minWidth: '8rem' }} sortable />
+                            <Column field="lastUpdatedOn" header="Last updated" style={{ minWidth: '11rem' }} sortable />
+                        </TreeTable>
+                    </div>
                 </article>
             </section>
         </div>

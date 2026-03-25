@@ -16,8 +16,8 @@ import {
     SearchStudioPrimeReactFormsDemoValidation,
     SearchStudioPrimeReactFormsDemoValues,
     validateSearchStudioPrimeReactFormsDemoValues
-} from '../data/search-studio-primereact-demo-state';
-import { SearchStudioPrimeReactDemoPageProps } from '../search-studio-primereact-demo-page-props';
+} from '../../data/search-studio-primereact-demo-state';
+import { SearchStudioPrimeReactDemoPageProps } from '../../search-studio-primereact-demo-page-props';
 
 /**
  * Describes a single selection option shown by the forms demo segmented button group.
@@ -130,6 +130,10 @@ export function SearchStudioPrimeReactFormsDemoPage(props: SearchStudioPrimeReac
     );
     const visibleValidation = hasAttemptedSubmit ? validation : {};
     const canRequestPublish = formValues.reviewMode === 'expedite';
+    const hostedInsideTabbedShell = props.hostDisplayMode === 'tabbed';
+    const pageClassName = hostedInsideTabbedShell
+        ? 'search-studio-primereact-demo-page search-studio-primereact-demo-page--styled search-studio-primereact-demo-page--tab-hosted'
+        : 'search-studio-primereact-demo-page search-studio-primereact-demo-page--styled';
 
     React.useEffect(() => () => {
         if (!saveTimerRef.current) {
@@ -324,7 +328,7 @@ export function SearchStudioPrimeReactFormsDemoPage(props: SearchStudioPrimeReac
 
     // Render the broader forms surface using full styled PrimeReact so reviewers can compare controlled inputs, validation, and boolean state in-context.
     return (
-        <div className="search-studio-primereact-demo-page search-studio-primereact-demo-page--styled">
+        <div className={pageClassName}>
             <header className="search-studio-primereact-demo-page__hero">
                 <div className="search-studio-primereact-demo-page__hero-copy">
                     <div className="search-studio-primereact-demo-page__hero-heading-row">
