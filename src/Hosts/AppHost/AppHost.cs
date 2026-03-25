@@ -126,8 +126,9 @@ namespace AppHost
                                                 .WaitFor(storageBlob)
                                                 .WithScalar("Studio API");
 
-                    // Host the active Studio shell from the fresh Theia workspace while preserving the established script names and environment handoff.
+                    // Host the active Studio shell from the fresh Theia workspace with Yarn-aware Aspire orchestration.
                     var studioShell = builder.AddJavaScriptApp(ServiceNames.StudioShell, "../../Studio/Server", "start:browser")
+                                             .WithYarn(install: true, installArgs: ["--ignore-engines"])
                                              .WithBuildScript("build:browser")
                                              .WithEnvironment("GYP_MSVS_VERSION", "2022")
                                              .WithEnvironment("npm_config_msvs_version", "2022")

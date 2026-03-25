@@ -27,15 +27,16 @@ namespace AppHost.Tests
         }
 
         /// <summary>
-        /// Verifies that AppHost still points Aspire at the fresh Studio shell workspace and preserved environment bridge.
+        /// Verifies that AppHost still points Aspire at the fresh Studio shell workspace with Yarn-aware orchestration.
         /// </summary>
         [Fact]
         public void AppHost_source_keeps_the_active_studio_shell_contract()
         {
-            // Read the AppHost source so the preserved JavaScript resource contract remains covered where direct execution is impractical.
+            // Read the AppHost source so the preserved Yarn-based Studio shell contract remains covered where direct execution is impractical.
             var appHostSource = File.ReadAllText(GetRepositoryFilePath("src", "Hosts", "AppHost", "AppHost.cs"));
 
             appHostSource.ShouldContain("AddJavaScriptApp(ServiceNames.StudioShell, \"../../Studio/Server\", \"start:browser\")");
+            appHostSource.ShouldContain(".WithYarn(install: true, installArgs: [\"--ignore-engines\"])");
             appHostSource.ShouldContain(".WithBuildScript(\"build:browser\")");
             appHostSource.ShouldContain(".WithEnvironment(\"STUDIO_API_HOST_API_BASE_URL\", studioApi.GetEndpoint(\"https\"))");
             appHostSource.ShouldContain(".WithHttpEndpoint(targetPort: studioShellPort, port: studioShellPort, env: \"PORT\", isProxied: false)");
