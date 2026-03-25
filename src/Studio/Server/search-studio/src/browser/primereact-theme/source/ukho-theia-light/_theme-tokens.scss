@@ -1,0 +1,18 @@
+// Stores the first Studio-owned UKHO/Theia light theme token set layered onto the upstream Lara light baseline.
+$ukho-theia-light-theme-tokens: (
+    'theme-name': 'ukho-theia-light',
+    'color-scheme': light,
+    'surface-ground': #f4f7fb,
+    'surface-card': #ffffff,
+    'surface-overlay': #ffffff,
+    'surface-border': #d3dce8,
+    'surface-hover': #e8eef6,
+    'text-color': #16212d,
+    'text-color-secondary': #526170,
+    'primary-color': #0b5cab,
+    'primary-color-text': #ffffff,
+    'highlight-background': #dcecff,
+    'highlight-text-color': #0b3b69,
+    'mask-background': rgba(15, 23, 42, 0.16),
+    'focus-ring-color': rgba(11, 92, 171, 0.22)
+);

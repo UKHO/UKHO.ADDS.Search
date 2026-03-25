@@ -22,9 +22,12 @@
       "url": "https://github.com/primefaces/primereact-sass-theme/issues"
     },
     "scripts": {
-      "sass-watch": "sass src/assets:src/assets --watch --no-source-map",
+      "sass-watch": "sass .:build --watch --no-source-map",
       "sass": "sass .:build --no-source-map",
-      "build": "npm run sass"
+      "build": "npm run sass",
+      "deploy:studio": "node ./scripts/deploy-studio-themes.js",
+      "verify:studio": "node ./scripts/deploy-studio-themes.js --verify",
+      "build:studio": "npm run build && npm run deploy:studio && npm run verify:studio"
     },
     "devDependencies": {
       "sass": "latest"

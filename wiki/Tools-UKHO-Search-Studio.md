@@ -147,6 +147,61 @@ Manual review steps:
 17. Confirm horizontal overflow stays with the root tab strip or the inner grid region rather than introducing duplicate outer scrollbars.
 18. Switch Theia between light and dark themes and confirm the consolidated showcase updates to the matching stock PrimeReact theme.
 
+## PrimeReact theme build/deploy baseline
+
+Work package `075-primereact-system` currently treats `src/Studio/Theme` as the accepted upstream/reference PrimeReact SASS workspace for Studio's first custom theme slice.
+
+Current practical version relationship:
+
+- Studio runtime `primereact` package in `search-studio`: `10.9.7`
+- upstream/reference `primereact-sass-theme` workspace in `src/Studio/Theme`: `10.8.5`
+
+Current ownership boundary:
+
+- `src/Studio/Theme` stays read-only in intent as the upstream/reference SASS baseline and toolchain
+- Studio-owned UKHO/Theia theme source now lives under `src/Studio/Server/search-studio/src/browser/primereact-theme/source`
+- generated Studio-consumed theme assets currently land under `src/Studio/Server/search-studio/src/browser/primereact-theme/generated`
+
+Current Studio-owned theme source structure:
+
+- `src/Studio/Server/search-studio/src/browser/primereact-theme/source/shared`
+- `src/Studio/Server/search-studio/src/browser/primereact-theme/source/ukho-theia-light`
+- `src/Studio/Server/search-studio/src/browser/primereact-theme/source/ukho-theia-dark`
+
+Current manual-on-demand bootstrap/build/deploy workflow:
+
+```powershell
+Set-Location .\src\Studio\Theme
+npm install
+npm run build
+npm run deploy:studio
+npm run verify:studio
+```
+
+Equivalent one-line forms from the repository root:
+
+```powershell
+npm install --prefix .\src\Studio\Theme
+npm run build --prefix .\src\Studio\Theme
+npm run deploy:studio --prefix .\src\Studio\Theme
+npm run verify:studio --prefix .\src\Studio\Theme
+```
+
+Optional wrapper scripts:
+
+- Windows: `src/Studio/Theme/build.bat`
+- Unix-like shells: `src/Studio/Theme/build.sh`
+
+Current generated outputs:
+
+- `src/Studio/Server/search-studio/src/browser/primereact-theme/generated/ukho-theia-light.css`
+- `src/Studio/Server/search-studio/src/browser/primereact-theme/generated/ukho-theia-dark.css`
+- `src/Studio/Server/search-studio/src/browser/primereact-theme/generated/search-studio-generated-primereact-theme-content.ts`
+
+The current deploy step composes the validated upstream Lara light/dark baseline outputs with the Studio-owned UKHO/Theia light/dark SASS source. The temporary PrimeReact research surface now injects that generated local theme content at runtime so the page follows Theia light/dark mode without relying on the stock PrimeReact CDN theme CSS for the active theme layer.
+
+The existing `search-studio` asset copy pipeline already copies `.css` files from `src` into `lib`, so no extra asset-copy extension is currently required once the generated CSS files exist.
+
 ## Prerequisite tooling
 
 To build the current Theia workspace successfully on this repository, use the following tooling baseline:

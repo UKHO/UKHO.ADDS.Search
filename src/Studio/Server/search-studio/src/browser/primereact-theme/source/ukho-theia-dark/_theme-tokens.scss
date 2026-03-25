@@ -1,0 +1,18 @@
+// Stores the first Studio-owned UKHO/Theia dark theme token set layered onto the upstream Lara dark baseline.
+$ukho-theia-dark-theme-tokens: (
+    'theme-name': 'ukho-theia-dark',
+    'color-scheme': dark,
+    'surface-ground': #121a24,
+    'surface-card': #192430,
+    'surface-overlay': #1e2935,
+    'surface-border': #314252,
+    'surface-hover': #253443,
+    'text-color': #e4ebf2,
+    'text-color-secondary': #9eb0c3,
+    'primary-color': #5ca9ff,
+    'primary-color-text': #0f1820,
+    'highlight-background': #1f3550,
+    'highlight-text-color': #d7e9ff,
+    'mask-background': rgba(2, 8, 23, 0.42),
+    'focus-ring-color': rgba(92, 169, 255, 0.28)
+);

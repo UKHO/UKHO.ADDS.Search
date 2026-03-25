@@ -66,7 +66,8 @@
 
 ## Slice 1 — Establish the upstream/reference theme workspace and a runnable Studio build/deploy cycle
 
-- [ ] Work Item 1: Validate the upstream/reference SASS workspace and make the Studio theme build/deploy cycle runnable end to end
+- [x] Work Item 1: Validate the upstream/reference SASS workspace and make the Studio theme build/deploy cycle runnable end to end - Completed
+  - Summary: Validated `src/Studio/Theme` as the upstream/reference baseline, added explicit Studio build/deploy/verify scripts and manual wrapper flows, generated baseline UKHO/Theia light/dark CSS into `search-studio`, added a regression test that protects generated asset copying into `lib`, and updated the theme workspace README plus Studio wiki guidance.
   - **Purpose**: Deliver the first runnable slice by proving that the repository can build and deploy UKHO/Theia theme assets from source before any deep styling uplift begins.
   - **Acceptance Criteria**:
     - `src/Studio/Theme` is validated and documented as the accepted upstream/reference baseline.
@@ -80,23 +81,26 @@
     - Logging and error handling preserved for script and asset operations
     - Code comments added in full compliance with `./.github/instructions/documentation-pass.instructions.md`
     - Documentation updated
-    - Can execute end-to-end via: `npm --prefix .\src\Studio\Theme install`, `npm --prefix .\src\Studio\Theme run build`, deploy to Studio asset location, and confirm generated theme files exist
-  - [ ] Task 1.1: Validate `src/Studio/Theme` as the upstream/reference baseline
-    - [ ] Step 1: Inspect the local `src/Studio/Theme` structure and confirm the workspace is sufficient as the accepted upstream/reference baseline for Studio’s first custom theme iteration.
-    - [ ] Step 2: Record the practical version relationship between `primereact` `10.9.7` and `primereact-sass-theme` `10.8.5` in repository documentation or script comments where relevant.
-    - [ ] Step 3: Keep `src/Studio/Theme` read-only in intent and avoid placing Studio-owned UKHO/Theia customizations directly into that upstream/reference workspace.
-    - [ ] Step 4: Apply `./.github/instructions/documentation-pass.instructions.md` in full to all touched source files.
-  - [ ] Task 1.2: Implement the bootstrap/build/deploy workflow for Studio theme assets
-    - [ ] Step 1: Update `src/Studio/Theme` scripts or add Studio-owned wrapper scripts so first-time bootstrap, build, and deploy steps are explicit.
-    - [ ] Step 2: Ensure generated theme outputs are emitted or copied into `src/Studio/Server/search-studio/src/browser/primereact-theme/generated`.
-    - [ ] Step 3: Keep the workflow manual-on-demand rather than tied to every normal Visual Studio run.
-    - [ ] Step 4: Extend frontend asset copying only if needed so the generated theme assets flow into emitted `lib` output cleanly.
-    - [ ] Step 5: Apply `./.github/instructions/documentation-pass.instructions.md` in full to all touched source files.
-  - [ ] Task 1.3: Verify the first source-build-deploy cycle without custom styling changes
-    - [ ] Step 1: Run the documented bootstrap command if local tooling is missing.
-    - [ ] Step 2: Run the documented build and deploy workflow.
-    - [ ] Step 3: Verify the generated UKHO/Theia light and dark theme artifacts exist where Studio will consume them.
-    - [ ] Step 4: Apply `./.github/instructions/documentation-pass.instructions.md` in full to all touched source files.
+    - Can execute end-to-end via: `Set-Location .\src\Studio\Theme; npm install; npm run build; npm run deploy:studio; npm run verify:studio`, or the equivalent `--prefix` forms from the repository root, then confirm generated theme files exist
+  - [x] Task 1.1: Validate `src/Studio/Theme` as the upstream/reference baseline - Completed
+    - Summary: Confirmed the existing PrimeReact SASS workspace is sufficient as the accepted upstream/reference baseline, documented the `primereact` `10.9.7` versus `primereact-sass-theme` `10.8.5` relationship, and recorded that Studio-owned custom theme source remains outside `src/Studio/Theme`.
+    - [x] Step 1: Inspect the local `src/Studio/Theme` structure and confirm the workspace is sufficient as the accepted upstream/reference baseline for Studio’s first custom theme iteration.
+    - [x] Step 2: Record the practical version relationship between `primereact` `10.9.7` and `primereact-sass-theme` `10.8.5` in repository documentation or script comments where relevant.
+    - [x] Step 3: Keep `src/Studio/Theme` read-only in intent and avoid placing Studio-owned UKHO/Theia customizations directly into that upstream/reference workspace.
+    - [x] Step 4: Apply `./.github/instructions/documentation-pass.instructions.md` in full to all touched source files.
+  - [x] Task 1.2: Implement the bootstrap/build/deploy workflow for Studio theme assets - Completed
+    - Summary: Added explicit `deploy:studio`, `verify:studio`, and `build:studio` scripts, replaced the old upstream copy wrappers with manual Studio-specific wrappers, emitted baseline light/dark generated CSS into `search-studio`, and confirmed the existing `search-studio` CSS asset copy already carries generated theme files into `lib` without further code changes.
+    - [x] Step 1: Update `src/Studio/Theme` scripts or add Studio-owned wrapper scripts so first-time bootstrap, build, and deploy steps are explicit.
+    - [x] Step 2: Ensure generated theme outputs are emitted or copied into `src/Studio/Server/search-studio/src/browser/primereact-theme/generated`.
+    - [x] Step 3: Keep the workflow manual-on-demand rather than tied to every normal Visual Studio run.
+    - [x] Step 4: Extend frontend asset copying only if needed so the generated theme assets flow into emitted `lib` output cleanly.
+    - [x] Step 5: Apply `./.github/instructions/documentation-pass.instructions.md` in full to all touched source files.
+  - [x] Task 1.3: Verify the first source-build-deploy cycle without custom styling changes - Completed
+    - Summary: Ran `npm install`, `npm run build`, `npm run deploy:studio`, and `npm run verify:studio` in `src/Studio/Theme`; verified generated UKHO/Theia light/dark files in the Studio asset location; added and passed a generated-asset regression test via `yarn --cwd .\src\Studio\Server\search-studio test`; completed `yarn --cwd .\src\Studio\Server build:browser`; and confirmed the wider Visual Studio workspace still builds successfully.
+    - [x] Step 1: Run the documented bootstrap command if local tooling is missing.
+    - [x] Step 2: Run the documented build and deploy workflow.
+    - [x] Step 3: Verify the generated UKHO/Theia light and dark theme artifacts exist where Studio will consume them.
+    - [x] Step 4: Apply `./.github/instructions/documentation-pass.instructions.md` in full to all touched source files.
   - **Files**:
     - `src/Studio/Theme/package.json`: validate scripts and bootstrap expectations for the upstream/reference theme workspace
     - `src/Studio/Theme/build.bat`: support Studio-specific theme build/deploy flow on Windows
@@ -105,9 +109,11 @@
     - `src/Studio/Server/search-studio/scripts/copy-assets.js`: extend only if required to copy generated theme CSS into emitted frontend assets
   - **Work Item Dependencies**: Existing `src/Studio/Theme` workspace and current search-studio asset copy/build pipeline.
   - **Run / Verification Instructions**:
-    - `npm --prefix .\src\Studio\Theme install`
-    - `npm --prefix .\src\Studio\Theme run build`
-    - run the repository-specific deploy/copy command if separate from build
+    - `Set-Location .\src\Studio\Theme`
+    - `npm install`
+    - `npm run build`
+    - `npm run deploy:studio`
+    - `npm run verify:studio`
     - `yarn --cwd .\src\Studio\Server\search-studio test`
     - `yarn --cwd .\src\Studio\Server build:browser`
     - confirm generated light/dark theme CSS files exist under `src/Studio/Server/search-studio/src/browser/primereact-theme/generated`
@@ -117,7 +123,8 @@
 
 ## Slice 2 — Introduce Studio-owned UKHO/Theia light/dark theme source and wire Studio to consume the generated themes
 
-- [ ] Work Item 2: Create the Studio-owned UKHO/Theia theme source structure and load the generated themes in Studio
+- [x] Work Item 2: Create the Studio-owned UKHO/Theia theme source structure and load the generated themes in Studio - Completed
+  - Summary: Added the Studio-owned `source/shared`, `source/ukho-theia-light`, and `source/ukho-theia-dark` SASS structure; updated the deploy workflow to compose upstream Lara output with Studio-owned light/dark source and generate a runtime TypeScript theme manifest; switched the PrimeReact demo theme service from CDN theme URLs to generated UKHO/Theia theme content; added focused tests for generated theme selection/runtime injection; and updated the Studio wiki plus theme README to document the new source/generated flow.
   - **Purpose**: Deliver the first visible end-to-end capability by making Studio consume generated UKHO/Theia theme assets built from the new source structure.
   - **Acceptance Criteria**:
     - Studio-owned custom theme source exists under the canonical `source/shared`, `source/ukho-theia-light`, and `source/ukho-theia-dark` structure.
@@ -133,21 +140,24 @@
     - Code comments added in full compliance with `./.github/instructions/documentation-pass.instructions.md`
     - Tests or verification checks updated or added
     - Can execute end-to-end via: build theme assets, start Studio, open `PrimeReact Showcase Demo`, and confirm generated UKHO/Theia themes are active
-  - [ ] Task 2.1: Create the Studio-owned UKHO/Theia light/dark source structure
-    - [ ] Step 1: Create `source/shared`, `source/ukho-theia-light`, and `source/ukho-theia-dark` under `src/Studio/Server/search-studio/src/browser/primereact-theme/source`.
-    - [ ] Step 2: Add shared SASS fragments for UKHO/Theia tokens, extensions, and theme composition.
-    - [ ] Step 3: Keep the first iteration intentionally simple and avoid introducing a separate hosted font asset unless later justified.
-    - [ ] Step 4: Apply `./.github/instructions/documentation-pass.instructions.md` in full to all touched source files.
-  - [ ] Task 2.2: Apply Theia typography cohesion in the first custom theme iteration
-    - [ ] Step 1: Configure the UKHO/Theia light and dark themes to use Theia’s UI font family contract, including `--theia-ui-font-family`, where practical.
-    - [ ] Step 2: Avoid populating `_fonts.scss` with hosted font assets in the first iteration unless a clear requirement emerges.
-    - [ ] Step 3: Verify that generated typography no longer feels typographically detached from the Theia shell.
-    - [ ] Step 4: Apply `./.github/instructions/documentation-pass.instructions.md` in full to all touched source files.
-  - [ ] Task 2.3: Wire Studio to consume generated UKHO/Theia themes
-    - [ ] Step 1: Update theme-loading or theme-selection logic in the Studio PrimeReact frontend to point at generated UKHO/Theia theme outputs.
-    - [ ] Step 2: Preserve compatibility with Theia light/dark context where applicable.
-    - [ ] Step 3: Add focused verification or tests around asset path resolution and active theme selection.
-    - [ ] Step 4: Apply `./.github/instructions/documentation-pass.instructions.md` in full to all touched source files.
+  - [x] Task 2.1: Create the Studio-owned UKHO/Theia light/dark source structure - Completed
+    - Summary: Created the canonical source folders under `search-studio`, added shared SASS fragments for tokens/extensions/composition, and introduced simple light/dark token sets plus empty `_fonts.scss` placeholders that intentionally avoid hosted font assets in the first iteration.
+    - [x] Step 1: Create `source/shared`, `source/ukho-theia-light`, and `source/ukho-theia-dark` under `src/Studio/Server/search-studio/src/browser/primereact-theme/source`.
+    - [x] Step 2: Add shared SASS fragments for UKHO/Theia tokens, extensions, and theme composition.
+    - [x] Step 3: Keep the first iteration intentionally simple and avoid introducing a separate hosted font asset unless later justified.
+    - [x] Step 4: Apply `./.github/instructions/documentation-pass.instructions.md` in full to all touched source files.
+  - [x] Task 2.2: Apply Theia typography cohesion in the first custom theme iteration - Completed
+    - Summary: Configured the shared theme tokens and generated CSS composition to use `--theia-ui-font-family`, kept `_fonts.scss` free of hosted `@font-face` declarations, and verified the generated light/dark theme artifacts plus the generated runtime manifest now carry the Theia font contract.
+    - [x] Step 1: Configure the UKHO/Theia light and dark themes to use Theia’s UI font family contract, including `--theia-ui-font-family`, where practical.
+    - [x] Step 2: Avoid populating `_fonts.scss` with hosted font assets in the first iteration unless a clear requirement emerges.
+    - [x] Step 3: Verify that generated typography no longer feels typographically detached from the Theia shell.
+    - [x] Step 4: Apply `./.github/instructions/documentation-pass.instructions.md` in full to all touched source files.
+  - [x] Task 2.3: Wire Studio to consume generated UKHO/Theia themes - Completed
+    - Summary: Reworked the PrimeReact demo theme service to inject generated UKHO/Theia theme content instead of switching to stock Lara CDN theme URLs, kept Theia light/dark synchronization behavior intact, added focused tests for generated theme definition resolution and runtime stylesheet injection, and updated supporting documentation.
+    - [x] Step 1: Update theme-loading or theme-selection logic in the Studio PrimeReact frontend to point at generated UKHO/Theia theme outputs.
+    - [x] Step 2: Preserve compatibility with Theia light/dark context where applicable.
+    - [x] Step 3: Add focused verification or tests around asset path resolution and active theme selection.
+    - [x] Step 4: Apply `./.github/instructions/documentation-pass.instructions.md` in full to all touched source files.
   - **Files**:
     - `src/Studio/Server/search-studio/src/browser/primereact-theme/source/shared/`: shared UKHO/Theia SASS fragments
     - `src/Studio/Server/search-studio/src/browser/primereact-theme/source/ukho-theia-light/`: Studio-owned editable light theme source
@@ -185,21 +195,23 @@
     - Code comments added in full compliance with `./.github/instructions/documentation-pass.instructions.md`
     - Tests or verification checks updated or added
     - Can execute end-to-end via: rebuild generated themes, start Studio, open `Showcase`, and visually confirm theme-owned styling now comes from source-built assets
-  - [ ] Task 3.1: Classify current `Showcase` rules into theme concerns versus layout concerns
-    - [ ] Step 1: Review current `Showcase` CSS and identify which rules belong in theme source: typography, weights, spacing, control chrome, badges, paginator treatment, and component density.
-    - [ ] Step 2: Keep full-height host behavior, splitter sizing, and scroll ownership in the separate Studio layout contract.
-    - [ ] Step 3: Apply `./.github/instructions/documentation-pass.instructions.md` in full to all touched source files.
-  - [ ] Task 3.2: Implement the first theme-source uplift in the UKHO/Theia light and dark themes
-    - [ ] Step 1: Update the custom theme source to carry the selected `Showcase` styling decisions.
-    - [ ] Step 2: Rebuild and deploy the generated theme outputs.
-    - [ ] Step 3: Reduce corresponding downstream `Showcase` CSS where those rules now belong in the generated theme.
-    - [ ] Step 4: Apply `./.github/instructions/documentation-pass.instructions.md` in full to all touched source files.
+  - [x] Task 3.1: Classify current `Showcase` rules into theme concerns versus layout concerns - Completed
+    - Summary: Classified Showcase typography, labels, tree text, grid text, and paginator density as theme concerns suitable for generated theme ownership, while keeping full-height host behavior, splitter sizing, and scroll ownership in the Studio-side layout CSS.
+    - [x] Step 1: Review current `Showcase` CSS and identify which rules belong in theme source: typography, weights, spacing, control chrome, badges, paginator treatment, and component density.
+    - [x] Step 2: Keep full-height host behavior, splitter sizing, and scroll ownership in the separate Studio layout contract.
+    - [x] Step 3: Apply `./.github/instructions/documentation-pass.instructions.md` in full to all touched source files.
+  - [x] Task 3.2: Implement the first theme-source uplift in the UKHO/Theia light and dark themes - Completed
+    - Summary: Moved the first Showcase typography/density uplift into the shared UKHO/Theia theme source, slightly relaxed the compact text sizing so Showcase no longer reads smaller than the other retained tabs, rebuilt and redeployed the generated theme outputs, and removed the corresponding downstream Showcase typography overrides from the page CSS.
+    - [x] Step 1: Update the custom theme source to carry the selected `Showcase` styling decisions.
+    - [x] Step 2: Rebuild and deploy the generated theme outputs.
+    - [x] Step 3: Reduce corresponding downstream `Showcase` CSS where those rules now belong in the generated theme.
+    - [x] Step 4: Apply `./.github/instructions/documentation-pass.instructions.md` in full to all touched source files.
   - [ ] Task 3.3: Visually verify the first theme-source uplift through `Showcase`
     - [ ] Step 1: Verify typography size, weight, and density under the UKHO/Theia light theme.
     - [ ] Step 2: Verify equivalent behavior under the UKHO/Theia dark theme.
     - [ ] Step 3: Verify controls such as buttons, inputs, tags, paginator, and tables feel cohesive with the Theia shell.
-    - [ ] Step 4: Add or update focused regression coverage where practical.
-    - [ ] Step 5: Apply `./.github/instructions/documentation-pass.instructions.md` in full to all touched source files.
+    - [x] Step 4: Add or update focused regression coverage where practical.
+    - [x] Step 5: Apply `./.github/instructions/documentation-pass.instructions.md` in full to all touched source files.
   - **Files**:
     - `src/Studio/Server/search-studio/src/browser/primereact-theme/source/ukho-theia-light/`: implement light-theme source uplift
     - `src/Studio/Server/search-studio/src/browser/primereact-theme/source/ukho-theia-dark/`: implement dark-theme source uplift

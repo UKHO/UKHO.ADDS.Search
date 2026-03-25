@@ -1,0 +1,80 @@
+@use 'sass:map';
+@use './tokens' as sharedTokens;
+
+// Applies the first Studio-owned Theia cohesion pass on top of the upstream Lara baseline theme output.
+@mixin render-ukho-theia-theme-extensions($theme-tokens) {
+    .p-component,
+    .p-inputtext,
+    .p-button,
+    .p-dropdown,
+    .p-multiselect,
+    .p-paginator,
+    .p-tabview .p-tabview-nav li .p-tabview-nav-link,
+    .p-datatable,
+    .p-tree,
+    .p-treetable,
+    .p-tag {
+        font-family: sharedTokens.$ukho-theia-font-family;
+        font-size: sharedTokens.$ukho-theia-component-font-size;
+    }
+
+    .p-button,
+    .p-inputtext,
+    .p-dropdown,
+    .p-multiselect,
+    .p-card,
+    .p-panel,
+    .p-tag,
+    .p-paginator {
+        border-radius: sharedTokens.$ukho-theia-content-border-radius;
+    }
+
+    .p-card,
+    .p-panel,
+    .p-datatable .p-datatable-header,
+    .p-datatable .p-datatable-footer,
+    .p-paginator,
+    .p-tabview .p-tabview-nav,
+    .p-tree,
+    .p-treetable {
+        box-shadow: none;
+    }
+
+    .p-button:focus,
+    .p-inputtext:enabled:focus,
+    .p-dropdown:not(.p-disabled).p-focus,
+    .p-multiselect:not(.p-disabled).p-focus,
+    .p-tabview .p-tabview-nav li .p-tabview-nav-link:focus {
+        box-shadow: 0 0 0 sharedTokens.$ukho-theia-focus-ring-width #{map.get($theme-tokens, 'focus-ring-color')};
+    }
+
+    .p-button.p-button-text,
+    .p-button.p-button-link {
+        color: map.get($theme-tokens, 'primary-color');
+    }
+
+    .p-inputtext,
+    .p-dropdown,
+    .p-multiselect,
+    .p-paginator,
+    .p-card,
+    .p-panel,
+    .p-tree,
+    .p-treetable {
+        border-color: map.get($theme-tokens, 'surface-border');
+    }
+
+    .p-button,
+    .p-button .p-button-label,
+    .p-button .p-button-icon,
+    .p-tag,
+    .p-paginator .p-paginator-pages .p-paginator-page,
+    .p-paginator .p-paginator-next,
+    .p-paginator .p-paginator-prev,
+    .p-paginator .p-paginator-first,
+    .p-paginator .p-paginator-last {
+        display: inline-flex;
+        align-items: center;
+        gap: sharedTokens.$ukho-theia-inline-gap;
+    }
+}

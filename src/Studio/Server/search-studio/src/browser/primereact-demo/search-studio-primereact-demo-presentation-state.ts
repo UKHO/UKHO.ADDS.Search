@@ -5,7 +5,7 @@ export type SearchStudioPrimeReactDemoThemeVariant = 'light' | 'dark';
  */
 export class SearchStudioPrimeReactDemoPresentationState {
     /**
-     * Tracks which PrimeReact stock theme variant matches the active Theia workbench theme.
+     * Tracks which generated UKHO/Theia PrimeReact theme variant matches the active Theia workbench theme.
      */
     protected activeThemeVariant: SearchStudioPrimeReactDemoThemeVariant = 'dark';
 
@@ -27,7 +27,7 @@ export class SearchStudioPrimeReactDemoPresentationState {
     }
 
     /**
-     * Maps the current Theia body classes to the PrimeReact light or dark theme variant used by the demo.
+     * Maps the current Theia body classes to the generated UKHO/Theia PrimeReact light or dark theme variant used by the demo.
      *
      * @param bodyClassNames Supplies the active body class names that Theia applies for the current workbench theme.
      * @returns The detected PrimeReact theme variant that should be used for styled mode.
@@ -44,7 +44,7 @@ export class SearchStudioPrimeReactDemoPresentationState {
             }
         }
 
-        // Cache the resolved variant so the widget can reapply the correct stock PrimeReact theme when styled mode is active.
+        // Cache the resolved variant so the widget can reapply the correct generated UKHO/Theia PrimeReact theme when styled mode is active.
         this.activeThemeVariant = nextThemeVariant;
         return this.activeThemeVariant;
     }

@@ -708,15 +708,12 @@
 
 /* Keep the showcase-specific tidy-up scoped to that page so the other PrimeReact research pages remain unchanged. */
 .search-studio-primereact-demo-page--showcase-compact {
-    --search-studio-primereact-showcase-control-font-size: 0.72rem;
-    --search-studio-primereact-showcase-control-line-height: 1;
     grid-template-rows: minmax(0, 1fr);
     gap: 0;
     height: 100%;
     min-width: 0;
     min-height: 0;
     padding: 0.4rem 0.85rem 0.75rem;
-    font-size: 0.875rem;
     overflow: hidden;
 }
 
@@ -737,28 +734,6 @@
     justify-content: space-between;
     gap: 0.55rem;
     flex-wrap: wrap;
-}
-
-.search-studio-primereact-demo-page--showcase-compact .search-studio-primereact-demo-page__title--compact {
-    font-size: 1rem;
-    font-weight: 600;
-}
-
-.search-studio-primereact-demo-page--showcase-compact .search-studio-primereact-demo-page__summary--compact,
-.search-studio-primereact-demo-page--showcase-compact .search-studio-primereact-demo-page__section-summary {
-    font-size: 0.78rem;
-    line-height: 1.3;
-}
-
-.search-studio-primereact-demo-page--showcase-compact .search-studio-primereact-demo-page__section-title {
-    font-size: 0.9rem;
-    font-weight: 500;
-}
-
-.search-studio-primereact-demo-page--showcase-compact .search-studio-primereact-demo-page__field-label,
-.search-studio-primereact-demo-page--showcase-compact .search-studio-primereact-demo-page__metric-label {
-    font-size: 0.72rem;
-    letter-spacing: 0.02em;
 }
 
 .search-studio-primereact-demo-page--showcase-compact .search-studio-primereact-demo-page__showcase-workspace {
@@ -840,22 +815,10 @@
     gap: 0.18rem;
 }
 
-.search-studio-primereact-demo-page--showcase-compact .search-studio-primereact-demo-page__helper-text,
-.search-studio-primereact-demo-page--showcase-compact .search-studio-primereact-demo-page__table-secondary {
-    font-size: 0.74rem;
-}
-
 .search-studio-primereact-demo-page--showcase-compact .search-studio-primereact-demo-page__section-tag,
 .search-studio-primereact-demo-page--showcase-compact .search-studio-primereact-demo-page__callout-row--compact .p-tag,
 .search-studio-primereact-demo-page--showcase-compact .search-studio-primereact-demo-page__section-heading-row .p-tag {
     font-weight: 500;
-}
-
-.search-studio-primereact-demo-page--showcase-compact .search-studio-primereact-demo-page__section-heading-row strong,
-.search-studio-primereact-demo-page--showcase-compact .search-studio-primereact-demo-page__checkbox-copy > span {
-    font-size: 0.78rem;
-    font-weight: 500;
-    line-height: 1.2;
 }
 
 .search-studio-primereact-demo-page--showcase-compact .search-studio-primereact-demo-page__field-group {
@@ -975,12 +938,6 @@
     padding: 0.12rem 0.18rem;
 }
 
-.search-studio-primereact-demo-page--showcase-compact .search-studio-primereact-demo-page__tree--showcase-compact .p-treenode-label {
-    font-size: 0.72rem;
-    font-weight: 400;
-    line-height: 1.15;
-}
-
 .search-studio-primereact-demo-page--showcase-compact .search-studio-primereact-demo-page__tree--showcase-compact .p-tree-toggler,
 .search-studio-primereact-demo-page--showcase-compact .search-studio-primereact-demo-page__tree--showcase-compact .p-tree-toggler .p-tree-toggler-icon,
 .search-studio-primereact-demo-page--showcase-compact .search-studio-primereact-demo-page__tree--showcase-compact .p-checkbox,
@@ -993,10 +950,6 @@
 
 .search-studio-primereact-demo-page--showcase-compact .search-studio-primereact-demo-page__tree--showcase-compact .p-checkbox {
     margin-right: 0.08rem;
-}
-
-.search-studio-primereact-demo-page--showcase-compact .search-studio-primereact-demo-page__tree--showcase-compact .p-tree-filter-container .p-inputtext {
-    font-size: 0.76rem;
 }
 
 .search-studio-primereact-demo-page--showcase-compact .search-studio-primereact-demo-page__tree--showcase-compact .p-treenode-children {
@@ -1046,18 +999,6 @@
     min-height: 0;
 }
 
-.search-studio-primereact-demo-page--showcase-compact .search-studio-primereact-demo-page__datatable--showcase-grid .p-datatable-thead > tr > th {
-    font-size: 0.72rem;
-    font-weight: 500;
-    line-height: 1.15;
-}
-
-.search-studio-primereact-demo-page--showcase-compact .search-studio-primereact-demo-page__datatable--showcase-grid .p-datatable-tbody > tr > td {
-    font-size: 0.74rem;
-    font-weight: 400;
-    line-height: 1.2;
-}
-
 .search-studio-primereact-demo-page--showcase-compact .search-studio-primereact-demo-page__datatable .p-datatable-thead > tr > th,
 .search-studio-primereact-demo-page--showcase-compact .search-studio-primereact-demo-page__datatable .p-datatable-tbody > tr > td {
     padding: 0.32rem 0.45rem;
@@ -1065,11 +1006,6 @@
 
 .search-studio-primereact-demo-page--showcase-compact .search-studio-primereact-demo-page__datatable--showcase-grid .p-selection-column {
     width: 2.8rem;
-}
-
-.search-studio-primereact-demo-page--showcase-compact .search-studio-primereact-demo-page__datatable--showcase-grid .search-studio-primereact-demo-page__table-copy strong {
-    font-size: 0.76rem;
-    font-weight: 600;
 }
 
 .search-studio-primereact-demo-page--showcase-compact .search-studio-primereact-demo-page__datatable .p-paginator {

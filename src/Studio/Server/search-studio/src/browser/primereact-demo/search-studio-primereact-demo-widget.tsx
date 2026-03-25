@@ -127,7 +127,7 @@ export class SearchStudioPrimeReactDemoWidget extends ReactWidget {
         // Synchronize immediately with the current Theia body classes so the page header reports the correct styled-mode mapping on first render.
         this.synchronizeThemeVariant();
 
-        // Apply the stock PrimeReact theme immediately because the temporary research page now always runs in full styled mode.
+        // Apply the generated UKHO/Theia PrimeReact theme immediately because the temporary research page now always runs in full styled mode.
         void this.applyPresentationMode();
 
         // Start observing body class changes so styled mode follows Theia light and dark theme changes without rebuilding the frontend.
@@ -166,12 +166,12 @@ export class SearchStudioPrimeReactDemoWidget extends ReactWidget {
     }
 
     /**
-     * Applies the current Theia-aligned stock PrimeReact styled theme to the temporary demo page.
+     * Applies the current Theia-aligned generated UKHO/Theia PrimeReact styled theme to the temporary demo page.
      *
      * @returns A promise that completes after the temporary stylesheets have been attached for the current theme variant.
      */
     protected async applyPresentationMode(): Promise<void> {
-        // Ensure the temporary stock PrimeReact theme matches the current Theia light or dark mode before the page rerenders.
+        // Ensure the generated UKHO/Theia PrimeReact theme matches the current Theia light or dark mode before the page rerenders.
         await this.themeService.enableStyledMode(this.presentationState.getActiveThemeVariant());
     }
 
@@ -251,7 +251,7 @@ export class SearchStudioPrimeReactDemoWidget extends ReactWidget {
         }
 
         try {
-            // Reapply the current stock PrimeReact theme so the demo tracks the new Theia light or dark theme immediately.
+            // Reapply the current generated UKHO/Theia PrimeReact theme so the demo tracks the new Theia light or dark theme immediately.
             await this.applyPresentationMode();
 
             console.info('Synchronized temporary PrimeReact demo theme variant.', { nextThemeVariant });

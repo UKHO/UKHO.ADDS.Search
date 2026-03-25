@@ -1,63 +1,20 @@
 #!/bin/sh
-RESOURCES="../primereact/public/themes"
+set -eu
 
-rm -rf build
+# Keep this wrapper manual-on-demand so normal Visual Studio inner-loop runs do not rebuild theme assets implicitly.
+SCRIPT_DIR="$(CDPATH= cd -- "$(dirname -- "$0")" && pwd)"
+cd "$SCRIPT_DIR"
 
-npm run sass
+if [ ! -d node_modules ]; then
+    # Bootstrap the upstream/reference SASS workspace the first time the wrapper is used on a clone.
+    npm install
+fi
 
-cp build\themes\arya\arya-blue\theme.css $RESOURCES\arya-blue
-cp build\themes\arya\arya-green\theme.css $RESOURCES\arya-green
-cp build\themes\arya\arya-orange\theme.css $RESOURCES\arya-orange
-cp build\themes\arya\arya-purple\theme.css $RESOURCES\arya-purple
-cp build\themes\bootstrap4\bootstrap4-dark\blue\theme.css $RESOURCES\bootstrap4-dark-blue
-cp build\themes\bootstrap4\bootstrap4-dark\purple\theme.css $RESOURCES\bootstrap4-dark-purple
-cp build\themes\bootstrap4\bootstrap4-light\blue\theme.css $RESOURCES\bootstrap4-light-blue
-cp build\themes\bootstrap4\bootstrap4-light\purple\theme.css $RESOURCES\bootstrap4-light-purple
-cp build\themes\fluent\fluent-light\theme.css $RESOURCES\fluent-light
-cp build\themes\lara\lara-dark\amber\theme.css $RESOURCES\lara-dark-amber
-cp build\themes\lara\lara-dark\blue\theme.css $RESOURCES\lara-dark-blue
-cp build\themes\lara\lara-dark\cyan\theme.css $RESOURCES\lara-dark-cyan
-cp build\themes\lara\lara-dark\green\theme.css $RESOURCES\lara-dark-green
-cp build\themes\lara\lara-dark\indigo\theme.css $RESOURCES\lara-dark-indigo
-cp build\themes\lara\lara-dark\pink\theme.css $RESOURCES\lara-dark-pink
-cp build\themes\lara\lara-dark\purple\theme.css $RESOURCES\lara-dark-purple
-cp build\themes\lara\lara-dark\teal\theme.css $RESOURCES\lara-dark-teal
-cp build\themes\lara\lara-light\amber\theme.css $RESOURCES\lara-light-amber
-cp build\themes\lara\lara-light\blue\theme.css $RESOURCES\lara-light-blue
-cp build\themes\lara\lara-light\cyan\theme.css $RESOURCES\lara-light-cyan
-cp build\themes\lara\lara-light\green\theme.css $RESOURCES\lara-light-green
-cp build\themes\lara\lara-light\indigo\theme.css $RESOURCES\lara-light-indigo
-cp build\themes\lara\lara-light\pink\theme.css $RESOURCES\lara-light-pink
-cp build\themes\lara\lara-light\purple\theme.css $RESOURCES\lara-light-purple
-cp build\themes\lara\lara-light\teal\theme.css $RESOURCES\lara-light-teal
-cp build\themes\luna\luna-amber\theme.css $RESOURCES\luna-amber
-cp build\themes\luna\luna-blue\theme.css $RESOURCES\luna-blue
-cp build\themes\luna\luna-green\theme.css $RESOURCES\luna-green
-cp build\themes\luna\luna-pink\theme.css $RESOURCES\luna-pink
-cp build\themes\material\material-dark\standard\deeppurple\theme.css $RESOURCES\md-dark-deeppurple
-cp build\themes\material\material-dark\standard\indigo\theme.css $RESOURCES\md-dark-indigo
-cp build\themes\material\material-light\standard\deeppurple\theme.css $RESOURCES\md-light-deeppurple
-cp build\themes\material\material-light\standard\indigo\theme.css $RESOURCES\md-light-indigo
-cp build\themes\material\material-dark\compact\deeppurple\theme.css $RESOURCES\mdc-dark-deeppurple
-cp build\themes\material\material-dark\compact\indigo\theme.css $RESOURCES\mdc-dark-indigo
-cp build\themes\material\material-light\compact\deeppurple\theme.css $RESOURCES\mdc-light-deeppurple
-cp build\themes\material\material-light\compact\indigo\theme.css $RESOURCES\mdc-light-indigo
-cp build\themes\mira\theme.css $RESOURCES\mira
-cp build\themes\nano\theme.css $RESOURCES\nano
-cp build\themes\nova\nova\theme.css $RESOURCES\nova
-cp build\themes\nova\nova-accent\theme.css $RESOURCES\nova-accent
-cp build\themes\nova\nova-alt\theme.css $RESOURCES\nova-alt
-cp build\themes\rhea\theme.css $RESOURCES\rhea
-cp build\themes\saga\saga-blue\theme.css $RESOURCES\saga-blue
-cp build\themes\saga\saga-green\theme.css $RESOURCES\saga-green
-cp build\themes\saga\saga-orange\theme.css $RESOURCES\saga-orange
-cp build\themes\saga\saga-purple\theme.css $RESOURCES\saga-purple
-cp build\themes\soho\soho-dark\theme.css $RESOURCES\soho-dark
-cp build\themes\soho\soho-light\theme.css $RESOURCES\soho-light
-cp build\themes\tailwind\tailwind-light\theme.css $RESOURCES\tailwind-light
-cp build\themes\vela\vela-blue\theme.css $RESOURCES\vela-blue
-cp build\themes\vela\vela-green\theme.css $RESOURCES\vela-green
-cp build\themes\vela\vela-orange\theme.css $RESOURCES\vela-orange
-cp build\themes\vela\vela-purple\theme.css $RESOURCES\vela-purple
-cp build\themes\viva\viva-dark\theme.css $RESOURCES\viva-dark
-cp build\themes\viva\viva-light\theme.css $RESOURCES\viva-light
+# Rebuild the upstream/reference CSS output before copying the validated baseline themes into the Studio asset tree.
+npm run build
+
+# Deploy the current light and dark baseline CSS files into the Studio-consumed generated asset location.
+npm run deploy:studio
+
+# Verify the generated Studio theme files exist so the workflow fails loudly when deployment did not complete.
+npm run verify:studio

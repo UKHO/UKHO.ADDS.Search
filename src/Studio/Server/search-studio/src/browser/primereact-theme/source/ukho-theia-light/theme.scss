@@ -1,0 +1,6 @@
+@use './fonts';
+@use './theme-tokens' as localTheme;
+@use '../shared/composition' as composition;
+
+// Emits the first Studio-owned UKHO/Theia light theme override layer on top of the upstream Lara light baseline CSS.
+@include composition.render-ukho-theia-theme(localTheme.$ukho-theia-light-theme-tokens);
