@@ -114,6 +114,10 @@ namespace AppHost
                                                 .WaitFor(sqlServer)
                                                 .WaitFor(storageBlob);
 
+                     // Start the hosted Workbench shell directly from AppHost so the Aspire endpoint opens the Blazor client at '/'.
+                     builder.AddProject<WorkbenchHost>(ServiceNames.Workbench)
+                            .WithExternalHttpEndpoints();
+
                     // Load the shared configuration for the retained service set only.
                     if (builder.ExecutionContext.IsRunMode)
                     {

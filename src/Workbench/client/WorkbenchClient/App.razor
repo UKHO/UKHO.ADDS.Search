@@ -1,0 +1,16 @@
+@using Microsoft.AspNetCore.Components.Web
+@using Microsoft.AspNetCore.Components.Routing
+
+@* The bootstrap application hosts a single routed page so the initial Workbench slice stays intentionally minimal. *@
+<Router AppAssembly="@typeof(Program).Assembly">
+    <Found Context="routeData">
+        @* Render the routed hello page and move focus to the heading after navigation for accessibility. *@
+        <RouteView RouteData="@routeData" />
+        <FocusOnNavigate RouteData="@routeData" Selector="h1" />
+    </Found>
+    <NotFound>
+        @* Unexpected routes fall back to the same minimal greeting because no additional pages exist in this slice. *@
+        <PageTitle>UKHO Workbench</PageTitle>
+        <h1>Hello UKHO Workbench</h1>
+    </NotFound>
+</Router>

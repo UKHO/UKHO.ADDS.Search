@@ -1,6 +1,4 @@
-﻿File: .github\copilot-instructions.md
-````````markdown
-# Copilot Instructions (High-Level)
+﻿# Copilot Instructions (High-Level)
 
 You are an agent. Continue working until queries are fully resolved.  
 Be concise but complete. Prefer current research (Microsoft Learn) for Microsoft technologies.
@@ -17,6 +15,7 @@ Be concise but complete. Prefer current research (Microsoft Learn) for Microsoft
 - Avoid clutter in the repository root by placing per-project config files alongside the relevant test or project directories when practical.
 - Do not run Stryker again in this workspace, and remove all Stryker-related configuration/setup files when asked.
 - Ask clarification questions one at a time rather than batching multiple questions together.
+- Never write log files or other temporary files to the repo root; always use suitable temporary storage instead.
 
 ## Documentation Workflow (Summary)
 - For each new Work Package/piece of work: create a new numbered folder under `./docs/` named `xxx-<descriptor>` (e.g. `001-Initial-Shell`).
@@ -94,21 +93,8 @@ Rules:
 ## Ingestion Rules
 - When authoring ingestion rules from the mapping spec, only explicitly mapped fixed keywords should be written into rule JSON; copying the remaining batch attribute values into keywords is handled by the ingestion service at runtime.
 
-## Theia Studio Shell Configuration
-- For Theia studio shell work, configure the fixed local port in `AppHost` `appsettings.json` to launch on `http://localhost:3000` while continuing to call StudioServiceHost over its HTTPS endpoint. Ensure the repository wiki captures the implementation, including prerequisites and clear build instructions for the Theia components.
-- On a fresh clone building the Aspire solution in Visual Studio, ensure the shell builds before it runs, and the shell build should be incremental so it only runs when inputs change.
-- Prefer using HTTPS endpoints instead of HTTP whenever possible for StudioHost/Theia integration.
-- For Theia Studio specification work, provider root nodes should open an operational dashboard rather than acting as purely structural nodes. Additionally, ensure that the editor opening behavior in the first skeleton follows the normal default Theia interaction model rather than a custom one.
-- After completing a work item for Theia Studio shell work, always run `yarn --cwd .\src\Studio\Server build:browser` to ensure the user does not run stale frontend code.
-- Avoid heavy card-like panel chrome around secondary controls in the Showcase surface and keep compact control alignment visually consistent with the rest of the Theia-style page.
-- Ensure every PrimeReact page in the Theia interface has the same desktop-app-style resizing and layout behavior as the Showcase tab, enforced through a shared layout contract/setup pattern rather than ad hoc page behavior.
-
 ## Provider Model Guidelines
 - Use `UKHO.Search.ProviderModel` as the mandatory shared home for generic provider registration and metadata concerns, located at `src/UKHO.Search.ProviderModel`. Ensure specifications reflect required refactoring and test migration.
-
-## PrimeReact Theia Research Demos
-- For the PrimeReact Theia research demos, use full styled PrimeReact only; remove unstyled mode and its toggle because the styled mode is preferred.
-- When refining the Theia PrimeReact showcase, ensure the expected desktop density is much tighter: action buttons should be substantially smaller, grid spacing should be reduced heavily, and the page should fit within the workbench with scrolling owned by the inner grid rather than the outer page.
 
 ## Detailed Topic Guides
 Refer to specialized instruction files for full detail:
@@ -120,4 +106,3 @@ Refer to specialized instruction files for full detail:
 - Coding Standards: `.github/instructions/coding-standards.instructions.md`
 
 All original guidance now resides in one of these files. Do not duplicate; update the relevant file when changing practices.
-`` ````

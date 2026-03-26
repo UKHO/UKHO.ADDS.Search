@@ -74,5 +74,10 @@
         /// Gets the service identifier used for the rules workbench tool.
         /// </summary>
         public const string RulesWorkbench = "tools-rules-workbench";
+
+        /// <summary>
+        /// Gets the service identifier used for the hosted UKHO Workbench shell.
+        /// </summary>
+        public const string Workbench = "workbench";
     }
 }
