@@ -3,11 +3,9 @@
 Provider identity in `UKHO.Search` needs to be available in more than one place:
 
 - ingestion runtime needs it for queue-backed processing, diagnostics, and fail-fast validation
-- development-time tooling needs it for provider discovery and read-only rule discovery in `StudioServiceHost` and Theia
+- provider-aware tooling and validation flows need it without being forced to compose ingestion runtime services
 
-In the current implementation, generic provider identity, metadata, catalogs, and registration helpers now live in the shared `src/UKHO.Search.ProviderModel` project so both ingestion and studio composition can use the same source of truth.
-
-The important constraint is that `StudioServiceHost` must **not** depend on `IngestionServiceHost` being present. In live deployments, `StudioServiceHost` and Theia are not expected to be deployed at all.
+In the current implementation, generic provider identity, metadata, catalogs, and registration helpers now live in the shared `src/UKHO.Search.ProviderModel` project so active hosts and tooling can use the same source of truth.
 
 ## Why this exists
 
@@ -67,7 +65,7 @@ It must **not** require:
 - hosted services
 - ingestion runtime bootstrapping
 
-This is what allows `StudioServiceHost` to know about providers without becoming an ingestion runtime host.
+This is what allows host-local validation and tooling to know about providers without becoming an ingestion runtime host.
 
 ### Runtime registration
 
@@ -115,55 +113,20 @@ That validation should fail fast before queue creation, queue polling, or other 
 
 In the current implementation this validation is performed by `IngestionProviderStartupValidator`, and `IngestionPipelineHostedService.StartAsync()` runs it before bootstrap starts.
 
-### `StudioServiceHost`
+### Metadata-only consumers
 
-`StudioServiceHost` should compose:
+Any host or tool that only needs provider discovery or validation should compose:
 
 - provider metadata registrations only
-- read-oriented rules loading
-- studio provider registrations
+- any read-only services that sit on top of the shared provider catalog
 
-The implemented host composes File Share metadata through `AddFileShareProviderMetadata()`, composes the shared read-oriented rules path through `AddIngestionRulesEngine()`, composes the tandem File Share Studio provider through `AddFileShareStudioProvider()`, validates Studio provider registration against shared provider metadata, and eagerly loads the shared rules reader so invalid provider-backed rules fail startup early.
-
-The current `/providers` response returns the full shared `ProviderDescriptor` metadata shape for each provider, including:
-
-- `name`
-- `displayName`
-- `description`
-
-`StudioServiceHost` also exposes a read-only `/rules` response backed by the same provider-aware rules-loading path used by ingestion.
-
-Current `/rules` behavior:
-
-- returns canonical provider names from `ProviderDescriptor.Name`
-- returns the shared rules `schemaVersion`
-- returns all known providers, including providers with no rules as empty `rules` arrays
-- returns rule summaries rather than write/edit contracts
-- fails startup clearly when configured rules reference an unknown provider
-
-These endpoints currently return known provider metadata and read-only rule summaries only. They do not currently return enabled-state annotations, runtime-only details, or write operations.
-
-It must not:
+Those consumers must not:
 
 - discover providers from `IngestionServiceHost`
-- call `IngestionServiceHost`
-- require runtime ingestion services
+- call `IngestionServiceHost` to obtain provider identity
+- require runtime ingestion services when metadata-only composition is sufficient
 
-### Theia
-
-Theia is a development-time consumer of `StudioServiceHost`.
-
-It should consume provider metadata through the `StudioServiceHost` API instead of trying to inspect ingestion runtime state directly.
-
-## Development-time versus live deployment
-
-This split is intentionally designed so that live deployments do not need any studio components.
-
-- `StudioServiceHost` is development-time only
-- Theia is development-time only
-- live ingestion deployment still works with provider metadata plus runtime registration in `IngestionServiceHost`
-
-That keeps studio tooling optional and prevents production deployment from depending on development-only hosts.
+The retained Studio and Theia source trees are an example of detached code that can still reuse the shared provider model later without being part of the current active workflow.
 
 ## New provider onboarding
 
@@ -172,19 +135,15 @@ When adding a new provider:
 1. define a canonical provider descriptor in the provider package
 2. implement metadata registration for that descriptor
 3. implement runtime registration for the provider factory and runtime services
-4. register metadata-only composition in development-time hosts as needed
-5. register any tandem Studio provider in development-time hosts as needed
-6. register metadata plus runtime composition in `IngestionServiceHost`
-7. ensure configuration enablement uses the canonical provider name from the descriptor
+4. register metadata-only composition in any tooling or validation host that needs provider discovery without runtime services
+5. register metadata plus runtime composition in `IngestionServiceHost`
+6. ensure configuration enablement uses the canonical provider name from the descriptor
 
 For concrete examples, see:
 
 - `src/UKHO.Search.ProviderModel/*`
-- `src/Studio/UKHO.Search.Studio/*`
-- `src/Providers/UKHO.Search.Studio.Providers.FileShare/*`
 - `src/Providers/UKHO.Search.Ingestion.Providers.FileShare/Injection/InjectionExtensions.cs`
 - `src/UKHO.Search.Services.Ingestion/Providers/IngestionProviderStartupValidator.cs`
-- `src/Studio/StudioServiceHost/StudioServiceHostApplication.cs`
 
 ## Related documents
 

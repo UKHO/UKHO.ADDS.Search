@@ -10,6 +10,8 @@ The goal of this page is not to duplicate every work package, but to help develo
 - Use this source map when you want the historical rationale, earlier plans, or superseded design discussions.
 - Many directories contain specs, plans, architecture notes, and archives; read the current/superseding file first where applicable.
 
+Studio and Theia work packages remain in `docs/` as historical design records only. They describe a discontinued workflow and should not be treated as setup, runtime, or verification guidance for the current repository baseline.
+
 ## Foundational architecture and ingestion history
 
 ### `docs/000-ingestion-model`
@@ -187,20 +189,27 @@ Repository-wide test coverage baseline assessment and identification of importan
 ### `docs/059-test-refactor`
 Implementation planning and delivery tracking for the project-aligned test-estate refactor, including shared sample-data consolidation, matching test-project creation, provider/infrastructure/integration ownership cleanup, and the final solution-wide test audit.
 
+## Historical Studio / Theia design lineage (retained for reference only)
+
+### `docs/057-studio-shell`
+Initial Studio shell planning for the now-discontinued Theia-based developer workflow.
+
 ### `docs/058-studio-config`
-Historical design package for propagating the studio API endpoint into the Theia shell. This package predates later host renames, so it documents the earlier `StudioHost` identity rather than the current `StudioServiceHost` project name.
+Historical design package for propagating a studio API endpoint into the discontinued Theia shell.
 
 ### `docs/060-studio-host-rename`
-Historical work package for renaming the studio API host and its matching test project from `StudioHost` / `StudioHost.Tests` to `StudioApiHost` / `StudioApiHost.Tests`. The current repository has since moved on again and now uses `StudioServiceHost` / `StudioServiceHost.Tests`.
+Historical rename work for the detached studio API host lineage.
 
 ### `docs/061-provider-metadata`
-Provider metadata model and split-registration design for provider packages, including development-time composition in the studio API host/Theia path and live-deployment independence from studio components. The current implementation host is `StudioServiceHost`.
+Provider metadata model and split-registration design history, including earlier detached studio/tooling composition.
 
 ### `docs/062-studio-provider`
-Shared Provider Model extraction plus Studio provider contracts, tandem Studio provider registration, and the amended studio API `/providers` contract that returns full provider metadata for development-time tooling. The current implementation host is `StudioServiceHost`.
+Historical Studio provider extraction and tandem provider registration work for the discontinued studio workflow.
 
 ### `docs/063-provider-metadata-rule-loading`
-Provider Model-backed rule loading, canonical provider-name validation for rules, reusable read-oriented rules loading, and the studio host read-only `/rules` discovery endpoint. The current implementation host is `StudioServiceHost`.
+Historical provider-aware rules-loading work, including read-only rule discovery for detached studio tooling.
+
+Several later Theia- and PrimeReact-only Studio work packages were intentionally deleted during cleanup because they described a discontinued client direction and no longer belong in the retained documentation baseline.
 
 ### Top-level operational docs
 

@@ -85,14 +85,9 @@ The File Share factory currently exposes:
 
 ## Provider metadata and split registration
 
-Provider identity now needs to serve two different composition roots:
+Provider identity now needs to support both runtime composition and metadata-only validation without forcing every consumer to pull in ingestion runtime dependencies.
 
-- `IngestionServiceHost`, which needs provider runtime services
-- `StudioServiceHost`, which only needs provider metadata plus Studio-facing API composition for development-time tooling and Theia integration
-
-Those two hosts must not depend on each other. In particular, `StudioServiceHost` and Theia are development-time-only components and are not expected to be present in live deployments.
-
-The current implementation now centralizes generic provider identity, metadata, catalogs, and registration helpers in `src/UKHO.Search.ProviderModel` so both ingestion and studio composition use the same shared model.
+The current implementation centralizes generic provider identity, metadata, catalogs, and registration helpers in `src/UKHO.Search.ProviderModel` so hosts and tools can use the same shared model while remaining decoupled from provider runtime services they do not need.
 
 To support that, providers must follow a split-registration model:
 
@@ -101,17 +96,13 @@ To support that, providers must follow a split-registration model:
 
 This allows:
 
-- `StudioServiceHost` to know about providers by composing provider metadata directly
+- metadata-only consumers to reason about known providers without activating ingestion runtime services
 - `IngestionServiceHost` to compose both metadata and runtime registrations, then validate enabled providers before queue/bootstrap work begins
-
-Studio-side provider behavior is now also modeled separately through `src/Studio/UKHO.Search.Studio` and tandem provider projects such as `src/Providers/UKHO.Search.Studio.Providers.FileShare`, keeping development-time provider logic out of ingestion provider projects and out of `StudioServiceHost` itself.
 
 In the current implementation, the File Share provider exposes split registration so that:
 
-- `AddFileShareProviderMetadata()` is used by `StudioServiceHost`
+- `AddFileShareProviderMetadata()` contributes the canonical File Share provider descriptor
 - `AddFileShareProviderRuntime(...)` is used by ingestion runtime composition
-
-`StudioServiceHost` also composes `AddFileShareStudioProvider()` from the tandem Studio provider package and validates Studio provider registrations against the shared Provider Model at startup.
 
 The ingestion runtime then applies enabled-provider validation before startup proceeds:
 

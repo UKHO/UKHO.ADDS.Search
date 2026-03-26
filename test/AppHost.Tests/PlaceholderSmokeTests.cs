@@ -5,41 +5,36 @@ using Xunit;
 namespace AppHost.Tests
 {
     /// <summary>
-    /// Verifies the AppHost contract that keeps the Studio shell wired to the active Theia workspace.
+    /// Verifies the AppHost contract that keeps the discontinued Studio and Theia workflow detached from the active developer path.
     /// </summary>
     public sealed class PlaceholderSmokeTests
     {
         /// <summary>
-        /// Verifies that AppHost still reads the fixed Studio shell port from configuration.
+        /// Verifies that the checked-in AppHost configuration no longer carries the retired Studio shell settings.
         /// </summary>
         [Fact]
-        public void AppHost_configuration_keeps_the_fixed_studio_shell_port()
+        public void AppHost_configuration_removes_the_retired_studio_shell_settings()
         {
-            // Read the checked-in AppHost configuration so the fixed Studio shell port contract is protected.
+            // Read the checked-in AppHost configuration so the active developer workflow stays free from retired Studio shell settings.
             using var configurationDocument = JsonDocument.Parse(File.ReadAllText(GetRepositoryFilePath("src", "Hosts", "AppHost", "appsettings.json")));
-            var studioServerPort = configurationDocument.RootElement
-                                                        .GetProperty("Studio")
-                                                        .GetProperty("Server")
-                                                        .GetProperty("Port")
-                                                        .GetInt32();
 
-            studioServerPort.ShouldBe(3000);
+            configurationDocument.RootElement.TryGetProperty("Studio", out _).ShouldBeFalse();
         }
 
         /// <summary>
-        /// Verifies that AppHost still points Aspire at the fresh Studio shell workspace with Yarn-aware orchestration.
+        /// Verifies that AppHost source no longer registers the retired Studio API and Theia shell resources.
         /// </summary>
         [Fact]
-        public void AppHost_source_keeps_the_active_studio_shell_contract()
+        public void AppHost_source_removes_the_retired_studio_and_theia_resources()
         {
-            // Read the AppHost source so the preserved Yarn-based Studio shell contract remains covered where direct execution is impractical.
+            // Read the AppHost source so the discontinued Studio and Theia orchestration stays removed where direct execution is impractical.
             var appHostSource = File.ReadAllText(GetRepositoryFilePath("src", "Hosts", "AppHost", "AppHost.cs"));
 
-            appHostSource.ShouldContain("AddJavaScriptApp(ServiceNames.StudioShell, \"../../Studio/Server\", \"start:browser\")");
-            appHostSource.ShouldContain(".WithYarn(install: true, installArgs: [\"--ignore-engines\"])");
-            appHostSource.ShouldContain(".WithBuildScript(\"build:browser\")");
-            appHostSource.ShouldContain(".WithEnvironment(\"STUDIO_API_HOST_API_BASE_URL\", studioApi.GetEndpoint(\"https\"))");
-            appHostSource.ShouldContain(".WithHttpEndpoint(targetPort: studioShellPort, port: studioShellPort, env: \"PORT\", isProxied: false)");
+            appHostSource.ShouldNotContain("AddProject<StudioServiceHost>");
+            appHostSource.ShouldNotContain("AddJavaScriptApp(ServiceNames.StudioShell");
+            appHostSource.ShouldNotContain(".WithYarn(");
+            appHostSource.ShouldNotContain("STUDIO_API_HOST_API_BASE_URL");
+            appHostSource.ShouldNotContain("studioApi");
         }
 
         /// <summary>

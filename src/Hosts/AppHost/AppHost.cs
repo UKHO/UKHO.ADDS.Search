@@ -2,7 +2,6 @@ using AppHost.Elastic;
 using AppHost.Extensions;
 using Docker.DotNet;
 using Docker.DotNet.Models;
-using Microsoft.Extensions.Configuration;
 using Projects;
 using UKHO.Aspire.Configuration.Hosting;
 using UKHO.Search.Configuration;
@@ -20,9 +19,8 @@ namespace AppHost
         /// <param name="args">The command-line arguments supplied to the AppHost process.</param>
         public static async Task Main(string[] args)
         {
-            // Create the Aspire application model and read the fixed Studio shell port from AppHost configuration.
+            // Create the Aspire application model that coordinates the retained developer services.
             var builder = DistributedApplication.CreateBuilder(args);
-            var studioShellPort = builder.Configuration.GetValue<int>("Studio:Server:Port");
 
             var environmentParameter = builder.AddParameter("environment");
             var environment = await environmentParameter.Resource.GetValueAsync(CancellationToken.None) ?? string.Empty;
@@ -116,34 +114,14 @@ namespace AppHost
                                                 .WaitFor(sqlServer)
                                                 .WaitFor(storageBlob);
 
-                    var studioApi = builder.AddProject<StudioServiceHost>(ServiceNames.StudioApi)
-                                                .WithExternalHttpEndpoints()
-                                                .WithReference(sqlServer)
-                                                .WithReference(storageQueue)
-                                                .WithReference(storageBlob)
-                                                .WaitFor(sqlServer)
-                                                .WaitFor(storageQueue)
-                                                .WaitFor(storageBlob)
-                                                .WithScalar("Studio API");
-
-                    // Host the active Studio shell from the fresh Theia workspace with Yarn-aware Aspire orchestration.
-                    var studioShell = builder.AddJavaScriptApp(ServiceNames.StudioShell, "../../Studio/Server", "start:browser")
-                                             .WithYarn(install: true, installArgs: ["--ignore-engines"])
-                                             .WithBuildScript("build:browser")
-                                             .WithEnvironment("GYP_MSVS_VERSION", "2022")
-                                             .WithEnvironment("npm_config_msvs_version", "2022")
-                                             .WithEnvironment("STUDIO_API_HOST_API_BASE_URL", studioApi.GetEndpoint("https"))
-                                             .WithArgs("--", "--hostname", "0.0.0.0", "--port", studioShellPort.ToString())
-                                             .WithHttpEndpoint(targetPort: studioShellPort, port: studioShellPort, env: "PORT", isProxied: false);
-
-                        // Configuration
+                    // Load the shared configuration for the retained service set only.
                     if (builder.ExecutionContext.IsRunMode)
                     {
                         var rulesPath = Path.GetFullPath(Path.Combine(builder.Environment.ContentRootPath, "..", "..", "..", "rules"));
 
                         builder.AddConfigurationEmulator(
                             ServiceConfiguration.ServiceGroupName,
-                            [ingestionService, queryService, rulesWorkbench, studioApi!],
+                            [ingestionService, queryService, rulesWorkbench],
                             [fileShareEmulator],
                             @"../../../configuration/configuration.json",
                             @"../../../configuration/external-services.json",

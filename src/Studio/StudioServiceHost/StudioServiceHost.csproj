@@ -6,21 +6,7 @@
     <ImplicitUsings>enable</ImplicitUsings>
     <AssemblyName>StudioServiceHost</AssemblyName>
     <RootNamespace>StudioServiceHost</RootNamespace>
-    <TheiaWorkspaceRoot>$(MSBuildProjectDirectory)\..\Server</TheiaWorkspaceRoot>
-    <TheiaBuildScript>$(TheiaWorkspaceRoot)\build.ps1</TheiaBuildScript>
-    <TheiaBuildStamp>$(MSBuildProjectDirectory)\obj\$(Configuration)\$(TargetFramework)\theia-shell-build.stamp</TheiaBuildStamp>
   </PropertyGroup>
-
-  <ItemGroup>
-    <TheiaBuildInput Include="$(TheiaBuildScript)" />
-    <TheiaBuildInput Include="$(TheiaWorkspaceRoot)\package.json" />
-    <TheiaBuildInput Include="$(TheiaWorkspaceRoot)\yarn.lock" />
-    <TheiaBuildInput Include="$(TheiaWorkspaceRoot)\lerna.json" />
-    <TheiaBuildInput Include="$(TheiaWorkspaceRoot)\browser-app\package.json" />
-    <TheiaBuildInput Include="$(TheiaWorkspaceRoot)\search-studio\package.json" />
-    <TheiaBuildInput Include="$(TheiaWorkspaceRoot)\search-studio\tsconfig.json" />
-    <TheiaBuildInput Include="$(TheiaWorkspaceRoot)\search-studio\src\**\*.*" />
-  </ItemGroup>
 
   <ItemGroup>
     <PackageReference Include="Microsoft.AspNetCore.OpenApi" Version="10.0.5" />
@@ -36,10 +22,5 @@
     <ProjectReference Include="..\UKHO.Search.Studio\UKHO.Search.Studio.csproj" />
     <ProjectReference Include="..\..\Providers\UKHO.Search.Studio.Providers.FileShare\UKHO.Search.Studio.Providers.FileShare.csproj" />
   </ItemGroup>
-
-  <Target Name="BuildTheiaStudioShell" BeforeTargets="Build" Condition="'$(DesignTimeBuild)' != 'true' and Exists('$(TheiaBuildScript)')" Inputs="@(TheiaBuildInput)" Outputs="$(TheiaBuildStamp)">
-    <Message Importance="high" Text="Building UKHO Search Studio Theia shell..." />
-    <Exec Command="powershell -NoProfile -ExecutionPolicy Bypass -File &quot;$(TheiaBuildScript)&quot; -StampFile &quot;$(TheiaBuildStamp)&quot;" WorkingDirectory="$(TheiaWorkspaceRoot)" />
-  </Target>
 
 </Project>

@@ -114,22 +114,11 @@ Provider identity is now backed by `UKHO.Search.ProviderModel` during rule loadi
 - the provider folder or configuration key is resolved through `IProviderCatalog`
 - provider names are canonicalized to `ProviderDescriptor.Name` before rules are exposed to consumers
 - unknown providers fail load/startup with a diagnosable validation error
-- rules for known-but-disabled providers can still be loaded for discovery, but ingestion runtime validation for enabled providers remains separate
 
 Rules are applied in deterministic order. When loading per-rule files under a provider directory, ordering is:
 
 1. file path using ordinal, case-insensitive ordering
 2. rule id using ordinal, case-insensitive ordering as a tie-break
-
-## `StudioServiceHost` rule discovery
-
-`StudioServiceHost` now composes the same provider-aware read path used by ingestion rule loading.
-
-- `GET /rules` returns a read-only rule discovery response
-- providers are returned using canonical provider names from `UKHO.Search.ProviderModel`
-- all known providers are included in the response, with empty `rules` arrays when a known provider has no rules
-- startup fails clearly when configured rules reference an unknown provider
-- save, update, and delete rule operations are still out of scope for this package
 
 ## Rule schema
 

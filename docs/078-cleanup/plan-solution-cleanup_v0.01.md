@@ -60,7 +60,8 @@
 
 ## Slice 1 — Remove active Theia runtime and solution integration from developer workflows
 
-- [ ] Work Item 1: Disable Theia and `StudioServiceHost` participation in Aspire, Visual Studio `F5`, and the solution so the default developer workflow no longer depends on the discontinued client
+- [x] Work Item 1: Disable Theia and `StudioServiceHost` participation in Aspire, Visual Studio `F5`, and the solution so the default developer workflow no longer depends on the discontinued client - Completed
+  - **Completed Summary**: Removed `StudioServiceHost` and Theia shell registration from `src/Hosts/AppHost/AppHost.cs`, removed obsolete AppHost configuration and JavaScript hosting references, deleted the Theia build target from `src/Studio/StudioServiceHost/StudioServiceHost.csproj`, removed Studio/Theia projects from `Search.slnx`, removed the leftover `StudioServiceHost` dependency and obsolete Studio-only echo test from `test/UKHO.Search.Tests`, and updated `test/AppHost.Tests/PlaceholderSmokeTests.cs` to cover the retired workflow removal. Validation: `run_build` succeeded, the updated `AppHost.Tests` smoke tests passed, and `UKHO.Search.Tests` passed after the dependency cleanup.
   - **Purpose**: Deliver the smallest meaningful end-to-end cleanup slice by ensuring the active local run/build path no longer starts, builds, or expects Theia-related resources.
   - **Acceptance Criteria**:
     - Aspire no longer registers or launches Theia runtime resources.
@@ -75,24 +76,24 @@
     - Documentation updated in line with the work package
     - Code comments added in full compliance with `./.github/instructions/documentation-pass.instructions.md`
     - Can execute end-to-end via: load the solution, start `AppHost`, and confirm the active developer workflow no longer depends on Theia or `StudioServiceHost`
-  - [ ] Task 1.1: Remove Theia runtime and `StudioServiceHost` from Aspire integration
-    - [ ] Step 1: Inspect `AppHost` project references, resource registration, and dependency wiring for Theia runtime and `StudioServiceHost` participation.
-    - [ ] Step 2: Remove Theia runtime resource registration from Aspire.
-    - [ ] Step 3: Remove `StudioServiceHost` from Aspire integration while leaving its code in the repository.
-    - [ ] Step 4: Remove obsolete Theia- and Studio-specific Aspire parameters and related configuration entries when they exist only to support the discontinued workflow.
-    - [ ] Step 5: Keep retained non-Theia services runnable after the Aspire cleanup.
-    - [ ] Step 6: Apply `./.github/instructions/documentation-pass.instructions.md` in full to all touched source files.
-  - [ ] Task 1.2: Remove Theia-only `F5` and build/startup hooks
-    - [ ] Step 1: Inspect project files, targets, and auxiliary build scripts for Theia-only prebuild, postbuild, MSBuild, npm, and yarn hooks.
-    - [ ] Step 2: Remove hooks that existed only to build, launch, or prepare Theia assets for normal Visual Studio `F5` and solution build workflows.
-    - [ ] Step 3: Verify retained non-Theia projects no longer assume `src/Studio/Server` content during normal build/startup flows.
-    - [ ] Step 4: Apply `./.github/instructions/documentation-pass.instructions.md` in full to all touched source files.
-  - [ ] Task 1.3: Remove Theia-related projects and tests from the solution `.slnx` file
-    - [ ] Step 1: Identify all Theia-related projects and tests currently included in the repository solution `.slnx` file.
-    - [ ] Step 2: Remove `StudioServiceHost` from the `.slnx` file while retaining its code in source control.
-    - [ ] Step 3: Remove all other Theia-related projects and tests from the `.slnx` file where they belong to the discontinued workflow.
-    - [ ] Step 4: Remove `UKHO.Search.Studio.*` provider projects from the `.slnx` file when they are part of the discontinued workflow, while retaining their code in the repository for later refactor.
-    - [ ] Step 5: Confirm the solution still loads correctly in Visual Studio after the `.slnx` update.
+  - [x] Task 1.1: Remove Theia runtime and `StudioServiceHost` from Aspire integration
+    - [x] Step 1: Inspect `AppHost` project references, resource registration, and dependency wiring for Theia runtime and `StudioServiceHost` participation.
+    - [x] Step 2: Remove Theia runtime resource registration from Aspire.
+    - [x] Step 3: Remove `StudioServiceHost` from Aspire integration while leaving its code in the repository.
+    - [x] Step 4: Remove obsolete Theia- and Studio-specific Aspire parameters and related configuration entries when they exist only to support the discontinued workflow.
+    - [x] Step 5: Keep retained non-Theia services runnable after the Aspire cleanup.
+    - [x] Step 6: Apply `./.github/instructions/documentation-pass.instructions.md` in full to all touched source files.
+  - [x] Task 1.2: Remove Theia-only `F5` and build/startup hooks
+    - [x] Step 1: Inspect project files, targets, and auxiliary build scripts for Theia-only prebuild, postbuild, MSBuild, npm, and yarn hooks.
+    - [x] Step 2: Remove hooks that existed only to build, launch, or prepare Theia assets for normal Visual Studio `F5` and solution build workflows.
+    - [x] Step 3: Verify retained non-Theia projects no longer assume `src/Studio/Server` content during normal build/startup flows.
+    - [x] Step 4: Apply `./.github/instructions/documentation-pass.instructions.md` in full to all touched source files.
+  - [x] Task 1.3: Remove Theia-related projects and tests from the solution `.slnx` file
+    - [x] Step 1: Identify all Theia-related projects and tests currently included in the repository solution `.slnx` file.
+    - [x] Step 2: Remove `StudioServiceHost` from the `.slnx` file while retaining its code in source control.
+    - [x] Step 3: Remove all other Theia-related projects and tests from the `.slnx` file where they belong to the discontinued workflow.
+    - [x] Step 4: Remove `UKHO.Search.Studio.*` provider projects from the `.slnx` file when they are part of the discontinued workflow, while retaining their code in the repository for later refactor.
+    - [x] Step 5: Confirm the solution still loads correctly in Visual Studio after the `.slnx` update.
   - **Files**:
     - `src/Hosts/AppHost/AppHost.csproj`: remove discontinued Theia-related project participation
     - `src/Hosts/AppHost/AppHost.cs`: remove Theia and `StudioServiceHost` resource registration and related wiring
@@ -112,7 +113,8 @@
 
 ## Slice 2 — Decouple retained non-Theia projects from Studio/Theia-only references
 
-- [ ] Work Item 2: Remove Studio/Theia-only references from retained non-Theia projects so active runtime and build paths no longer depend on discontinued workflow code
+- [x] Work Item 2: Remove Studio/Theia-only references from retained non-Theia projects so active runtime and build paths no longer depend on discontinued workflow code - Completed
+  - **Completed Summary**: Inspected retained non-Theia project references and runtime wiring for remaining Studio/Theia coupling, confirmed no ambiguous feature-gap cases required review, removed the retired `StudioApi` and `StudioShell` constants from `src/UKHO.Search/Configuration/ServiceNames.cs`, and added `test/UKHO.Search.Tests/Configuration/ServiceNamesTests.cs` to prevent those Studio-only identifiers from re-entering the active shared service catalog. Validation: `run_build` succeeded and `UKHO.Search.Tests` plus `AppHost.Tests` passed.
   - **Purpose**: Ensure the cleanup is structurally complete by removing inward or sideways dependencies that would otherwise keep the discontinued workflow alive in retained projects.
   - **Acceptance Criteria**:
     - Retained non-Theia projects no longer reference `UKHO.Search.Studio.*` or other Studio/Theia code when those references existed only for the discontinued workflow.
@@ -125,19 +127,19 @@
     - Documentation updated in line with the work package
     - Code comments added in full compliance with `./.github/instructions/documentation-pass.instructions.md`
     - Can execute end-to-end via: build retained active projects and verify they no longer depend on discontinued Studio/Theia code paths
-  - [ ] Task 2.1: Identify retained non-Theia projects that still depend on Studio/Theia code
-    - [ ] Step 1: Inspect project references, DI wiring, runtime registrations, and documentation-linked workflows for retained non-Theia projects.
-    - [ ] Step 2: Classify each Studio/Theia reference as either discontinued-workflow-only or still ambiguous.
-    - [ ] Step 3: Stop and review any ambiguous or potentially user-visible feature gap before applying a change.
-  - [ ] Task 2.2: Remove discontinued-workflow-only references and wiring
-    - [ ] Step 1: Remove project references from retained non-Theia projects when those references only support discontinued Studio/Theia features.
-    - [ ] Step 2: Remove any associated DI registration, configuration binding, or runtime wiring that only exists because of those references.
-    - [ ] Step 3: Keep retained non-Theia projects functional for their approved active paths after the decoupling.
-    - [ ] Step 4: Apply `./.github/instructions/documentation-pass.instructions.md` in full to all touched source files.
-  - [ ] Task 2.3: Validate retained active paths after decoupling
-    - [ ] Step 1: Build the affected retained non-Theia projects.
-    - [ ] Step 2: Run targeted tests for the affected retained projects.
-    - [ ] Step 3: Stop and review with the user if any removed Studio/Theia dependency exposes a feature gap that needs a replacement decision.
+  - [x] Task 2.1: Identify retained non-Theia projects that still depend on Studio/Theia code
+    - [x] Step 1: Inspect project references, DI wiring, runtime registrations, and documentation-linked workflows for retained non-Theia projects.
+    - [x] Step 2: Classify each Studio/Theia reference as either discontinued-workflow-only or still ambiguous.
+    - [x] Step 3: Stop and review any ambiguous or potentially user-visible feature gap before applying a change.
+  - [x] Task 2.2: Remove discontinued-workflow-only references and wiring
+    - [x] Step 1: Remove project references from retained non-Theia projects when those references only support discontinued Studio/Theia features.
+    - [x] Step 2: Remove any associated DI registration, configuration binding, or runtime wiring that only exists because of those references.
+    - [x] Step 3: Keep retained non-Theia projects functional for their approved active paths after the decoupling.
+    - [x] Step 4: Apply `./.github/instructions/documentation-pass.instructions.md` in full to all touched source files.
+  - [x] Task 2.3: Validate retained active paths after decoupling
+    - [x] Step 1: Build the affected retained non-Theia projects.
+    - [x] Step 2: Run targeted tests for the affected retained projects.
+    - [x] Step 3: Stop and review with the user if any removed Studio/Theia dependency exposes a feature gap that needs a replacement decision.
   - **Files**:
     - retained non-Theia project `.csproj` files that reference `UKHO.Search.Studio.*` or other Studio/Theia code
     - retained startup/DI/configuration files that wire discontinued Studio/Theia behavior
@@ -153,7 +155,8 @@
 
 ## Slice 3 — Purge Theia-oriented documentation from `wiki` and `docs/**`
 
-- [ ] Work Item 3: Remove active Theia setup, usage, and verification guidance from repository documentation so contributors are no longer directed toward the discontinued workflow
+- [x] Work Item 3: Remove active Theia setup, usage, and verification guidance from repository documentation so contributors are no longer directed toward the discontinued workflow - Completed
+  - **Completed Summary**: Trimmed mixed wiki guidance in `wiki/Home.md`, `wiki/Project-Setup.md`, `wiki/Solution-Architecture.md`, `wiki/Ingestion-Rules.md`, `wiki/Ingestion-Service-Provider-Mechanism.md`, `wiki/Provider-Metadata-and-Split-Registration.md`, `wiki/Tools-RulesWorkbench.md`, and `wiki/Documentation-Source-Map.md` so the active contributor flow no longer describes Theia, `StudioServiceHost`, or Studio provider projects as current workflow components. Deleted the primarily Theia-focused pages `wiki/Tools-UKHO-Search-Studio.md`, `wiki/Theia-Knowledgebase.md`, `wiki/PrimeReact-Theia-UI-System.md`, and `docs/theia_terminology_glossary.md`. Removed the fully Theia- or PrimeReact-based work-package folders `docs/064-studio-skeleton`, `docs/065-studio-tree-widget`, `docs/066-studio-minor-ux`, `docs/067-studio-output-enhancements`, `docs/068-home-page`, `docs/069-search-ui`, `docs/070-studio-ingestion`, `docs/073-new-theia-shell`, `docs/074-primereact-research`, `docs/075-primereact-system`, and `docs/076-primereact-theme-uplift`. Preserved the remaining detached Studio documentation only where it was not entirely Theia/PrimeReact-based, and corrected the source map to reflect the removals. Validation: `run_build` succeeded and `dotnet test .\Search.slnx --no-build` passed for the full suite (`529` tests).
   - **Purpose**: Align repository guidance with the new direction by ensuring the documentation no longer tells developers to use or maintain the discontinued Theia client flow.
   - **Acceptance Criteria**:
     - `wiki` and `docs/**` are reviewed for Theia-related setup, usage, build, and verification guidance.
@@ -165,18 +168,18 @@
     - Links and references corrected after removals
     - Build/test validation still completed for the overall work item as required by repository standards
     - Can execute end-to-end via: review the retained wiki and docs paths and confirm no active Theia workflow guidance remains
-  - [ ] Task 3.1: Review and classify documentation in `wiki` and `docs/**`
-    - [ ] Step 1: Identify documentation that is mixed versus primarily Theia-specific.
-    - [ ] Step 2: Identify references to Aspire, `F5`, `StudioServiceHost`, `src/Studio/Server`, and `UKHO.Search.Studio.*` that are tied to the discontinued workflow.
-    - [ ] Step 3: Preserve non-Theia guidance where it remains valid after trimming.
-  - [ ] Task 3.2: Trim mixed documentation and delete primarily Theia-specific documentation
-    - [ ] Step 1: Remove only the Theia-related sections from mixed documents that still contain valuable non-Theia guidance.
-    - [ ] Step 2: Delete documents that are primarily Theia-focused when they fall within scope.
-    - [ ] Step 3: Update cross-links so remaining documentation does not reference removed Theia content.
-  - [ ] Task 3.3: Verify documentation alignment with the retained workflow
-    - [ ] Step 1: Re-read updated `wiki` and `docs/**` content to confirm no active Theia workflow remains.
-    - [ ] Step 2: Confirm the documentation now matches the retained solution, Aspire, and build/startup behavior.
-    - [ ] Step 3: Note any historical material intentionally left outside this work item’s confirmed scope.
+  - [x] Task 3.1: Review and classify documentation in `wiki` and `docs/**`
+    - [x] Step 1: Identify documentation that is mixed versus primarily Theia-specific.
+    - [x] Step 2: Identify references to Aspire, `F5`, `StudioServiceHost`, `src/Studio/Server`, and `UKHO.Search.Studio.*` that are tied to the discontinued workflow.
+    - [x] Step 3: Preserve non-Theia guidance where it remains valid after trimming.
+  - [x] Task 3.2: Trim mixed documentation and delete primarily Theia-specific documentation
+    - [x] Step 1: Remove only the Theia-related sections from mixed documents that still contain valuable non-Theia guidance.
+    - [x] Step 2: Delete documents that are primarily Theia-focused when they fall within scope.
+    - [x] Step 3: Update cross-links so remaining documentation does not reference removed Theia content.
+  - [x] Task 3.3: Verify documentation alignment with the retained workflow
+    - [x] Step 1: Re-read updated `wiki` and `docs/**` content to confirm no active Theia workflow remains.
+    - [x] Step 2: Confirm the documentation now matches the retained solution, Aspire, and build/startup behavior.
+    - [x] Step 3: Note any historical material intentionally left outside this work item’s confirmed scope.
   - **Files**:
     - `wiki/**`: trim or delete Theia-focused guidance
     - `docs/**`: trim mixed documents and delete primarily Theia-specific documents within the confirmed scope
@@ -191,7 +194,8 @@
 
 ## Slice 4 — Final validation of the retained developer workflow after cleanup
 
-- [ ] Work Item 4: Validate the cleaned repository baseline so the retained developer workflow is stable after Theia removal from active integration
+- [x] Work Item 4: Validate the cleaned repository baseline so the retained developer workflow is stable after Theia removal from active integration - Completed
+  - **Completed Summary**: Confirmed the retained solution composition with `get_projects_in_solution` and `Search.slnx`, showing the active solution no longer includes Theia-related or `StudioServiceHost` projects. Validation succeeded with a full `run_build` and `dotnet test .\Search.slnx --no-build` run (`529` tests passed). Started `src/Hosts/AppHost/AppHost.csproj` with the default `services` run mode, verified the retained service stack came up without any Theia runtime resources or `StudioServiceHost` participation, and confirmed the active AppHost, solution, and wiki guidance now describe the detached Studio/Theia code only as retained historical/refactor material. No additional case-by-case review items were identified for the next cleanup phase.
   - **Purpose**: Finish the cleanup with a usable, demonstrable repository state where the active solution, build, and local run paths no longer depend on the discontinued Theia workflow.
   - **Acceptance Criteria**:
     - The retained solution loads successfully without the removed Theia-related projects.
@@ -204,18 +208,18 @@
     - Documentation aligned with the retained workflow
     - Code comments added in full compliance with `./.github/instructions/documentation-pass.instructions.md` for all touched code files
     - Can execute end-to-end via: load the solution, build, run tests, start `AppHost`, and verify the active workflow no longer depends on Theia
-  - [ ] Task 4.1: Run final solution and build validation
-    - [ ] Step 1: Load the retained solution in Visual Studio and confirm the expected projects remain.
-    - [ ] Step 2: Run a full build for the retained active solution path.
-    - [ ] Step 3: Run the relevant retained test projects.
-  - [ ] Task 4.2: Run final Aspire validation
-    - [ ] Step 1: Start `AppHost`.
-    - [ ] Step 2: Confirm Theia runtime resources and `StudioServiceHost` no longer appear in the active Aspire experience.
-    - [ ] Step 3: Confirm retained active services still start as expected.
-  - [ ] Task 4.3: Confirm readiness for later physical deletion of `src/Studio/Server`
-    - [ ] Step 1: Confirm active runtime, build, solution, and documentation paths no longer depend on `src/Studio/Server`.
-    - [ ] Step 2: Record any case-by-case review items that must be resolved before additional cleanup proceeds.
-    - [ ] Step 3: Keep the repository in a stable baseline ready for the next UI direction.
+  - [x] Task 4.1: Run final solution and build validation
+    - [x] Step 1: Load the retained solution in Visual Studio and confirm the expected projects remain.
+    - [x] Step 2: Run a full build for the retained active solution path.
+    - [x] Step 3: Run the relevant retained test projects.
+  - [x] Task 4.2: Run final Aspire validation
+    - [x] Step 1: Start `AppHost`.
+    - [x] Step 2: Confirm Theia runtime resources and `StudioServiceHost` no longer appear in the active Aspire experience.
+    - [x] Step 3: Confirm retained active services still start as expected.
+  - [x] Task 4.3: Confirm readiness for later physical deletion of `src/Studio/Server`
+    - [x] Step 1: Confirm active runtime, build, solution, and documentation paths no longer depend on `src/Studio/Server`.
+    - [x] Step 2: Record any case-by-case review items that must be resolved before additional cleanup proceeds.
+    - [x] Step 3: Keep the repository in a stable baseline ready for the next UI direction.
   - **Files**:
     - retained solution `.slnx` file
     - retained active build/startup configuration

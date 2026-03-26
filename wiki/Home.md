@@ -39,7 +39,6 @@ flowchart LR
 - [Tools: `FileShareImageLoader` and `FileShareEmulator`](Tools-FileShareImageLoader-and-FileShareEmulator)
 - [Tools (advanced): `FileShareImageBuilder`](Tools-Advanced-FileShareImageBuilder)
 - [Tools: `RulesWorkbench`](Tools-RulesWorkbench)
-- [Tools: `UKHO Search Studio`](Tools-UKHO-Search-Studio)
 - [Ingestion pipeline](Ingestion-Pipeline)
 - [Metrics in the Aspire dashboard](Metrics-in-the-Aspire-Dashboard)
 - [How to write ingestion rules](Ingestion-Rules)
@@ -56,19 +55,15 @@ flowchart LR
 - `src/Hosts/AppHost` — Aspire orchestration and `runmode` switching
 - `src/Hosts/IngestionServiceHost` — ingestion host and bootstrap/runtime wiring
 - `src/Hosts/QueryServiceHost` — query-side host
-- `src/Studio/StudioServiceHost` — studio-facing minimal API host for development-time tooling, exposing `/providers`, read-only `/rules`, provider-neutral ingestion/operation APIs, OpenAPI/Scalar metadata, and the lightweight `/echo` smoke endpoint
 - `tools/FileShareEmulator` — local File Share emulator UI/API
 - `tools/RulesWorkbench` — rule inspection, evaluation, and checker tooling
-- `src/Studio/Server` — browser-hosted Eclipse Theia studio shell, currently centered on the default `Home` document, the runtime configuration bridge, and the temporary `PrimeReact Showcase Demo` review surface
 
 ### Core libraries
 
 - `src/UKHO.Search` — pipeline runtime, channels, supervision, metrics, dead-letter primitives
-- `src/UKHO.Search.ProviderModel` — shared provider identity, metadata, catalogs, and registration helpers used by ingestion and studio composition
+- `src/UKHO.Search.ProviderModel` — shared provider identity, metadata, catalogs, and registration helpers used by ingestion runtime and provider-aware tooling
 - `src/UKHO.Search.Ingestion` — ingestion contracts and `CanonicalDocument`
-- `src/Studio/UKHO.Search.Studio` — generic Studio provider contracts, catalogs, and registration validation
 - `src/Providers/UKHO.Search.Ingestion.Providers.FileShare` — File Share provider processing graph and enrichers
-- `src/Providers/UKHO.Search.Studio.Providers.FileShare` — tandem File Share Studio provider registration for development-time composition
 - `src/UKHO.Search.Infrastructure.Ingestion` — queue, blob dead-letter, bootstrap, and Elasticsearch integration
 
 ### Test estate
@@ -89,7 +84,7 @@ flowchart LR
 
 If your task is rule authoring or rule diagnosis, open [`RulesWorkbench`](Tools-RulesWorkbench) as part of that loop.
 
-If you are reviewing Studio shell wiring, open [Tools: `UKHO Search Studio`](Tools-UKHO-Search-Studio) for the current Theia shell and `StudioServiceHost` guidance.
+Retained `src/Studio/**` code remains in source control for later refactoring, but it is no longer part of the active solution, Aspire startup path, or default contributor workflow.
 
 ## Design themes carried through the repo
 
@@ -99,7 +94,7 @@ If you are reviewing Studio shell wiring, open [Tools: `UKHO Search Studio`](Too
 - **Rules** provide additive enrichment without hard-coding every mapping into C#.
 - **Rule titles** now provide the canonical display title contract for indexed documents, and missing titles are treated as ingestion failures.
 - **Developer tooling** is first-class, especially for local File Share workflows.
-- **Provider metadata** is shared across hosts through `UKHO.Search.ProviderModel`, with mandatory split registration for provider packages, provider-aware rule loading, and tandem Studio provider composition for development-time studio tooling.
+- **Provider metadata** is shared across hosts through `UKHO.Search.ProviderModel`, with mandatory split registration for provider packages and provider-aware rule loading.
 
 ## Historical design lineage
 

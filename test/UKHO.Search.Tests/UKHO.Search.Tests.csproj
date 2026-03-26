@@ -27,13 +27,13 @@
 
 	<ItemGroup>
     <ProjectReference Include="..\..\src\UKHO.Search\UKHO.Search.csproj" />
-    <ProjectReference Include="..\..\src\Studio\StudioServiceHost\StudioServiceHost.csproj" />
-      <ProjectReference Include="..\..\tools\FileShareImageBuilder\FileShareImageBuilder.csproj" />
+    <ProjectReference Include="..\..\tools\FileShareImageBuilder\FileShareImageBuilder.csproj" />
   </ItemGroup>
 
 	<ItemGroup>
 	  <Folder Include="Emulator\" />
 	  <Folder Include="FileShareProvider\Enrichment\" />
+	  <Folder Include="Studio\" />
 	</ItemGroup>
 
 </Project>
