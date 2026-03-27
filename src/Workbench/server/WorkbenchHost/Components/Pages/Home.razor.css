@@ -184,7 +184,7 @@
     padding: 0.75rem;
 }
 
-/* Uses a simple local tab strip in the sidebars so the active placeholder content remains visible and keyboard reachable. */
+/* Uses a simple Radzen button strip in the sidebars so the active placeholder content remains visible and keyboard reachable. */
 .sidebar-tab-strip {
     display: flex;
     flex-wrap: wrap;
@@ -192,38 +192,27 @@
     padding-bottom: 0.75rem;
 }
 
-/* Keeps the fallback sidebar tab buttons lightweight and layout-focused. */
+/* Sizes the Radzen sidebar-strip buttons consistently while allowing Radzen to own their chrome. */
 .sidebar-tab-button {
-    display: inline-flex;
-    align-items: center;
     min-height: 2.25rem;
-    padding: 0.45rem 0.75rem;
-    border: 0;
-    background: transparent;
-    color: inherit;
-    cursor: pointer;
-    font: inherit;
 }
 
-/* Gives the selected fallback tab a simple emphasis without introducing a custom palette. */
+/* Keeps the inner Radzen button compact enough for the sidebar strip while preserving stock theming. */
+.sidebar-tab-button::deep .rz-button {
+    min-height: 2.25rem;
+}
+
+/* Gives the selected sidebar strip button a simple emphasis without recreating custom non-Radzen chrome. */
 .sidebar-tab-button-active {
     font-weight: 600;
 }
 
-/* Gives the sidebar tab content area a predictable vertical region beneath the local tab strip. */
+/* Gives the sidebar tab content area a predictable vertical region beneath the button strip. */
 .sidebar-tab-panel {
     flex: 1;
     min-height: 0;
     padding-top: 0.75rem;
     overflow: auto;
-}
-
-/* Uses an explicit flex wrapper inside each fallback header so the close icon stays visually to the right of the label. */
-.section-tab-header {
-    display: inline-flex;
-    align-items: center;
-    gap: 0.5rem;
-    min-width: 0;
 }
 
 /* Gives each placeholder panel a simple vertical layout. */

@@ -88,38 +88,17 @@
                               @onclick:stopPropagation="true" />
             </header>
             <div class="sidebar-content">
-                @* Uses lightweight local tab buttons here so the sidebars always render visible content even while the center keeps the Radzen tab showcase. *@
+                @* Uses Radzen buttons for the sidebar tab strip so the shell stays Radzen-native without reintroducing the constrained-layout issues seen with sidebar tabs. *@
                 <div class="sidebar-tab-strip" role="tablist" aria-label="Left sidebar sections">
-                    <button class="@GetSidebarTabButtonCssClass(GetLeftSidebarTabIndex() == 0)"
-                            type="button"
-                            role="tab"
-                            aria-selected="@(GetLeftSidebarTabIndex() == 0)"
-                            @onclick="() => HandleLeftSidebarTabChangeAsync(0)">
-                        <span class="section-tab-header">
-                            <span>Explorer</span>
-                            <RadzenIcon class="section-tab-close-icon" Icon="close" aria-hidden="true" />
-                        </span>
-                    </button>
-                    <button class="@GetSidebarTabButtonCssClass(GetLeftSidebarTabIndex() == 1)"
-                            type="button"
-                            role="tab"
-                            aria-selected="@(GetLeftSidebarTabIndex() == 1)"
-                            @onclick="() => HandleLeftSidebarTabChangeAsync(1)">
-                        <span class="section-tab-header">
-                            <span>Search</span>
-                            <RadzenIcon class="section-tab-close-icon" Icon="close" aria-hidden="true" />
-                        </span>
-                    </button>
-                    <button class="@GetSidebarTabButtonCssClass(GetLeftSidebarTabIndex() == 2)"
-                            type="button"
-                            role="tab"
-                            aria-selected="@(GetLeftSidebarTabIndex() == 2)"
-                            @onclick="() => HandleLeftSidebarTabChangeAsync(2)">
-                        <span class="section-tab-header">
-                            <span>Outline</span>
-                            <RadzenIcon class="section-tab-close-icon" Icon="close" aria-hidden="true" />
-                        </span>
-                    </button>
+                    <RadzenButton class="@GetSidebarTabButtonCssClass(GetLeftSidebarTabIndex() == 0)"
+                                  Text="Explorer"
+                                  Click="@(() => HandleLeftSidebarTabChangeAsync(0))" />
+                    <RadzenButton class="@GetSidebarTabButtonCssClass(GetLeftSidebarTabIndex() == 1)"
+                                  Text="Search"
+                                  Click="@(() => HandleLeftSidebarTabChangeAsync(1))" />
+                    <RadzenButton class="@GetSidebarTabButtonCssClass(GetLeftSidebarTabIndex() == 2)"
+                                  Text="Outline"
+                                  Click="@(() => HandleLeftSidebarTabChangeAsync(2))" />
                 </div>
                 <div class="sidebar-tab-panel" role="tabpanel">
                     @switch (_activeLeftPanelId)
@@ -522,28 +501,14 @@
                               @onclick:stopPropagation="true" />
             </header>
             <div class="sidebar-content">
-                @* Mirrors the left sidebar fallback so the right-side content remains visible while preserving tabbed chrome. *@
+                @* Mirrors the left sidebar implementation so both sidebars use a stable Radzen-native tab strip. *@
                 <div class="sidebar-tab-strip" role="tablist" aria-label="Right sidebar sections">
-                    <button class="@GetSidebarTabButtonCssClass(GetRightSidebarTabIndex() == 0)"
-                            type="button"
-                            role="tab"
-                            aria-selected="@(GetRightSidebarTabIndex() == 0)"
-                            @onclick="() => HandleRightSidebarTabChangeAsync(0)">
-                        <span class="section-tab-header">
-                            <span>Insights</span>
-                            <RadzenIcon class="section-tab-close-icon" Icon="close" aria-hidden="true" />
-                        </span>
-                    </button>
-                    <button class="@GetSidebarTabButtonCssClass(GetRightSidebarTabIndex() == 1)"
-                            type="button"
-                            role="tab"
-                            aria-selected="@(GetRightSidebarTabIndex() == 1)"
-                            @onclick="() => HandleRightSidebarTabChangeAsync(1)">
-                        <span class="section-tab-header">
-                            <span>Activity</span>
-                            <RadzenIcon class="section-tab-close-icon" Icon="close" aria-hidden="true" />
-                        </span>
-                    </button>
+                    <RadzenButton class="@GetSidebarTabButtonCssClass(GetRightSidebarTabIndex() == 0)"
+                                  Text="Insights"
+                                  Click="@(() => HandleRightSidebarTabChangeAsync(0))" />
+                    <RadzenButton class="@GetSidebarTabButtonCssClass(GetRightSidebarTabIndex() == 1)"
+                                  Text="Activity"
+                                  Click="@(() => HandleRightSidebarTabChangeAsync(1))" />
                 </div>
                 <div class="sidebar-tab-panel" role="tabpanel">
                     @switch (_activeRightPanelId)
@@ -675,7 +640,7 @@
     /// </summary>
     private readonly IReadOnlyList<WorkbenchShowcaseOption> _themeOptions =
         [
-            new WorkbenchShowcaseOption("Material", DefaultRadzenThemeName, "The stock Radzen Material theme baseline."),
+            new WorkbenchShowcaseOption("Material", "material", "The stock Radzen Material theme baseline."),
             new WorkbenchShowcaseOption("Material Dark", "material-dark", "The stock Radzen Material dark baseline."),
         ];
 
@@ -821,9 +786,9 @@
     private string GridRowCountText => $"{_gridRows.Count} rows";
 
     /// <summary>
-    /// Stores the stock Radzen Material theme name used when the shared theme service has not selected a value yet.
+    /// Stores the stock Radzen Material Dark theme name used when the shared theme service has not selected a value yet.
     /// </summary>
-    private const string DefaultRadzenThemeName = "material";
+    private const string DefaultRadzenThemeName = "material-dark";
 
     /// <summary>
     /// Gets the currently selected shared Radzen theme value for the showcase drop-down controls.
@@ -918,12 +883,12 @@
     };
 
     /// <summary>
-    /// Maps the current left sidebar panel identifier to the matching tab index so the activity bar and tabs stay synchronized.
+    /// Maps the current left sidebar panel identifier to the matching tab index so the activity bar and tab strip stay synchronized.
     /// </summary>
-    /// <returns>The zero-based index of the left sidebar tab that should appear selected.</returns>
+    /// <returns>The zero-based index of the left sidebar section that should appear selected.</returns>
     private int GetLeftSidebarTabIndex()
     {
-        // Translate the active panel identifier into the matching fixed tab position for this mock shell.
+        // Translate the active panel identifier into the matching fixed section position for this mock shell.
         return _activeLeftPanelId switch
         {
             SearchPanelId => 1,
@@ -935,21 +900,21 @@
     /// <summary>
     /// Maps the current right sidebar panel identifier to the matching tab index so the mirrored activity bar stays synchronized.
     /// </summary>
-    /// <returns>The zero-based index of the right sidebar tab that should appear selected.</returns>
+    /// <returns>The zero-based index of the right sidebar section that should appear selected.</returns>
     private int GetRightSidebarTabIndex()
     {
-        // Translate the active panel identifier into the matching fixed tab position for the mirrored shell section.
+        // Translate the active panel identifier into the matching fixed section position for the mirrored shell sidebar.
         return string.Equals(_activeRightPanelId, ActivityPanelId, StringComparison.Ordinal) ? 1 : 0;
     }
 
     /// <summary>
-    /// Updates the active left panel when the user switches tabs directly inside the left sidebar.
+    /// Updates the active left panel when the user switches sections directly inside the left sidebar.
     /// </summary>
-    /// <param name="index">The zero-based tab index selected in the left sidebar.</param>
-    /// <returns>A completed task after the left activity-bar state has been synchronized with the chosen tab.</returns>
+    /// <param name="index">The zero-based section index selected in the left sidebar.</param>
+    /// <returns>A completed task after the left activity-bar state has been synchronized with the chosen section.</returns>
     private Task HandleLeftSidebarTabChangeAsync(int index)
     {
-        // Mirror the tab selection back to the activity-bar state so both entry points describe the same open panel.
+        // Mirror the section selection back to the activity-bar state so both entry points describe the same open panel.
         _activeLeftPanelId = index switch
         {
             1 => SearchPanelId,
@@ -961,26 +926,26 @@
     }
 
     /// <summary>
-    /// Updates the active right panel when the user switches tabs directly inside the right sidebar.
+    /// Updates the active right panel when the user switches sections directly inside the right sidebar.
     /// </summary>
-    /// <param name="index">The zero-based tab index selected in the right sidebar.</param>
-    /// <returns>A completed task after the mirrored activity-bar state has been synchronized with the chosen tab.</returns>
+    /// <param name="index">The zero-based section index selected in the right sidebar.</param>
+    /// <returns>A completed task after the mirrored activity-bar state has been synchronized with the chosen section.</returns>
     private Task HandleRightSidebarTabChangeAsync(int index)
     {
-        // Mirror the tab selection back to the right activity-bar state so the visual affordances remain aligned.
+        // Mirror the section selection back to the right activity-bar state so the visual affordances remain aligned.
         _activeRightPanelId = index == 1 ? ActivityPanelId : InsightsPanelId;
 
         return Task.CompletedTask;
     }
 
     /// <summary>
-    /// Builds the CSS class list for the lightweight sidebar tab buttons so active state styling stays centralized.
+    /// Builds the CSS class list for the Radzen sidebar tab-strip buttons so active state styling stays centralized.
     /// </summary>
-    /// <param name="isActive">A value indicating whether the rendered sidebar tab should appear selected.</param>
-    /// <returns>The CSS class string used by the sidebar tab button.</returns>
+    /// <param name="isActive">A value indicating whether the rendered sidebar section should appear selected.</param>
+    /// <returns>The CSS class string used by the sidebar tab-strip button.</returns>
     private static string GetSidebarTabButtonCssClass(bool isActive)
     {
-        // Append the active modifier only for the currently selected sidebar tab so the placeholder chrome stays legible.
+        // Append the active modifier only for the currently selected sidebar section so the Radzen button strip stays legible.
         return isActive
             ? "sidebar-tab-button sidebar-tab-button-active"
             : "sidebar-tab-button";
