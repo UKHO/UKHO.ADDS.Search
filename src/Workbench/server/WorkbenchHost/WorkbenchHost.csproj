@@ -12,7 +12,6 @@
 
   <ItemGroup>
     <ProjectReference Include="..\UKHO.Workbench.Infrastructure\UKHO.Workbench.Infrastructure.csproj" />
-    <ProjectReference Include="..\..\client\WorkbenchClient\WorkbenchClient.csproj" />
   </ItemGroup>
 
 </Project>

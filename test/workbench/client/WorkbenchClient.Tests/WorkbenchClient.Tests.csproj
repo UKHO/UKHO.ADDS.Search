@@ -25,8 +25,4 @@
     </PackageReference>
   </ItemGroup>
 
-  <ItemGroup>
-    <ProjectReference Include="..\..\..\..\src\workbench\client\WorkbenchClient\WorkbenchClient.csproj" />
-  </ItemGroup>
-
 </Project>

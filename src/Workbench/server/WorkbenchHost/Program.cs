@@ -1,9 +1,10 @@
 using UKHO.Workbench.Infrastructure;
+using WorkbenchHost.Components;
 
 namespace WorkbenchHost
 {
     /// <summary>
-    /// Boots the minimal server host that serves the hosted Workbench Blazor WebAssembly client.
+    /// Boots the temporary Workbench host that serves Razor components directly from the server.
     /// </summary>
     public class Program
     {
@@ -13,11 +14,15 @@ namespace WorkbenchHost
         /// <param name="args">The command-line arguments supplied to the ASP.NET Core host.</param>
         public static void Main(string[] args)
         {
-            // Create the ASP.NET Core host builder that will serve the hosted Blazor WebAssembly client.
+            // Create the ASP.NET Core host builder that will serve the temporary Workbench experience.
             var builder = WebApplication.CreateBuilder(args);
 
             // Compose the server-side Onion chain from the outer infrastructure layer inward.
             builder.Services.AddWorkbenchInfrastructure();
+
+            // Register the Razor component services required for the host-served Blazor root page.
+            builder.Services.AddRazorComponents()
+                   .AddInteractiveServerComponents();
 
             var app = builder.Build();
 
@@ -31,13 +36,13 @@ namespace WorkbenchHost
             // Redirect plain HTTP requests to the HTTPS endpoint exposed by the host.
             app.UseHttpsRedirection();
 
-            // Expose the hosted Blazor WebAssembly framework assets and the client static web assets.
-            // The hosted WebAssembly client relies on the static-file middleware pipeline for the _framework payload.
-            app.UseBlazorFrameworkFiles();
-            app.UseStaticFiles();
+            // Enable the anti-forgery protections expected by interactive server-rendered components.
+            app.UseAntiforgery();
 
-            // Route every non-file request to the hosted client so the Workbench hello page is available at '/'.
-            app.MapFallbackToFile("index.html");
+            // Expose the component-generated static assets and route the root request through the Razor component app shell.
+            app.MapStaticAssets();
+            app.MapRazorComponents<App>()
+               .AddInteractiveServerRenderMode();
 
             app.Run();
         }

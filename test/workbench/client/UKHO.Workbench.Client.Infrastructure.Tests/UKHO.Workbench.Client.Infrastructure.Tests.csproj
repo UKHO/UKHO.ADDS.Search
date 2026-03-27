@@ -24,8 +24,4 @@
     </PackageReference>
   </ItemGroup>
 
-  <ItemGroup>
-    <ProjectReference Include="..\..\..\..\src\workbench\client\UKHO.Workbench.Client.Infrastructure\UKHO.Workbench.Client.Infrastructure.csproj" />
-  </ItemGroup>
-
 </Project>
