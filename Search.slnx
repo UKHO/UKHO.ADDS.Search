@@ -18,14 +18,18 @@
     <Project Path="src/UKHO.Search.Infrastructure.Query/UKHO.Search.Infrastructure.Query.csproj" Id="38339a3b-8fbc-453c-877e-8dcfc1ce184a" />
     <Project Path="src/UKHO.Search.Infrastructure/UKHO.Search.Infrastructure.csproj" Id="b73eb1ec-a022-4467-a0bc-b72565a7bb3e" />
   </Folder>
-  <Folder Name="/04 Studio/">
-  </Folder>
   <Folder Name="/04 Workbench/" />
   <Folder Name="/04 Workbench/server/">
-    <Project Path="src/workbench/server/UKHO.Workbench.Infrastructure/UKHO.Workbench.Infrastructure.csproj" />
-    <Project Path="src/workbench/server/UKHO.Workbench.Services/UKHO.Workbench.Services.csproj" />
-    <Project Path="src/workbench/server/UKHO.Workbench/UKHO.Workbench.csproj" />
     <Project Path="src/workbench/server/WorkbenchHost/WorkbenchHost.csproj" />
+  </Folder>
+  <Folder Name="/04 Workbench/server/00 Domain/">
+    <Project Path="src/workbench/server/UKHO.Workbench/UKHO.Workbench.csproj" />
+  </Folder>
+  <Folder Name="/04 Workbench/server/01 Services/">
+    <Project Path="src/workbench/server/UKHO.Workbench.Services/UKHO.Workbench.Services.csproj" />
+  </Folder>
+  <Folder Name="/04 Workbench/server/02 Infrastructure/">
+    <Project Path="src/workbench/server/UKHO.Workbench.Infrastructure/UKHO.Workbench.Infrastructure.csproj" />
   </Folder>
   <Folder Name="/05 Hosts/">
     <Project Path="src/Hosts/IngestionServiceHost/IngestionServiceHost.csproj" />
@@ -71,14 +75,18 @@
     <Project Path="test/UKHO.Search.Infrastructure.Query.Tests/UKHO.Search.Infrastructure.Query.Tests.csproj" />
     <Project Path="test/UKHO.Search.Infrastructure.Tests/UKHO.Search.Infrastructure.Tests.csproj" />
   </Folder>
-  <Folder Name="/@test/04 Studio/">
-  </Folder>
   <Folder Name="/@test/04 Workbench/" />
   <Folder Name="/@test/04 Workbench/server/">
-    <Project Path="test/workbench/server/UKHO.Workbench.Infrastructure.Tests/UKHO.Workbench.Infrastructure.Tests.csproj" />
-    <Project Path="test/workbench/server/UKHO.Workbench.Services.Tests/UKHO.Workbench.Services.Tests.csproj" />
-    <Project Path="test/workbench/server/UKHO.Workbench.Tests/UKHO.Workbench.Tests.csproj" />
     <Project Path="test/workbench/server/WorkbenchHost.Tests/WorkbenchHost.Tests.csproj" />
+  </Folder>
+  <Folder Name="/@test/04 Workbench/server/00 Domain/">
+    <Project Path="test/workbench/server/UKHO.Workbench.Tests/UKHO.Workbench.Tests.csproj" />
+  </Folder>
+  <Folder Name="/@test/04 Workbench/server/01 Services/">
+    <Project Path="test/workbench/server/UKHO.Workbench.Services.Tests/UKHO.Workbench.Services.Tests.csproj" />
+  </Folder>
+  <Folder Name="/@test/04 Workbench/server/02 Infrastructure/">
+    <Project Path="test/workbench/server/UKHO.Workbench.Infrastructure.Tests/UKHO.Workbench.Infrastructure.Tests.csproj" />
   </Folder>
   <Folder Name="/@test/05 Hosts/">
     <Project Path="test/AppHost.Tests/AppHost.Tests.csproj" />

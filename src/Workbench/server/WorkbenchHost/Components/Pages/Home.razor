@@ -1,8 +1,78 @@
 @page "/"
 @rendermode InteractiveServer
+@using System.Security.Claims
+@using Microsoft.AspNetCore.Components.Authorization
 
 <PageTitle>Workbench</PageTitle>
 
 <section class="home">
     <h1>Hello UKHO Workbench</h1>
+
+    @if (_user?.Identity?.IsAuthenticated == true)
+    {
+        <section>
+            <p><strong>User:</strong> @(_user.Identity?.Name ?? "(no name claim)")</p>
+
+            <h2>Roles</h2>
+            @if (_roles.Count > 0)
+            {
+                <ul>
+                    @foreach (var role in _roles)
+                    {
+                        <li><code>@role</code></li>
+                    }
+                </ul>
+            }
+            else
+            {
+                <p>No role claims found.</p>
+            }
+
+            <h2>Claims</h2>
+            <ul>
+                @foreach (var claim in _claims)
+                {
+                    <li><strong>@claim.Type</strong>: <code>@claim.Value</code></li>
+                }
+            </ul>
+        </section>
+    }
+    else
+    {
+        <p>No authenticated user is available.</p>
+    }
 </section>
+
+@code
+{
+    [CascadingParameter]
+    private Task<AuthenticationState>? AuthenticationStateTask { get; set; }
+
+    private ClaimsPrincipal? _user;
+    private IReadOnlyList<Claim> _claims = [];
+    private IReadOnlyList<string> _roles = [];
+
+    protected override async Task OnParametersSetAsync()
+    {
+        if (AuthenticationStateTask is null)
+        {
+            _user = null;
+            _claims = [];
+            _roles = [];
+            return;
+        }
+
+        var authenticationState = await AuthenticationStateTask;
+        _user = authenticationState.User;
+        _claims = _user.Claims
+            .OrderBy(claim => claim.Type, StringComparer.Ordinal)
+            .ThenBy(claim => claim.Value, StringComparer.Ordinal)
+            .ToArray();
+        _roles = _user.FindAll(ClaimTypes.Role)
+            .Select(claim => claim.Value)
+            .Where(value => !string.IsNullOrWhiteSpace(value))
+            .Distinct(StringComparer.Ordinal)
+            .OrderBy(value => value, StringComparer.Ordinal)
+            .ToArray();
+    }
+}

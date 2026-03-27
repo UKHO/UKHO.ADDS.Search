@@ -65,10 +65,10 @@ namespace AppHost
                     var keyCloakUsernameParameter = builder.AddParameter("keycloak-username");
                     var keyCloakPasswordParameter = builder.AddParameter("keycloak-password");
 
-
                     var keycloak = builder.AddKeycloak(ServiceNames.KeyCloak, 8080, keyCloakUsernameParameter, keyCloakPasswordParameter)
                                           .WithDataVolume()
                                           .WithRealmImport("./Realms")
+                                          .WithOtlpExporter()
                                           .WithLifetime(ContainerLifetime.Persistent);
 
                     var elasticsearch = builder.AddElasticsearchWithKibana(ServiceNames.ElasticSearch, elasticPasswordParameter)
@@ -76,7 +76,7 @@ namespace AppHost
 
                     var ingestionService = builder.AddProject<IngestionServiceHost>(ServiceNames.Ingestion)
                                                   .WithExternalHttpEndpoints()
-                                                   .WithEnvironment("ingestionmode", ingestionModeParameter)
+                                                  .WithEnvironment("ingestionmode", ingestionModeParameter)
                                                   .WithReference(storageQueue)
                                                   .WithReference(storageTable)
                                                   .WithReference(storageBlob)
@@ -116,6 +116,8 @@ namespace AppHost
 
                      // Start the hosted Workbench shell directly from AppHost so the Aspire endpoint opens the Blazor client at '/'.
                      builder.AddProject<WorkbenchHost>(ServiceNames.Workbench)
+                            .WithReference(keycloak)
+                            .WaitFor(keycloak)
                             .WithExternalHttpEndpoints();
 
                     // Load the shared configuration for the retained service set only.

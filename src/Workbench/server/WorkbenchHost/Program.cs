@@ -1,48 +1,82 @@
+using Microsoft.AspNetCore.Authentication;
+using Microsoft.AspNetCore.Authentication.Cookies;
+using Microsoft.AspNetCore.Authentication.OpenIdConnect;
+using Microsoft.AspNetCore.Authorization;
+using Microsoft.IdentityModel.Protocols.OpenIdConnect;
+using System.IdentityModel.Tokens.Jwt;
+using UKHO.Search.ServiceDefaults;
 using UKHO.Workbench.Infrastructure;
 using WorkbenchHost.Components;
+using WorkbenchHost.Extensions;
 
 namespace WorkbenchHost
 {
-    /// <summary>
-    /// Boots the temporary Workbench host that serves Razor components directly from the server.
-    /// </summary>
     public class Program
     {
-        /// <summary>
-        /// Configures and starts the Workbench host.
-        /// </summary>
-        /// <param name="args">The command-line arguments supplied to the ASP.NET Core host.</param>
         public static void Main(string[] args)
         {
-            // Create the ASP.NET Core host builder that will serve the temporary Workbench experience.
             var builder = WebApplication.CreateBuilder(args);
+            builder.AddServiceDefaults();
 
-            // Compose the server-side Onion chain from the outer infrastructure layer inward.
             builder.Services.AddWorkbenchInfrastructure();
 
-            // Register the Razor component services required for the host-served Blazor root page.
             builder.Services.AddRazorComponents()
-                   .AddInteractiveServerComponents();
+                .AddInteractiveServerComponents();
+
+            builder.Services.AddHttpContextAccessor().AddTransient<AuthorizationHandler>();
+
+            builder.Services.AddTransient<IClaimsTransformation, KeycloakRealmRoleClaimsTransformation>();
+
+            var oidcScheme = OpenIdConnectDefaults.AuthenticationScheme;
+
+            builder.Services.AddAuthentication(options =>
+            {
+                options.DefaultScheme = CookieAuthenticationDefaults.AuthenticationScheme;
+                options.DefaultAuthenticateScheme = CookieAuthenticationDefaults.AuthenticationScheme;
+                options.DefaultSignInScheme = CookieAuthenticationDefaults.AuthenticationScheme;
+                options.DefaultChallengeScheme = oidcScheme;
+            })
+                .AddCookie(CookieAuthenticationDefaults.AuthenticationScheme)
+                .AddKeycloakOpenIdConnect("keycloak", "ukho-search", oidcScheme, options =>
+                {
+                    options.ClientId = "search-workbench";
+                    options.ResponseType = OpenIdConnectResponseType.Code;
+                    options.RequireHttpsMetadata = false;
+                    options.TokenValidationParameters.NameClaimType = JwtRegisteredClaimNames.Name;
+                    options.SaveTokens = true;
+                    options.SignInScheme = CookieAuthenticationDefaults.AuthenticationScheme;
+                });
+
+            builder.Services.AddCascadingAuthenticationState();
+
+            builder.Services.AddAuthorization(options =>
+            {
+                options.FallbackPolicy = new AuthorizationPolicyBuilder()
+                    .RequireAuthenticatedUser()
+                    .Build();
+            });
 
             var app = builder.Build();
 
-            // Keep the production pipeline minimal while still enforcing HTTPS and basic exception handling.
+            app.MapDefaultEndpoints();
+
             if (!app.Environment.IsDevelopment())
             {
                 app.UseExceptionHandler("/");
                 app.UseHsts();
             }
 
-            // Redirect plain HTTP requests to the HTTPS endpoint exposed by the host.
             app.UseHttpsRedirection();
-
-            // Enable the anti-forgery protections expected by interactive server-rendered components.
             app.UseAntiforgery();
 
-            // Expose the component-generated static assets and route the root request through the Razor component app shell.
+            app.MapLoginAndLogout();
+
+            app.UseAuthentication();
+            app.UseAuthorization();
+
             app.MapStaticAssets();
             app.MapRazorComponents<App>()
-               .AddInteractiveServerRenderMode();
+                .AddInteractiveServerRenderMode();
 
             app.Run();
         }
