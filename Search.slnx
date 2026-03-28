@@ -19,6 +19,9 @@
     <Project Path="src/UKHO.Search.Infrastructure/UKHO.Search.Infrastructure.csproj" Id="b73eb1ec-a022-4467-a0bc-b72565a7bb3e" />
   </Folder>
   <Folder Name="/04 Workbench/" />
+  <Folder Name="/04 Workbench/@radzen/">
+    <Project Path="src/Workbench/radzen-blazor/Radzen.Blazor/Radzen.Blazor.csproj" />
+  </Folder>
   <Folder Name="/04 Workbench/server/">
     <Project Path="src/workbench/server/WorkbenchHost/WorkbenchHost.csproj" />
   </Folder>
@@ -45,6 +48,10 @@
     <Project Path="tools/FileShareImageBuilder/FileShareImageBuilder.csproj" Id="d05948ce-767a-4d18-8fb0-d2a13e1f4557" />
     <Project Path="tools/FileShareImageLoader/FileShareImageLoader.csproj" Id="8ed6b18d-5417-4ec9-be3a-88729c2eb987" />
     <Project Path="tools/RulesWorkbench/RulesWorkbench.csproj" />
+  </Folder>
+  <Folder Name="/99 Scratch/">
+    <Project Path="scratch/BlazorSplitGrid.Tests/BlazorSplitGrid.Tests.csproj" />
+    <Project Path="scratch/BlazorSplitGrid/BlazorSplitGrid.csproj" />
   </Folder>
   <Folder Name="/@configuration/">
     <Project Path="configuration/UKHO.Aspire.Configuration.Emulator/UKHO.Aspire.Configuration.Emulator.csproj" />
