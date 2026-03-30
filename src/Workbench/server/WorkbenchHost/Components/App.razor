@@ -6,7 +6,7 @@
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <base href="@NavigationManager.BaseUri" />
-    <RadzenTheme Theme="material" />
+    <RadzenTheme Theme="material-dark" />
     <link rel="stylesheet" href="css/site.css" />
     <link rel="stylesheet" href="@Assets["WorkbenchHost.styles.css"]" />
     <link rel="icon" href="favicon.ico" />
@@ -35,7 +35,7 @@
 
         if (HttpContext != null)
         {
-            var theme = HttpContext.Request.Cookies["WorkbenchHostTheme"];
+            var theme = HttpContext.Request.Cookies["workbench-theme"];
 
             if (!string.IsNullOrEmpty(theme))
             {

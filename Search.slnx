@@ -83,6 +83,9 @@
     <Project Path="test/UKHO.Search.Infrastructure.Tests/UKHO.Search.Infrastructure.Tests.csproj" />
   </Folder>
   <Folder Name="/@test/04 Workbench/" />
+  <Folder Name="/@test/04 Workbench/@radzen/">
+    <Project Path="test/workbench/radzen-blazor/Radzen.Blazor.Tests/Radzen.Blazor.Tests.csproj" />
+  </Folder>
   <Folder Name="/@test/04 Workbench/server/">
     <Project Path="test/workbench/server/WorkbenchHost.Tests/WorkbenchHost.Tests.csproj" />
   </Folder>

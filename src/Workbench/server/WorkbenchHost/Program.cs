@@ -37,12 +37,12 @@ namespace WorkbenchHost
                    .AddInteractiveServerComponents()
                    .AddHubOptions(options => options.MaximumReceiveMessageSize = 10 * 1024 * 1024);
 
-            // Register Radzen services so the host can render the temporary shell using Radzen assets.
+            // Register Radzen services so the host can render the shell using Radzen assets.
             builder.Services.AddRadzenComponents();
 
             builder.Services.AddRadzenCookieThemeService(options =>
             {
-                options.Name = "WorkbenchHostTheme";
+                options.Name = "workbench-theme";
                 options.Duration = TimeSpan.FromDays(365);
             });
 
