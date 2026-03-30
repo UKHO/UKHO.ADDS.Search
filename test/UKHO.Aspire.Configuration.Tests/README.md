@@ -1,11 +1,13 @@
 # UKHO.Aspire.Configuration.Tests
 
-Placeholder matching test project created by the test refactor audit.
+Executable unit coverage for `configuration/UKHO.Aspire.Configuration`.
 
 ## Scope
 
-- Placeholder smoke coverage for the matching production project until real tests are added.
+- `AddsEnvironment` parsing, equality, helper, and environment-variable behaviours.
+- `ConfigurationExtensions` local endpoint resolution and non-local App Configuration registration metadata.
+- `ExternalServiceRegistry` and `ExternalEndpoint` remote endpoint resolution behaviour.
 
 ## Execution
 
-Run dotnet test for this project when validating placeholder coverage.
+Run `dotnet test test\UKHO.Aspire.Configuration.Tests\UKHO.Aspire.Configuration.Tests.csproj --no-restore`.
