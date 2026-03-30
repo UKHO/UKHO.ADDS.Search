@@ -19,24 +19,37 @@ namespace UKHO.Search.Infrastructure.Ingestion.Rules
         public Uri? TryResolveEndpoint()
         {
             // Aspire provides referenced service endpoints via configuration.
-            // In local emulation this will be injected as:
-            // services__adds-configuration__http__0
-            const string serviceEnvironmentKey = $"services__{ConfigurationServiceName}__http__0";
-
-            var url = _configuration[serviceEnvironmentKey];
-            if (string.IsNullOrWhiteSpace(url))
+            // Prefer HTTPS when available and fall back to HTTP for older local setups.
+            var endpointKeys = new[]
             {
-                _logger.LogWarning("Azure App Configuration endpoint not found in configuration. Key={Key}", serviceEnvironmentKey);
-                return null;
+                $"services__{ConfigurationServiceName}__https__0",
+                $"services__{ConfigurationServiceName}__http__0"
+            };
+
+            foreach (var endpointKey in endpointKeys)
+            {
+                var url = _configuration[NormalizeConfigurationKey(endpointKey)] ?? Environment.GetEnvironmentVariable(endpointKey);
+                if (string.IsNullOrWhiteSpace(url))
+                {
+                    continue;
+                }
+
+                if (!Uri.TryCreate(url, UriKind.Absolute, out var uri))
+                {
+                    _logger.LogWarning("Azure App Configuration endpoint is invalid. Url={Url}", url);
+                    continue;
+                }
+
+                return uri;
             }
 
-            if (!Uri.TryCreate(url, UriKind.Absolute, out var uri))
-            {
-                _logger.LogWarning("Azure App Configuration endpoint is invalid. Url={Url}", url);
-                return null;
-            }
+            _logger.LogWarning("Azure App Configuration endpoint not found in configuration. Keys={Keys}", string.Join(", ", endpointKeys));
+            return null;
+        }
 
-            return uri;
+        private static string NormalizeConfigurationKey(string key)
+        {
+            return key.Replace("__", ":", StringComparison.Ordinal);
         }
     }
 }
