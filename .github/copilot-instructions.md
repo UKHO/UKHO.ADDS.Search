@@ -113,4 +113,7 @@ Refer to specialized instruction files for full detail:
 - The menu bar must span the full window above all other content, and both upper and lower center tab strips must remain visibly rendered.
 - When fixing the Workbench shell, do not introduce a workaround; implement the issue properly with the intended Radzen components.
 
+## Aspire Orchestration Guidelines
+- When reasoning about Aspire orchestration in this repo, use `WaitForCompleted()` when dependent services must wait for a short-lived seeder to finish; `WaitFor()` only waits for process start. 
+
 All original guidance now resides in one of these files. Do not duplicate; update the relevant file when changing practices.
