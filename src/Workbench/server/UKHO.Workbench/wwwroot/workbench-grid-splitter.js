@@ -83,6 +83,8 @@ function startColumnDrag(event, element, gutter, dotNetReference, instance)
     const splitterTrackIndex = Number(gutter.dataset.splitterTrackIndex);
     const previousTrackIndex = Number(gutter.dataset.previousTrackIndex);
     const nextTrackIndex = Number(gutter.dataset.nextTrackIndex);
+    const previousTrackFlexible = gutter.dataset.previousTrackFlexible === "true";
+    const nextTrackFlexible = gutter.dataset.nextTrackFlexible === "true";
     const previousSize = readPixelSize(sizes[previousTrackIndex - 1]);
     const nextSize = readPixelSize(sizes[nextTrackIndex - 1]);
 
@@ -102,8 +104,10 @@ function startColumnDrag(event, element, gutter, dotNetReference, instance)
         latestPointerPosition: event.clientX,
         nextSize,
         nextTrackIndex,
+        nextTrackFlexible,
         previousSize,
         previousTrackIndex,
+        previousTrackFlexible,
         sizes,
         splitterTrackIndex,
         startPointerPosition: event.clientX
@@ -128,6 +132,8 @@ function startRowDrag(event, element, gutter, dotNetReference, instance)
     const splitterTrackIndex = Number(gutter.dataset.splitterTrackIndex);
     const previousTrackIndex = Number(gutter.dataset.previousTrackIndex);
     const nextTrackIndex = Number(gutter.dataset.nextTrackIndex);
+    const previousTrackFlexible = gutter.dataset.previousTrackFlexible === "true";
+    const nextTrackFlexible = gutter.dataset.nextTrackFlexible === "true";
     const previousSize = readPixelSize(sizes[previousTrackIndex - 1]);
     const nextSize = readPixelSize(sizes[nextTrackIndex - 1]);
 
@@ -147,8 +153,10 @@ function startRowDrag(event, element, gutter, dotNetReference, instance)
         latestPointerPosition: event.clientY,
         nextSize,
         nextTrackIndex,
+        nextTrackFlexible,
         previousSize,
         previousTrackIndex,
+        previousTrackFlexible,
         sizes,
         splitterTrackIndex,
         startPointerPosition: event.clientY
@@ -204,8 +212,14 @@ function applyResize(instance)
     const clampedDelta = Math.min(Math.max(rawDelta, minimumDelta), maximumDelta);
     const previousSize = dragState.previousSize + clampedDelta;
     const nextSize = dragState.nextSize - clampedDelta;
-    dragState.sizes[dragState.previousTrackIndex - 1] = `${previousSize}px`;
-    dragState.sizes[dragState.nextTrackIndex - 1] = `${nextSize}px`;
+    dragState.sizes[dragState.previousTrackIndex - 1] = getResizedTrackValue(
+        previousSize,
+        dragState.previousTrackFlexible,
+        dragState.nextTrackFlexible);
+    dragState.sizes[dragState.nextTrackIndex - 1] = getResizedTrackValue(
+        nextSize,
+        dragState.nextTrackFlexible,
+        dragState.previousTrackFlexible);
 
     if (dragState.direction === "column")
     {
@@ -270,4 +284,20 @@ function parseTemplateSizes(template)
 function readPixelSize(value)
 {
     return Number.parseFloat(value.replace("px", ""));
+}
+
+function getResizedTrackValue(sizeInPixels, isFlexible, adjacentTrackIsFlexible)
+{
+    // Resized Workbench tracks must preserve authored flex behavior so a star-sized center pane continues filling remaining space after window resizing.
+    if (!isFlexible)
+    {
+        return `${sizeInPixels}px`;
+    }
+
+    if (adjacentTrackIsFlexible)
+    {
+        return `${Math.max(sizeInPixels, 1)}fr`;
+    }
+
+    return "minmax(1px, 1fr)";
 }

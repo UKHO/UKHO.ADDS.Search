@@ -33,6 +33,11 @@ namespace UKHO.Workbench.Modules.PKS
             // The PKS module contributes a single dummy tool so the first repository-specific module map can validate multi-module discovery.
             ArgumentNullException.ThrowIfNull(context);
 
+            var pksActivationTarget = ActivationTarget.CreateToolSurfaceTarget(
+                PksOperationsToolId,
+                initialTitle: "PKS operations",
+                initialIcon: "hub");
+
             context.AddExplorer(new ExplorerContribution(PksExplorerId, "PKS operations", "hub", 200));
 
             context.AddTool(
@@ -52,7 +57,7 @@ namespace UKHO.Workbench.Modules.PKS
                     CommandScope.Host,
                     icon: "hub",
                     description: "Opens the PKS operations tool in the shared Workbench shell.",
-                    activationTarget: ActivationTarget.CreateToolSurfaceTarget(PksOperationsToolId)));
+                    activationTarget: pksActivationTarget));
             context.AddExplorerItem(
                 new ExplorerItem(
                     "explorer.item.pks.operations",
@@ -60,7 +65,7 @@ namespace UKHO.Workbench.Modules.PKS
                     PksSectionId,
                     "PKS operations",
                     OpenPksOperationsCommandId,
-                    ActivationTarget.CreateToolSurfaceTarget(PksOperationsToolId),
+                    pksActivationTarget,
                     "hub",
                     "Dummy PKS operations surface for the initial Workbench module map.",
                     100));

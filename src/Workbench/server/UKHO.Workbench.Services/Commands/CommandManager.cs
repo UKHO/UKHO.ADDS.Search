@@ -36,6 +36,10 @@ namespace UKHO.Workbench.Services.Commands
                     && existingCommand.OwnerToolId == commandContribution.OwnerToolId
                     && existingCommand.ActivationTarget?.ToolId == commandContribution.ActivationTarget?.ToolId
                     && existingCommand.ActivationTarget?.Region == commandContribution.ActivationTarget?.Region
+                    && existingCommand.ActivationTarget?.LogicalTabKey == commandContribution.ActivationTarget?.LogicalTabKey
+                    && existingCommand.ActivationTarget?.ParameterIdentity == commandContribution.ActivationTarget?.ParameterIdentity
+                    && existingCommand.ActivationTarget?.InitialTitle == commandContribution.ActivationTarget?.InitialTitle
+                    && existingCommand.ActivationTarget?.InitialIcon == commandContribution.ActivationTarget?.InitialIcon
                     && existingCommand.ExecutionHandler == commandContribution.ExecutionHandler)
                 {
                     return;

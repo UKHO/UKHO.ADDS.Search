@@ -1,4 +1,5 @@
 using Microsoft.AspNetCore.Components;
+using Microsoft.AspNetCore.Components.Web;
 using Radzen;
 using UKHO.Workbench.Explorers;
 using UKHO.Workbench.Services.Shell;
@@ -22,10 +23,26 @@ namespace WorkbenchHost.Components.Layout
         [Inject]
         private WorkbenchStartupNotificationStore StartupNotificationStore { get; set; } = null!;
 
+        [Inject]
+        private ContextMenuService ContextMenuService { get; set; } = null!;
+
+        [Inject]
+        private TooltipService TooltipService { get; set; } = null!;
+
         /// <summary>
         /// Gets the active tool instance currently hosted by the shell.
         /// </summary>
         private ToolInstance? ActiveTool => ShellManager.State.ActiveTool;
+
+        /// <summary>
+        /// Gets the ordered tabs currently open in the shell.
+        /// </summary>
+        private IReadOnlyList<WorkbenchTab> OpenTabs => ShellManager.OpenTabs;
+
+        /// <summary>
+        /// Gets the subset of tabs that should remain visible in the main strip after overflow windowing is applied.
+        /// </summary>
+        private IReadOnlyList<WorkbenchTab> VisibleTabs => ShellManager.VisibleTabs;
 
         /// <summary>
         /// Gets the currently registered explorer contributions.
@@ -138,10 +155,52 @@ namespace WorkbenchHost.Components.Layout
         }
 
         /// <summary>
-        /// Opens or focuses a tool from the explorer list.
+        /// Records explorer-item selection without opening a tab.
         /// </summary>
-        /// <param name="toolId">The identifier of the tool that should become active.</param>
+        /// <param name="explorerItem">The explorer item that should become selected.</param>
+        /// <param name="mouseEventArgs">The mouse event that triggered the selection request.</param>
+        /// <returns>A task that completes when the shell has processed the selection.</returns>
+        private Task SelectExplorerItemAsync(ExplorerItem explorerItem, MouseEventArgs mouseEventArgs)
+        {
+            // Explorer single-click selection updates shell state only so users can inspect items without changing the open-tab collection.
+            ArgumentNullException.ThrowIfNull(explorerItem);
+            ArgumentNullException.ThrowIfNull(mouseEventArgs);
+
+            if (mouseEventArgs.Button == 1)
+            {
+                return Task.CompletedTask;
+            }
+
+            ShellManager.SelectExplorerItem(explorerItem.Id);
+            return Task.CompletedTask;
+        }
+
+        /// <summary>
+        /// Opens or focuses the supplied explorer item in the tab strip.
+        /// </summary>
+        /// <param name="explorerItem">The explorer item whose command should be executed.</param>
+        /// <param name="mouseEventArgs">The mouse event that triggered the activation request.</param>
         /// <returns>A task that completes when the activation request has been processed.</returns>
+        private async Task OpenExplorerItemAsync(ExplorerItem explorerItem, MouseEventArgs mouseEventArgs)
+        {
+            // Explorer double-click first preserves explorer selection and then routes opening through the shared command path.
+            ArgumentNullException.ThrowIfNull(explorerItem);
+            ArgumentNullException.ThrowIfNull(mouseEventArgs);
+
+            if (mouseEventArgs.Button == 1)
+            {
+                return;
+            }
+
+            ShellManager.SelectExplorerItem(explorerItem.Id);
+            await ExecuteCommandAsync(explorerItem.CommandId);
+        }
+
+        /// <summary>
+        /// Executes a Workbench command through the shared shell command path.
+        /// </summary>
+        /// <param name="commandId">The command identifier that should be executed.</param>
+        /// <returns>A task that completes when the command has been processed.</returns>
         private async Task ExecuteCommandAsync(string commandId)
         {
             // All shell surfaces route through the shared command path so explorer, menu, toolbar, and hosted-tool actions behave consistently.
@@ -160,16 +219,16 @@ namespace WorkbenchHost.Components.Layout
         }
 
         /// <summary>
-        /// Determines whether the supplied tool is the currently focused tool instance.
+        /// Determines whether the supplied explorer item is the currently selected explorer item.
         /// </summary>
-        /// <param name="toolDefinition">The tool definition to compare.</param>
-        /// <returns><see langword="true"/> when the supplied tool is active; otherwise, <see langword="false"/>.</returns>
-        private bool IsExplorerItemActive(ExplorerItem explorerItem)
+        /// <param name="explorerItem">The explorer item to compare.</param>
+        /// <returns><see langword="true"/> when the supplied explorer item is selected; otherwise, <see langword="false"/>.</returns>
+        private bool IsExplorerItemSelected(ExplorerItem explorerItem)
         {
-            // Explorer entries highlight the active tool so the command-routed activation path remains visible in the explorer chrome.
+            // Explorer entries highlight selection independently from open tabs so single-click selection can remain visible without opening content.
             ArgumentNullException.ThrowIfNull(explorerItem);
 
-            return string.Equals(ActiveTool?.Definition.Id, explorerItem.ActivationTarget.ToolId, StringComparison.Ordinal);
+            return string.Equals(ShellManager.State.SelectedExplorerItemId, explorerItem.Id, StringComparison.Ordinal);
         }
 
         /// <summary>
@@ -188,14 +247,204 @@ namespace WorkbenchHost.Components.Layout
         /// <summary>
         /// Returns the CSS class used for an explorer tool button.
         /// </summary>
-        /// <param name="toolDefinition">The tool represented by the button.</param>
+        /// <param name="explorerItem">The explorer item represented by the button.</param>
         /// <returns>The CSS class string for the button.</returns>
         private string GetExplorerItemButtonCss(ExplorerItem explorerItem)
         {
-            // Active item highlighting makes it clear which command-routed explorer item currently owns focus in the central surface.
-            return IsExplorerItemActive(explorerItem)
+            // Selected-item highlighting makes it clear which explorer item currently owns explorer focus even when no tab is open.
+            return IsExplorerItemSelected(explorerItem)
                 ? "workbench-shell__tool-button workbench-shell__tool-button--active"
                 : "workbench-shell__tool-button";
+        }
+
+        /// <summary>
+        /// Determines whether the supplied tab is the currently active tab.
+        /// </summary>
+        /// <param name="openTab">The open tab to compare.</param>
+        /// <returns><see langword="true"/> when the supplied tab is active; otherwise, <see langword="false"/>.</returns>
+        private bool IsTabActive(WorkbenchTab openTab)
+        {
+            // Tab-strip active styling follows the shell-state active tab so switching tabs updates the strip and the tool surface together.
+            ArgumentNullException.ThrowIfNull(openTab);
+
+            return string.Equals(ShellManager.State.ActiveTab?.Id, openTab.Id, StringComparison.Ordinal);
+        }
+
+        /// <summary>
+        /// Returns the CSS class used for a tab-strip button.
+        /// </summary>
+        /// <param name="openTab">The open tab represented by the button.</param>
+        /// <returns>The CSS class string for the tab button.</returns>
+        private string GetTabButtonCss(WorkbenchTab openTab)
+        {
+            // The active tab uses a stronger visual treatment so the desktop-like shell keeps focus and tab-strip state aligned.
+            return IsTabActive(openTab)
+                ? "workbench-shell__tab-button workbench-shell__tab-button--active"
+                : "workbench-shell__tab-button";
+        }
+
+        /// <summary>
+        /// Returns the CSS class used for an overflow entry.
+        /// </summary>
+        /// <param name="openTab">The open tab represented by the overflow entry.</param>
+        /// <returns>The CSS class string for the overflow entry.</returns>
+        private string GetOverflowEntryCss(WorkbenchTab openTab)
+        {
+            // Overflow entries mirror active-tab state so the dropdown immediately shows which logical tab currently owns focus.
+            return IsTabActive(openTab)
+                ? "workbench-shell__overflow-entry workbench-shell__overflow-entry--active"
+                : "workbench-shell__overflow-entry";
+        }
+
+        /// <summary>
+        /// Focuses an already open tab from the tab strip.
+        /// </summary>
+        /// <param name="tabId">The stable tab identifier to focus.</param>
+        /// <returns>A task that completes when the shell has processed the focus change.</returns>
+        private Task ActivateTabAsync(string tabId)
+        {
+            // Tab-strip selection routes through the shell manager so activity history and contribution composition update consistently.
+            ShellManager.ActivateTab(tabId);
+            return Task.CompletedTask;
+        }
+
+        /// <summary>
+        /// Activates a tab selected from the overflow dropdown.
+        /// </summary>
+        /// <param name="selectedValue">The selected overflow value, expected to be a stable tab identifier.</param>
+        /// <returns>A task that completes when the shell has processed the overflow activation request.</returns>
+        private Task SelectOverflowTabAsync(object? selectedValue)
+        {
+            // The overflow dropdown shares the shell focus path with the visible strip so activation and minimal window shifting stay consistent.
+            if (selectedValue is string tabId && !string.IsNullOrWhiteSpace(tabId))
+            {
+                ShellManager.ActivateTabFromOverflow(tabId);
+            }
+
+            return Task.CompletedTask;
+        }
+
+        /// <summary>
+        /// Adds the rendered attributes used by overflow entries.
+        /// </summary>
+        /// <param name="itemRenderEventArgs">The Radzen overflow item-render callback payload.</param>
+        private void ConfigureOverflowItemAttributes(DropDownItemRenderEventArgs<string> itemRenderEventArgs)
+        {
+            // Item-level attributes let the host expose stable hooks for styling and tests without changing the dropdown's built-in list semantics.
+            ArgumentNullException.ThrowIfNull(itemRenderEventArgs);
+
+            if (itemRenderEventArgs.Item is not WorkbenchTab openTab)
+            {
+                return;
+            }
+
+            itemRenderEventArgs.Attributes["data-overflow-tab-id"] = openTab.Id;
+            itemRenderEventArgs.Attributes["data-overflow-active"] = IsTabActive(openTab).ToString().ToLowerInvariant();
+        }
+
+        /// <summary>
+        /// Closes an open tab from the tab strip.
+        /// </summary>
+        /// <param name="tabId">The stable tab identifier to close.</param>
+        /// <returns>A task that completes when the shell has processed the close request.</returns>
+        private Task CloseTabAsync(string tabId)
+        {
+            // Tab close requests also flow through the shell manager so the close rule can promote the most recently active remaining tab.
+            ShellManager.CloseTab(tabId);
+            return Task.CompletedTask;
+        }
+
+        /// <summary>
+        /// Opens the first-implementation tab context menu for the supplied tab.
+        /// </summary>
+        /// <param name="openTab">The open tab whose context menu should be shown.</param>
+        /// <param name="mouseEventArgs">The mouse event that triggered the context-menu request.</param>
+        /// <returns>A completed task because the context menu opens synchronously through the injected Radzen service.</returns>
+        private Task OpenTabContextMenuAsync(WorkbenchTab openTab, MouseEventArgs mouseEventArgs)
+        {
+            // The first implementation exposes a minimal context menu so non-active tabs can be closed through the same shell close flow as the active-tab strip button.
+            ArgumentNullException.ThrowIfNull(openTab);
+            ArgumentNullException.ThrowIfNull(mouseEventArgs);
+
+            if (mouseEventArgs.Button != 2)
+            {
+                return Task.CompletedTask;
+            }
+
+            ContextMenuService.Open(
+                mouseEventArgs,
+                CreateTabContextMenuItems(openTab),
+                menuItemEventArgs => HandleTabContextMenuSelection(menuItemEventArgs.Value));
+            return Task.CompletedTask;
+        }
+
+        /// <summary>
+        /// Creates the tab context-menu items for the supplied tab.
+        /// </summary>
+        /// <param name="openTab">The open tab whose context-menu items should be created.</param>
+        /// <returns>The context-menu items available for the supplied tab.</returns>
+        private static IReadOnlyList<ContextMenuItem> CreateTabContextMenuItems(WorkbenchTab openTab)
+        {
+            // The initial context menu deliberately exposes only Close so future actions can be added without changing the shared close implementation.
+            ArgumentNullException.ThrowIfNull(openTab);
+
+            return
+            [
+                new ContextMenuItem
+                {
+                    Text = "Close",
+                    Value = openTab.Id,
+                    Icon = "close"
+                }
+            ];
+        }
+
+        /// <summary>
+        /// Handles selection from the tab context menu.
+        /// </summary>
+        /// <param name="selectedValue">The selected menu-item value.</param>
+        private void HandleTabContextMenuSelection(object? selectedValue)
+        {
+            // Context-menu close is routed through the same close helper used by the strip button so disposal and next-tab selection remain identical.
+            if (selectedValue is string tabId && !string.IsNullOrWhiteSpace(tabId))
+            {
+                ShellManager.CloseTab(tabId);
+            }
+        }
+
+        /// <summary>
+        /// Ignores middle-click interaction for the first tabbed shell slice.
+        /// </summary>
+        /// <param name="mouseEventArgs">The mouse event that should be ignored.</param>
+        /// <returns>A completed task because middle-click is intentionally a no-op in this slice.</returns>
+        private static Task IgnoreAuxiliaryClickAsync(MouseEventArgs mouseEventArgs)
+        {
+            // Middle-click tab and explorer behavior is explicitly out of scope for the first implementation, so the handler intentionally does nothing.
+            ArgumentNullException.ThrowIfNull(mouseEventArgs);
+            return Task.CompletedTask;
+        }
+
+        /// <summary>
+        /// Opens a Radzen tooltip for the supplied title text.
+        /// </summary>
+        /// <param name="element">The rendered element that should anchor the tooltip.</param>
+        /// <param name="title">The full title text that should be shown in the tooltip.</param>
+        private void ShowTitleTooltip(ElementReference element, string title)
+        {
+            // Title tooltips open on every hover so truncated strip and overflow titles remain discoverable without custom timing overrides.
+            ArgumentException.ThrowIfNullOrWhiteSpace(title);
+
+            TooltipService.Open(element, title);
+        }
+
+        /// <summary>
+        /// Closes any currently visible title tooltip.
+        /// </summary>
+        /// <param name="element">The rendered element whose hover interaction ended.</param>
+        private void HideTitleTooltip(ElementReference element)
+        {
+            // Tooltip closure stays centralized so both strip and overflow hover interactions use the same Radzen tooltip lifecycle.
+            TooltipService.Close();
         }
 
         /// <summary>

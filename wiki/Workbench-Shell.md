@@ -26,6 +26,29 @@ The `083-workbench-model` bootstrap slice introduces the first runnable Workbenc
 - `ToolContext` now provides bounded runtime capabilities for command invocation, tool activation requests, title/icon/badge updates, notifications, selection publication, and runtime shell contribution updates
 - the dummy `Search query` tool now demonstrates active-tool runtime menu, toolbar, and status-bar participation, while `Search ingestion`, `Ingestion rule editor`, `PKS operations`, `File Share workspace`, and `Administration` prove the first repository-specific multi-module tool map
 
+## What the first tabbed shell slice adds
+
+- logical tab identity is now a bounded shell concept, so reopening the same logical target focuses the existing tab instead of replacing the current center-surface content
+- the shell now tracks ordered open tabs, an active tab, explorer-item selection, and most-recently-active tab history for close behavior
+- explorer single-click now selects an item without opening it, while explorer double-click routes through the shared command path and opens or focuses the matching tab immediately
+- the center surface now renders a visible tab strip above the content area and keeps inactive tab components mounted so open tabs preserve in-memory state while they remain open
+- closing the last remaining tab returns the shell to an explicit empty-state center surface and restores explorer focus
+
+## What the tab lifecycle and metadata slice adds
+
+- activation targets now carry bounded parameter identity, so the same tool can reuse a tab for matching parameters and open separate tabs for different parameter identities
+- explorer-owned activation paths now seed initial tab title and icon metadata, and hosted views can replace that metadata immediately through `ToolContext` even while their tabs are inactive
+- tab close now marks the runtime tool instance disposed as soon as the shell removes the tab, while Blazor continues to dispose the hosted component through normal render-tree removal
+- the tab strip now exposes a basic right-click context menu with `Close` only, and that action routes through the same shell close path used by the visible tab-close button
+- shell diagnostics now cover runtime title and icon updates as well as activation and close flows, so metadata changes remain traceable in logs
+
+## What the overflow and tooltip slice adds
+
+- the shell now tracks a bounded visible tab-strip window separately from the full logical open-tab order, so overflow activation can reveal hidden tabs with minimal strip movement instead of reordering the underlying tab collection
+- the center tab strip now renders an always-visible overflow dropdown on the right and keeps its entries text-only, with active-tab indication but no close, filter, or search affordances in this first implementation
+- both visible-strip tab titles and overflow entry titles now truncate with ellipsis and open a Radzen tooltip on every hover so long runtime titles remain readable without changing the stock Material look and feel
+- overflow selection now flows through the shared shell activation path, which keeps diagnostics, active-tab composition, and visible-window adjustments aligned with the rest of the tab lifecycle
+
 ## Project responsibilities
 
 | Project | Responsibility |
@@ -44,26 +67,26 @@ The `083-workbench-model` bootstrap slice introduces the first runnable Workbenc
 1. `WorkbenchHost` registers the Workbench infrastructure and service-layer dependencies.
 2. `WorkbenchHost` reads `modules.json`, resolves probe roots, and scans for enabled `UKHO.Workbench.Modules.*` assemblies.
 3. Valid modules register services and tool definitions through the bounded `IWorkbenchModule` contract before DI finalization.
-4. Host startup registers the `Workbench overview` tool and then applies module-contributed tools to the singleton shell manager.
+4. Host startup registers the `Workbench overview` tool and then applies module-contributed tools to the tab-aware shell manager.
 5. The shell manager selects the bootstrap explorer and activates the first enabled module tool when one is available, otherwise it falls back to the host-owned overview tool.
 6. `MainLayout` renders the desktop-like shell chrome and replays any buffered startup notifications.
-7. `Index` renders the active tool into the center working surface through `DynamicComponent`.
+7. `Index` renders the open tab collection into the center working surface and shows only the active tab while inactive tabs remain mounted.
 
 ## Runtime interaction flow
 
-1. A user selects an explorer item, menu item, toolbar button, or hosted tool button.
+1. A user selects or double-clicks an explorer item, or invokes a menu item, toolbar button, or hosted tool button.
 2. The interaction resolves to a registered `CommandContribution`.
-3. The shell manager executes the command, which either opens a declarative activation target or runs a bounded tool/host handler.
+3. Explorer single-click updates shell selection only, while a command-driven activation request opens a new tab or focuses the existing logical tab.
 4. The active tool instance can update its title, icon, badge, selection, notifications, and runtime shell contributions through `ToolContext`.
 5. The shell recomposes menu, toolbar, and status-bar surfaces so only the active tool contributes runtime items.
 
 ## Verification
 
-Use the targeted commands from `docs/083-workbench-model/implementation-plan.md` for this slice:
+Use the targeted commands from `docs/084-workbench-tabs/implementation-plan.md` for this slice:
 
 - `dotnet build src/workbench/server/WorkbenchHost/WorkbenchHost.csproj`
-- `dotnet test test/workbench/server/UKHO.Workbench.Infrastructure.Tests/UKHO.Workbench.Infrastructure.Tests.csproj`
 - `dotnet test test/workbench/server/UKHO.Workbench.Tests/UKHO.Workbench.Tests.csproj`
+- `dotnet test test/workbench/server/UKHO.Workbench.Services.Tests/UKHO.Workbench.Services.Tests.csproj`
 - `dotnet test test/workbench/server/WorkbenchHost.Tests/WorkbenchHost.Tests.csproj`
 - `dotnet run --project src/workbench/server/WorkbenchHost/WorkbenchHost.csproj`
 

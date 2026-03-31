@@ -292,7 +292,10 @@ namespace WorkbenchHost
                         CommandScope.Host,
                         icon: "dashboard",
                         description: "Opens the host-owned overview tool.",
-                        activationTarget: ActivationTarget.CreateToolSurfaceTarget(WorkbenchHostShellDefaults.OverviewToolId)));
+                        activationTarget: ActivationTarget.CreateToolSurfaceTarget(
+                            WorkbenchHostShellDefaults.OverviewToolId,
+                            initialTitle: "Workbench overview",
+                            initialIcon: "dashboard")));
                 if (!hasModuleExplorers)
                 {
                     shellManager.RegisterExplorerItem(
@@ -302,7 +305,10 @@ namespace WorkbenchHost
                             WorkbenchHostShellDefaults.HostToolsSectionId,
                             "Workbench overview",
                             WorkbenchHostShellDefaults.OverviewCommandId,
-                            ActivationTarget.CreateToolSurfaceTarget(WorkbenchHostShellDefaults.OverviewToolId),
+                            ActivationTarget.CreateToolSurfaceTarget(
+                                WorkbenchHostShellDefaults.OverviewToolId,
+                                initialTitle: "Workbench overview",
+                                initialIcon: "dashboard"),
                             "dashboard",
                             "Host-owned exemplar tool that explains the current Workbench slice.",
                             100));

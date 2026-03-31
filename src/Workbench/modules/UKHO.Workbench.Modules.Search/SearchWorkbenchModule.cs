@@ -78,6 +78,11 @@ namespace UKHO.Workbench.Modules.Search
         private static void RegisterSearchIngestionTool(ModuleRegistrationContext context)
         {
             // The ingestion exemplar proves one module can contribute multiple singleton tools to the shared shell.
+            var searchIngestionActivationTarget = ActivationTarget.CreateToolSurfaceTarget(
+                SearchIngestionToolId,
+                initialTitle: "Search ingestion",
+                initialIcon: "publish");
+
             context.AddTool(
                 new ToolDefinition(
                     SearchIngestionToolId,
@@ -94,7 +99,7 @@ namespace UKHO.Workbench.Modules.Search
                     CommandScope.Host,
                     icon: "publish",
                     description: "Opens the Search ingestion tool in the shared Workbench shell.",
-                    activationTarget: ActivationTarget.CreateToolSurfaceTarget(SearchIngestionToolId)));
+                    activationTarget: searchIngestionActivationTarget));
 
             context.AddExplorerItem(
                 new ExplorerItem(
@@ -103,7 +108,7 @@ namespace UKHO.Workbench.Modules.Search
                     IngestionSectionId,
                     "Search ingestion",
                     OpenSearchIngestionCommandId,
-                    ActivationTarget.CreateToolSurfaceTarget(SearchIngestionToolId),
+                    searchIngestionActivationTarget,
                     "publish",
                     "Dummy Search ingestion surface for the initial Workbench module map.",
                     100));
@@ -116,6 +121,11 @@ namespace UKHO.Workbench.Modules.Search
         private static void RegisterSearchQueryTool(ModuleRegistrationContext context)
         {
             // The query exemplar keeps the earlier runtime menu, toolbar, and status contribution demonstration alive within the broader Search module map.
+            var searchQueryActivationTarget = ActivationTarget.CreateToolSurfaceTarget(
+                SearchQueryToolId,
+                initialTitle: "Search query",
+                initialIcon: "manage_search");
+
             context.AddTool(
                 new ToolDefinition(
                     SearchQueryToolId,
@@ -132,7 +142,7 @@ namespace UKHO.Workbench.Modules.Search
                     CommandScope.Host,
                     icon: "manage_search",
                     description: "Opens the Search query tool in the shared Workbench shell.",
-                    activationTarget: ActivationTarget.CreateToolSurfaceTarget(SearchQueryToolId)));
+                    activationTarget: searchQueryActivationTarget));
 
             context.AddCommand(
                 new CommandContribution(
@@ -206,7 +216,7 @@ namespace UKHO.Workbench.Modules.Search
                     QuerySectionId,
                     "Search query",
                     OpenSearchQueryCommandId,
-                    ActivationTarget.CreateToolSurfaceTarget(SearchQueryToolId),
+                    searchQueryActivationTarget,
                     "manage_search",
                     "Dummy Search query tool used to verify runtime menu, toolbar, and status contributions.",
                     110));
@@ -219,6 +229,11 @@ namespace UKHO.Workbench.Modules.Search
         private static void RegisterIngestionRuleEditorTool(ModuleRegistrationContext context)
         {
             // The rule-editor exemplar completes the three-tool Search module map required by the work package.
+            var ingestionRuleEditorActivationTarget = ActivationTarget.CreateToolSurfaceTarget(
+                IngestionRuleEditorToolId,
+                initialTitle: "Ingestion rule editor",
+                initialIcon: "rule");
+
             context.AddTool(
                 new ToolDefinition(
                     IngestionRuleEditorToolId,
@@ -235,7 +250,7 @@ namespace UKHO.Workbench.Modules.Search
                     CommandScope.Host,
                     icon: "rule",
                     description: "Opens the ingestion rule editor tool in the shared Workbench shell.",
-                    activationTarget: ActivationTarget.CreateToolSurfaceTarget(IngestionRuleEditorToolId)));
+                    activationTarget: ingestionRuleEditorActivationTarget));
 
             context.AddExplorerItem(
                 new ExplorerItem(
@@ -244,7 +259,7 @@ namespace UKHO.Workbench.Modules.Search
                     RuleEditorSectionId,
                     "Ingestion rule editor",
                     OpenIngestionRuleEditorCommandId,
-                    ActivationTarget.CreateToolSurfaceTarget(IngestionRuleEditorToolId),
+                    ingestionRuleEditorActivationTarget,
                     "rule",
                     "Dummy ingestion rule editor surface for the initial Workbench module map.",
                     120));

@@ -14,6 +14,8 @@
                      data-splitter-track-index="@splitter.Index"
                      data-previous-track-index="@(splitter.Index - 1)"
                      data-next-track-index="@(splitter.Index + 1)"
+                     data-previous-track-flexible="@_wrapper.IsFlexibleColumn(splitter.Index - 1).ToString().ToLowerInvariant()"
+                     data-next-track-flexible="@_wrapper.IsFlexibleColumn(splitter.Index + 1).ToString().ToLowerInvariant()"
                      style="grid-column: @splitter.Index; grid-row: 1 / -1;"></div>
             }
 
@@ -24,6 +26,8 @@
                      data-splitter-track-index="@splitter.Index"
                      data-previous-track-index="@(splitter.Index - 1)"
                      data-next-track-index="@(splitter.Index + 1)"
+                     data-previous-track-flexible="@_wrapper.IsFlexibleRow(splitter.Index - 1).ToString().ToLowerInvariant()"
+                     data-next-track-flexible="@_wrapper.IsFlexibleRow(splitter.Index + 1).ToString().ToLowerInvariant()"
                      style="grid-column: 1 / -1; grid-row: @splitter.Index;"></div>
             }
         }

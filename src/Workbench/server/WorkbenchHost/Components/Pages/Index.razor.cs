@@ -1,6 +1,7 @@
 using Microsoft.AspNetCore.Components;
 using UKHO.Workbench.Services.Shell;
 using UKHO.Workbench.Tools;
+using UKHO.Workbench.WorkbenchShell;
 
 namespace WorkbenchHost.Components.Pages
 {
@@ -15,39 +16,57 @@ namespace WorkbenchHost.Components.Pages
         private WorkbenchShellManager ShellManager { get; set; } = null!;
 
         /// <summary>
-        /// Gets the active runtime tool instance currently hosted by the shell.
+        /// Gets the ordered tabs currently open in the shell.
         /// </summary>
-        private ToolInstance? ActiveTool => ShellManager.State.ActiveTool;
+        private IReadOnlyList<WorkbenchTab> OpenTabs => ShellManager.OpenTabs;
 
         /// <summary>
-        /// Gets the component type that should be rendered for the active tool.
+        /// Returns the dynamic component parameters that should be supplied to the supplied tool component.
         /// </summary>
-        private Type? ActiveToolComponentType => ActiveTool?.Definition.ComponentType;
-
-        /// <summary>
-        /// Gets the dynamic component parameters that should be supplied to the active tool component.
-        /// </summary>
-        private IDictionary<string, object> ActiveToolParameters
+        /// <param name="toolInstance">The tool instance whose component parameters should be built.</param>
+        /// <returns>The dynamic component parameters for the supplied tool instance.</returns>
+        private IDictionary<string, object> GetToolParameters(ToolInstance toolInstance)
         {
-            get
+            // Only components that explicitly declare a ToolContext parameter receive it so host-owned tools without that contract continue to render safely.
+            ArgumentNullException.ThrowIfNull(toolInstance);
+
+            var componentType = toolInstance.Definition.ComponentType;
+            var toolContextParameter = componentType.GetProperty("ToolContext");
+            if (toolContextParameter is null || toolContextParameter.PropertyType != typeof(ToolContext))
             {
-                // Only components that explicitly declare a ToolContext parameter receive it so host-owned tools without that contract continue to render safely.
-                if (ActiveToolComponentType is null || ActiveTool is null)
-                {
-                    return EmptyParameters;
-                }
-
-                var toolContextParameter = ActiveToolComponentType.GetProperty("ToolContext");
-                if (toolContextParameter is null || toolContextParameter.PropertyType != typeof(ToolContext))
-                {
-                    return EmptyParameters;
-                }
-
-                return new Dictionary<string, object>(StringComparer.Ordinal)
-                {
-                    ["ToolContext"] = ActiveTool.Context
-                };
+                return EmptyParameters;
             }
+
+            return new Dictionary<string, object>(StringComparer.Ordinal)
+            {
+                ["ToolContext"] = toolInstance.Context
+            };
+        }
+
+        /// <summary>
+        /// Determines whether the supplied tab is the currently active tab.
+        /// </summary>
+        /// <param name="openTab">The open tab to compare.</param>
+        /// <returns><see langword="true"/> when the supplied tab is active; otherwise, <see langword="false"/>.</returns>
+        private bool IsTabActive(WorkbenchTab openTab)
+        {
+            // The active-tab check keeps the rendered panes aligned with the shell-state active tab while still mounting all open tabs.
+            ArgumentNullException.ThrowIfNull(openTab);
+
+            return string.Equals(ShellManager.State.ActiveTab?.Id, openTab.Id, StringComparison.Ordinal);
+        }
+
+        /// <summary>
+        /// Returns the CSS class used for a hosted tab pane.
+        /// </summary>
+        /// <param name="openTab">The open tab whose pane is being rendered.</param>
+        /// <returns>The CSS class string for the pane.</returns>
+        private string GetTabPaneCss(WorkbenchTab openTab)
+        {
+            // Inactive panes stay in the render tree so component state is preserved while the active pane remains the only visible surface.
+            return IsTabActive(openTab)
+                ? "workbench-tool-surface-pane workbench-tool-surface-pane--active"
+                : "workbench-tool-surface-pane workbench-tool-surface-pane--inactive";
         }
 
         /// <summary>

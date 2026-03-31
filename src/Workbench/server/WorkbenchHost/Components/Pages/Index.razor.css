@@ -13,6 +13,24 @@
     margin: 0;
 }
 
+.workbench-tool-surface-host {
+    display: flex;
+    height: 100%;
+    width: 100%;
+    min-width: 0;
+}
+
+.workbench-tool-surface-pane {
+    flex: 1 1 auto;
+    height: 100%;
+    width: 100%;
+    min-width: 0;
+}
+
+.workbench-tool-surface-pane--inactive {
+    display: none;
+}
+
 .workbench-tool-surface-state--error {
     color: var(--rz-danger);
 }

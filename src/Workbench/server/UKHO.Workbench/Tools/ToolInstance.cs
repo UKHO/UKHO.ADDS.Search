@@ -5,7 +5,7 @@ namespace UKHO.Workbench.Tools
     /// <summary>
     /// Represents a runtime hosted copy of a Workbench tool inside the shell.
     /// </summary>
-    public class ToolInstance
+    public class ToolInstance : IDisposable
     {
         private static readonly IReadOnlyList<MenuContribution> EmptyMenuContributions = Array.Empty<MenuContribution>();
         private static readonly IReadOnlyList<ToolbarContribution> EmptyToolbarContributions = Array.Empty<ToolbarContribution>();
@@ -16,15 +16,19 @@ namespace UKHO.Workbench.Tools
         /// </summary>
         /// <param name="instanceId">The unique identifier of the runtime instance.</param>
         /// <param name="definition">The static tool definition from which the runtime instance was created.</param>
+        /// <param name="logicalTabKey">The bounded logical key used by the shell to decide whether the runtime instance should be reused.</param>
+        /// <param name="parameterIdentity">The bounded parameter identity that distinguishes one logical target of the same tool from another.</param>
         /// <param name="title">The runtime title currently shown for the tool.</param>
         /// <param name="icon">The runtime icon currently shown for the tool.</param>
         /// <param name="badge">The runtime badge currently shown for the tool, or <see langword="null"/> when no badge is published.</param>
         /// <param name="hostedRegion">The shell region currently hosting the tool.</param>
-        /// <param name="activatedAtUtc">The UTC timestamp recorded when the tool became active.</param>
+        /// <param name="activatedAtUtc">The UTC timestamp recorded when the tool most recently became active.</param>
         /// <param name="context">The bounded tool context used by the runtime component hosted for this instance.</param>
         public ToolInstance(
             string instanceId,
             ToolDefinition definition,
+            string logicalTabKey,
+            string? parameterIdentity,
             string title,
             string icon,
             string? badge,
@@ -32,15 +36,18 @@ namespace UKHO.Workbench.Tools
             DateTimeOffset activatedAtUtc,
             ToolContext context)
         {
-            // Runtime tool instances preserve the static definition alongside lightweight per-instance shell metadata.
+            // Runtime tool instances preserve the static definition alongside lightweight per-tab metadata needed for tab reuse and runtime shell updates.
             ArgumentException.ThrowIfNullOrWhiteSpace(instanceId);
             ArgumentNullException.ThrowIfNull(definition);
+            ArgumentException.ThrowIfNullOrWhiteSpace(logicalTabKey);
             ArgumentException.ThrowIfNullOrWhiteSpace(title);
             ArgumentException.ThrowIfNullOrWhiteSpace(icon);
             ArgumentNullException.ThrowIfNull(context);
 
             InstanceId = instanceId;
             Definition = definition;
+            LogicalTabKey = logicalTabKey;
+            ParameterIdentity = string.IsNullOrWhiteSpace(parameterIdentity) ? null : parameterIdentity;
             Title = title;
             Icon = icon;
             Badge = badge;
@@ -63,6 +70,16 @@ namespace UKHO.Workbench.Tools
         public ToolDefinition Definition { get; }
 
         /// <summary>
+        /// Gets the bounded logical key used by the shell to decide whether the runtime instance should be reused.
+        /// </summary>
+        public string LogicalTabKey { get; }
+
+        /// <summary>
+        /// Gets the bounded parameter identity that distinguishes one logical target of the same tool from another.
+        /// </summary>
+        public string? ParameterIdentity { get; }
+
+        /// <summary>
         /// Gets the runtime title currently shown for the tool.
         /// </summary>
         public string Title { get; private set; }
@@ -83,9 +100,9 @@ namespace UKHO.Workbench.Tools
         public WorkbenchShellRegion HostedRegion { get; }
 
         /// <summary>
-        /// Gets the UTC timestamp recorded when the tool became active.
+        /// Gets the UTC timestamp recorded when the tool most recently became active.
         /// </summary>
-        public DateTimeOffset ActivatedAtUtc { get; }
+        public DateTimeOffset ActivatedAtUtc { get; private set; }
 
         /// <summary>
         /// Gets the bounded tool context used by the runtime component hosted for this instance.
@@ -116,6 +133,21 @@ namespace UKHO.Workbench.Tools
         /// Gets the runtime status-bar contributions published by the tool while it is active.
         /// </summary>
         public IReadOnlyList<StatusBarContribution> RuntimeStatusBarContributions { get; private set; }
+
+        /// <summary>
+        /// Gets a value indicating whether the runtime instance has been disposed because its tab was closed.
+        /// </summary>
+        public bool IsDisposed { get; private set; }
+
+        /// <summary>
+        /// Records that the runtime tool instance has become active.
+        /// </summary>
+        /// <param name="activatedAtUtc">The UTC timestamp that should be recorded for the activation.</param>
+        public void MarkActivated(DateTimeOffset activatedAtUtc)
+        {
+            // The shell updates the activation timestamp whenever focus changes so close behavior can follow the most-recently-active tab.
+            ActivatedAtUtc = activatedAtUtc;
+        }
 
         /// <summary>
         /// Updates the runtime title currently shown for the tool.
@@ -189,6 +221,16 @@ namespace UKHO.Workbench.Tools
         {
             // Runtime status items are lightweight summaries, so the current tool instance stores the latest published list directly.
             RuntimeStatusBarContributions = statusBarContributions ?? throw new ArgumentNullException(nameof(statusBarContributions));
+        }
+
+        /// <summary>
+        /// Disposes the runtime instance after the owning tab has been closed.
+        /// </summary>
+        public void Dispose()
+        {
+            // The Blazor renderer disposes hosted components after their tab is removed from the render tree, while the shell marks the runtime instance disposed immediately so tests and diagnostics can observe the close lifecycle.
+            IsDisposed = true;
+            GC.SuppressFinalize(this);
         }
     }
 }

@@ -97,6 +97,28 @@ namespace UKHO.Workbench.Layout
 		}
 
 		/// <summary>
+		/// Determines whether the supplied 1-based column track is flex-based and should continue absorbing remaining width after splitter resizing.
+		/// </summary>
+		/// <param name="trackIndex">The 1-based column track index to inspect.</param>
+		/// <returns><c>true</c> when the column uses an <c>fr</c>-based size; otherwise, <c>false</c>.</returns>
+		internal bool IsFlexibleColumn(int trackIndex)
+		{
+			// Splitter interop needs to preserve authored flexible columns so window resizing still stretches the shell after a drag completes.
+			return IsFlexibleTrack(_columns, trackIndex, "column");
+		}
+
+		/// <summary>
+		/// Determines whether the supplied 1-based row track is flex-based and should continue absorbing remaining height after splitter resizing.
+		/// </summary>
+		/// <param name="trackIndex">The 1-based row track index to inspect.</param>
+		/// <returns><c>true</c> when the row uses an <c>fr</c>-based size; otherwise, <c>false</c>.</returns>
+		internal bool IsFlexibleRow(int trackIndex)
+		{
+			// Splitter interop needs to preserve authored flexible rows so the shell keeps stretching vertically after a drag completes.
+			return IsFlexibleTrack(_rows, trackIndex, "row");
+		}
+
+		/// <summary>
 		/// Stores the fixed width, in pixels, used when rendering the grid container.
 		/// </summary>
 		/// <param name="value">The optional fixed grid width.</param>
@@ -281,6 +303,24 @@ namespace UKHO.Workbench.Layout
 			{
 				throw new InvalidOperationException($"Splitter {singularAxisName} {splitter.Index} is invalid because Auto-sized {pluralAxisName} are not supported for splitter resizing.");
 			}
+		}
+
+		/// <summary>
+		/// Resolves whether a specific 1-based track index is flex-based.
+		/// </summary>
+		/// <param name="tracks">The authored tracks for the relevant direction.</param>
+		/// <param name="trackIndex">The 1-based track index to inspect.</param>
+		/// <param name="axisName">The axis label used in diagnostics.</param>
+		/// <returns><c>true</c> when the referenced track is flex-based; otherwise, <c>false</c>.</returns>
+		private static bool IsFlexibleTrack(IReadOnlyList<GridTrackDefinition> tracks, int trackIndex, string axisName)
+		{
+			// Workbench splitter rendering addresses tracks with the same 1-based indices the author sees in markup, so diagnostics use that contract directly.
+			if (trackIndex <= 0 || trackIndex > tracks.Count)
+			{
+				throw new ArgumentOutOfRangeException(nameof(trackIndex), $"The {axisName} track index {trackIndex} is outside the authored grid range.");
+			}
+
+			return tracks[trackIndex - 1].IsFlexible;
 		}
 	}
 }

@@ -33,6 +33,11 @@ namespace UKHO.Workbench.Modules.FileShare
             // The File Share module contributes a single dummy tool so the first repository-specific module map can validate multi-module discovery.
             ArgumentNullException.ThrowIfNull(context);
 
+            var fileShareActivationTarget = ActivationTarget.CreateToolSurfaceTarget(
+                FileShareWorkspaceToolId,
+                initialTitle: "File Share workspace",
+                initialIcon: "folder_shared");
+
             context.AddExplorer(new ExplorerContribution(FileShareExplorerId, "File Share workspace", "folder_shared", 300));
 
             context.AddTool(
@@ -52,7 +57,7 @@ namespace UKHO.Workbench.Modules.FileShare
                     CommandScope.Host,
                     icon: "folder_shared",
                     description: "Opens the File Share workspace tool in the shared Workbench shell.",
-                    activationTarget: ActivationTarget.CreateToolSurfaceTarget(FileShareWorkspaceToolId)));
+                    activationTarget: fileShareActivationTarget));
             context.AddExplorerItem(
                 new ExplorerItem(
                     "explorer.item.fileshare.workspace",
@@ -60,7 +65,7 @@ namespace UKHO.Workbench.Modules.FileShare
                     FileShareSectionId,
                     "File Share workspace",
                     OpenFileShareWorkspaceCommandId,
-                    ActivationTarget.CreateToolSurfaceTarget(FileShareWorkspaceToolId),
+                    fileShareActivationTarget,
                     "folder_shared",
                     "Dummy File Share workspace surface for the initial Workbench module map.",
                     100));

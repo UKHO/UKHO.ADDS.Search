@@ -33,6 +33,11 @@ namespace UKHO.Workbench.Modules.Admin
             // The Admin module contributes a single dummy tool so the first repository-specific module map can validate multi-module discovery.
             ArgumentNullException.ThrowIfNull(context);
 
+            var adminActivationTarget = ActivationTarget.CreateToolSurfaceTarget(
+                AdminConsoleToolId,
+                initialTitle: "Administration",
+                initialIcon: "admin_panel_settings");
+
             context.AddExplorer(new ExplorerContribution(AdminExplorerId, "Administration", "admin_panel_settings", 400));
 
             context.AddTool(
@@ -52,7 +57,7 @@ namespace UKHO.Workbench.Modules.Admin
                     CommandScope.Host,
                     icon: "admin_panel_settings",
                     description: "Opens the Administration tool in the shared Workbench shell.",
-                    activationTarget: ActivationTarget.CreateToolSurfaceTarget(AdminConsoleToolId)));
+                    activationTarget: adminActivationTarget));
             context.AddExplorerItem(
                 new ExplorerItem(
                     "explorer.item.admin.console",
@@ -60,7 +65,7 @@ namespace UKHO.Workbench.Modules.Admin
                     AdminSectionId,
                     "Administration",
                     OpenAdminConsoleCommandId,
-                    ActivationTarget.CreateToolSurfaceTarget(AdminConsoleToolId),
+                    adminActivationTarget,
                     "admin_panel_settings",
                     "Dummy Administration surface for the initial Workbench module map.",
                     100));

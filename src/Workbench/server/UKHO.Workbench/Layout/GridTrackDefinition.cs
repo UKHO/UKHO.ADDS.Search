@@ -70,6 +70,11 @@ namespace UKHO.Workbench.Layout
         internal bool IsResizable => !IsSplitter && !IsAutoSized;
 
         /// <summary>
+        /// Gets a value indicating whether the track should continue absorbing remaining grid space after a splitter drag completes.
+        /// </summary>
+        internal bool IsFlexible => CssSize.Contains("fr", StringComparison.OrdinalIgnoreCase);
+
+        /// <summary>
         /// Applies the built-in splitter default when the author omits an explicit gutter width or height.
         /// </summary>
         /// <param name="kind">The logical kind of track being registered.</param>

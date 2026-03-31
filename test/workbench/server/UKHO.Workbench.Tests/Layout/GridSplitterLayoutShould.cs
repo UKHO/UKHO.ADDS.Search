@@ -48,6 +48,23 @@ namespace UKHO.Workbench.Layout.Tests
         }
 
         /// <summary>
+        /// Ensures the wrapper can still distinguish fixed and flexible adjacent tracks so splitter dragging can preserve star-based stretch behavior.
+        /// </summary>
+        [Fact]
+        public void IdentifyWhichAdjacentTracksRemainFlexibleAfterSplitterResizing()
+        {
+            // Arrange a grid that mirrors the Workbench shell case where a fixed explorer column sits next to a star-sized center column.
+            var wrapper = new GridWrapper();
+            wrapper.AddColumn("280");
+            wrapper.AddSplitterColumn(null);
+            wrapper.AddColumn("*");
+
+            // Act and assert that only the authored star-sized column is reported as flexible.
+            wrapper.IsFlexibleColumn(1).ShouldBeFalse();
+            wrapper.IsFlexibleColumn(3).ShouldBeTrue();
+        }
+
+        /// <summary>
         /// Ensures an omitted splitter height falls back to the documented 4px gutter thickness for rows.
         /// </summary>
         [Fact]

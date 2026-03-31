@@ -52,7 +52,9 @@
 
 .workbench-shell__menu-button,
 .workbench-shell__activity-button,
-.workbench-shell__tool-button {
+.workbench-shell__tool-button,
+.workbench-shell__tab-button,
+.workbench-shell__tab-close {
     appearance: none;
     background: transparent;
     border: 0;
@@ -72,9 +74,13 @@
 .workbench-shell__menu-button:hover,
 .workbench-shell__activity-button:hover,
 .workbench-shell__tool-button:hover,
+.workbench-shell__tab-button:hover,
+.workbench-shell__tab-close:hover,
 .workbench-shell__menu-button:focus-visible,
 .workbench-shell__activity-button:focus-visible,
-.workbench-shell__tool-button:focus-visible {
+.workbench-shell__tool-button:focus-visible,
+.workbench-shell__tab-button:focus-visible,
+.workbench-shell__tab-close:focus-visible {
     background: var(--rz-base-200);
     outline: none;
 }
@@ -221,6 +227,141 @@
 .workbench-shell__tool-surface {
     height: 100%;
     overflow: hidden;
+}
+
+.workbench-shell__tool-area {
+    display: flex;
+    flex-direction: column;
+    height: 100%;
+}
+
+.workbench-shell__tab-strip {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 0.75rem;
+    min-height: 2.75rem;
+    padding: 0.25rem 0.5rem;
+    border-bottom: 1px solid var(--rz-base-300);
+    background: var(--rz-base-100);
+}
+
+.workbench-shell__tab-strip-content {
+    flex: 1 1 auto;
+    min-width: 0;
+}
+
+.workbench-shell__tab-strip-empty {
+    color: var(--rz-text-secondary-color);
+    font-size: 0.875rem;
+}
+
+.workbench-shell__tab-list {
+    display: flex;
+    align-items: stretch;
+    gap: 0.25rem;
+    width: 100%;
+    margin: 0;
+    padding: 0;
+    list-style: none;
+    overflow-x: auto;
+}
+
+.workbench-shell__tab-list-item {
+    min-width: 0;
+}
+
+.workbench-shell__tab-entry {
+    display: flex;
+    align-items: stretch;
+    border: 1px solid var(--rz-base-300);
+    border-radius: var(--rz-border-radius);
+    background: var(--rz-base-background-color);
+}
+
+.workbench-shell__tab-button {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.5rem;
+    min-width: 0;
+    max-width: 14rem;
+    padding: 0.5rem 0.75rem;
+    border-radius: var(--rz-border-radius);
+    white-space: nowrap;
+}
+
+.workbench-shell__tab-title {
+    display: inline-block;
+    min-width: 0;
+    max-width: 100%;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+
+.workbench-shell__tab-button--active {
+    background: var(--rz-base-200);
+    font-weight: 600;
+}
+
+.workbench-shell__tab-close {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 2.25rem;
+    border-left: 1px solid var(--rz-base-300);
+}
+
+.workbench-shell__tab-overflow {
+    flex: 0 0 auto;
+}
+
+.workbench-shell__tab-overflow-dropdown {
+    width: 12rem;
+}
+
+.workbench-shell__tab-overflow-label {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.4rem;
+}
+
+.workbench-shell__overflow-item {
+    padding: 0;
+}
+
+.workbench-shell__overflow-entry {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 0.75rem;
+    width: 100%;
+}
+
+.workbench-shell__overflow-entry--active {
+    font-weight: 600;
+}
+
+.workbench-shell__overflow-entry-title {
+    display: inline-block;
+    min-width: 0;
+    max-width: 15rem;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+
+.workbench-shell__overflow-entry-state {
+    color: var(--rz-text-secondary-color);
+    font-size: 0.75rem;
+    white-space: nowrap;
+}
+
+.workbench-shell__tool-body {
+    flex: 1 1 auto;
+    min-height: 0;
+    min-width: 0;
+    width: 100%;
 }
 
 .workbench-shell__status-bar {

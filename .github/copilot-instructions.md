@@ -16,6 +16,7 @@ Be concise but complete. Prefer current research (Microsoft Learn) for Microsoft
 - Do not run Stryker again in this workspace, and remove all Stryker-related configuration/setup files when asked.
 - Ask clarification questions one at a time rather than batching multiple questions together.
 - Never write log files or other temporary files to the repo root; always use suitable temporary storage instead.
+- Avoid getting stuck repeating the same status line; continue implementation progress directly after identifying a needed follow-up fix.
 
 ## Documentation Workflow (Summary)
 - For each new Work Package/piece of work: create a new numbered folder under `./docs/` named `xxx-<descriptor>` (e.g. `001-Initial-Shell`).
@@ -119,6 +120,7 @@ Refer to specialized instruction files for full detail:
 - For the temporary Workbench sidebar resize behavior, keep a minimum width of 16 pixels so the handle cannot be dragged past zero and lost.
 - The menu bar must span the full window above all other content, and both upper and lower center tab strips must remain visibly rendered.
 - When fixing the Workbench shell, do not introduce a workaround; implement the issue properly with the intended Radzen components.
+- In Workbench sizing fixes, do not apply module-specific CSS workarounds; sizing must be enforced by the Workbench shell so module UIs remain unaware of layout mechanics.
 
 ## Aspire Orchestration Guidelines
 - When reasoning about Aspire orchestration in this repo, use `WaitForCompleted()` when dependent services must wait for a short-lived seeder to finish; `WaitFor()` only waits for process start.

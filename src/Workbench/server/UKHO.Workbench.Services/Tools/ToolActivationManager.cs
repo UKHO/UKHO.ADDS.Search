@@ -4,7 +4,7 @@ using UKHO.Workbench.WorkbenchShell;
 namespace UKHO.Workbench.Services.Tools
 {
     /// <summary>
-    /// Stores registered tool definitions and applies the singleton activation rules for the Workbench shell.
+    /// Stores registered tool definitions and applies the tabbed activation rules for the Workbench shell.
     /// </summary>
     public class ToolActivationManager
     {
@@ -63,7 +63,7 @@ namespace UKHO.Workbench.Services.Tools
         }
 
         /// <summary>
-        /// Opens or focuses a tool using the singleton activation rules of the Workbench shell.
+        /// Opens or focuses a tool using the logical tab identity rules of the Workbench shell.
         /// </summary>
         /// <param name="activationTarget">The shell target that identifies which tool should be opened or focused.</param>
         /// <returns>The active runtime tool instance after the activation request completes.</returns>
@@ -77,11 +77,33 @@ namespace UKHO.Workbench.Services.Tools
                 throw new InvalidOperationException($"The Workbench tool '{activationTarget.ToolId}' is not registered.");
             }
 
-            // The shell state owns singleton reuse while the activation manager supplies tool contexts for new instances only.
+            // The shell state owns tab reuse while the activation manager supplies tool contexts for new runtime instances only.
             return State.ActivateTool(
                 toolDefinition,
                 activationTarget,
                 toolInstanceId => new ToolContext(toolInstanceId, _toolContextBridge));
+        }
+
+        /// <summary>
+        /// Focuses an already open tab by its stable tab identifier.
+        /// </summary>
+        /// <param name="tabId">The stable tab identifier to focus.</param>
+        /// <returns>The tab that is active after the request completes.</returns>
+        public WorkbenchTab ActivateTab(string tabId)
+        {
+            // Tab-strip switching still routes through the activation manager so the shell state remains the single source of truth for focus changes.
+            return State.ActivateTab(tabId);
+        }
+
+        /// <summary>
+        /// Closes an open tab by its stable tab identifier.
+        /// </summary>
+        /// <param name="tabId">The stable tab identifier to close.</param>
+        /// <returns>The new active tab when one remains open; otherwise, <see langword="null"/>.</returns>
+        public WorkbenchTab? CloseTab(string tabId)
+        {
+            // Tab close requests remain centralized here so later activation rules can evolve without host components mutating shell state directly.
+            return State.CloseTab(tabId);
         }
 
         /// <summary>

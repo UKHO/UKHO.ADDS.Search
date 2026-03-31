@@ -12,7 +12,7 @@ using UKHO.Workbench.WorkbenchShell;
 namespace UKHO.Workbench.Services.Shell
 {
     /// <summary>
-    /// Orchestrates the bootstrap Workbench shell state and singleton tool activation path.
+    /// Orchestrates the bootstrap Workbench shell state and tabbed tool activation path.
     /// </summary>
     public class WorkbenchShellManager : IToolContextBridge
     {
@@ -79,6 +79,16 @@ namespace UKHO.Workbench.Services.Shell
         /// Gets the status-bar contributions visible for the current active tool.
         /// </summary>
         public IReadOnlyList<StatusBarContribution> StatusBarContributions => _runtimeContributionManager.GetStatusBarContributions(State.ActiveTool);
+
+        /// <summary>
+        /// Gets the ordered tabs currently open in the Workbench shell.
+        /// </summary>
+        public IReadOnlyList<WorkbenchTab> OpenTabs => State.OpenTabs;
+
+        /// <summary>
+        /// Gets the tabs currently visible in the main tab strip after overflow windowing is applied.
+        /// </summary>
+        public IReadOnlyList<WorkbenchTab> VisibleTabs => State.VisibleTabs;
 
         /// <summary>
         /// Gets the current fixed Workbench context values.
@@ -226,33 +236,64 @@ namespace UKHO.Workbench.Services.Shell
         /// <param name="explorerId">The identifier of the explorer that should become active.</param>
         public void SetActiveExplorer(string explorerId)
         {
-            // The first slice only needs a single active explorer identifier to drive the left-hand selector and tool list.
+            // The first tabbed slice still uses one active explorer at a time to drive the left-hand selector and explorer pane.
             State.SetActiveExplorer(explorerId);
             NotifyStateChanged();
         }
 
         /// <summary>
-        /// Opens or focuses a tool using the singleton activation rules of the bootstrap shell.
+        /// Updates the explorer item currently selected in the explorer pane without opening a tab.
+        /// </summary>
+        /// <param name="explorerItemId">The stable explorer item identifier that should become selected.</param>
+        public void SelectExplorerItem(string explorerItemId)
+        {
+            // Explorer single-click selection is routed through the shell manager so the layout never mutates shell state directly.
+            State.SelectExplorerItem(explorerItemId);
+            NotifyStateChanged();
+        }
+
+        /// <summary>
+        /// Opens or focuses a tool using the logical tab identity rules of the bootstrap shell.
         /// </summary>
         /// <param name="activationTarget">The shell target that identifies which tool should be opened or focused.</param>
         /// <returns>The active runtime tool instance after the activation request completes.</returns>
         public ToolInstance ActivateTool(ActivationTarget activationTarget)
         {
+            var tabIdentity = activationTarget.CreateTabIdentity();
+            var reusedExistingTab = State.TryGetOpenTab(tabIdentity, out var existingTab) && existingTab is not null;
+
             _logger.LogInformation(
-                "Activating Workbench tool {ToolId} in region {Region}. Current active tool: {ActiveToolId}.",
+                "Activating Workbench tool {ToolId} in region {Region} with logical tab key {LogicalTabKey}. Current active tab: {ActiveTabId}.",
                 activationTarget.ToolId,
                 activationTarget.Region,
-                State.ActiveTool?.Definition.Id);
+                activationTarget.LogicalTabKey,
+                State.ActiveTab?.Id);
 
             try
             {
-                // The activation manager owns definition lookup and singleton reuse while the shell manager adds diagnostics and UI notifications.
+                // The activation manager owns tool lookup and tab reuse while the shell manager adds diagnostics and user-safe failure handling.
                 var activeTool = _toolActivationManager.ActivateTool(activationTarget);
-                _logger.LogInformation(
-                    "Activated Workbench tool {ToolId} as instance {ToolInstanceId} in region {Region}.",
-                    activeTool.Definition.Id,
-                    activeTool.InstanceId,
-                    activeTool.HostedRegion);
+
+                if (reusedExistingTab && existingTab is not null)
+                {
+                    // Reuse diagnostics make it clear that the shell focused the existing logical tab instead of opening a duplicate.
+                    _logger.LogInformation(
+                        "Focused existing Workbench tab {TabId} for tool {ToolId} with logical tab key {LogicalTabKey}.",
+                        existingTab.Id,
+                        activeTool.Definition.Id,
+                        activationTarget.LogicalTabKey);
+                }
+                else
+                {
+                    // New-tab diagnostics make the first tabbed slice traceable during explorer-driven activation flows.
+                    _logger.LogInformation(
+                        "Opened new Workbench tab {TabId} for tool {ToolId} with logical tab key {LogicalTabKey} in region {Region}.",
+                        activeTool.InstanceId,
+                        activeTool.Definition.Id,
+                        activationTarget.LogicalTabKey,
+                        activeTool.HostedRegion);
+                }
+
                 NotifyStateChanged();
                 return activeTool;
             }
@@ -260,10 +301,115 @@ namespace UKHO.Workbench.Services.Shell
             {
                 _logger.LogError(
                     exception,
-                    "Workbench tool activation failed for tool {ToolId} in region {Region}. Current active tool: {ActiveToolId}.",
+                    "Workbench tool activation failed for tool {ToolId} in region {Region} with logical tab key {LogicalTabKey}. Current active tab: {ActiveTabId}.",
                     activationTarget.ToolId,
                     activationTarget.Region,
-                    State.ActiveTool?.Definition.Id);
+                    activationTarget.LogicalTabKey,
+                    State.ActiveTab?.Id);
+                RaiseSafeFailureNotification();
+                throw;
+            }
+        }
+
+        /// <summary>
+        /// Activates a tab selected from the overflow dropdown.
+        /// </summary>
+        /// <param name="tabId">The stable tab identifier selected from overflow.</param>
+        public void ActivateTabFromOverflow(string tabId)
+        {
+            // Overflow selection uses the same focus path as visible-strip activation, but separate diagnostics make overflow-driven window shifts traceable.
+            ArgumentException.ThrowIfNullOrWhiteSpace(tabId);
+
+            _logger.LogInformation(
+                "Selecting Workbench tab {TabId} from overflow. Current active tab: {ActiveTabId}.",
+                tabId,
+                State.ActiveTab?.Id);
+
+            ActivateTab(tabId);
+        }
+
+        /// <summary>
+        /// Focuses an already open tab by its stable tab identifier.
+        /// </summary>
+        /// <param name="tabId">The stable tab identifier to focus.</param>
+        public void ActivateTab(string tabId)
+        {
+            // Explicit tab activation keeps the visible tab ordering stable while still updating contribution composition and activity history.
+            ArgumentException.ThrowIfNullOrWhiteSpace(tabId);
+
+            _logger.LogInformation(
+                "Focusing Workbench tab {TabId}. Current active tab: {ActiveTabId}.",
+                tabId,
+                State.ActiveTab?.Id);
+
+            try
+            {
+                var activeTab = _toolActivationManager.ActivateTab(tabId);
+                _logger.LogInformation(
+                    "Focused Workbench tab {TabId} for tool {ToolId}.",
+                    activeTab.Id,
+                    activeTab.ToolInstance.Definition.Id);
+                NotifyStateChanged();
+            }
+            catch (Exception exception)
+            {
+                _logger.LogError(
+                    exception,
+                    "Workbench tab focus failed for tab {TabId}. Current active tab: {ActiveTabId}.",
+                    tabId,
+                    State.ActiveTab?.Id);
+                RaiseSafeFailureNotification();
+                throw;
+            }
+        }
+
+        /// <summary>
+        /// Closes an open tab by its stable tab identifier.
+        /// </summary>
+        /// <param name="tabId">The stable tab identifier to close.</param>
+        public void CloseTab(string tabId)
+        {
+            // Tab close requests are centralized here so close behavior, diagnostics, and safe failure handling remain consistent across shell entry points.
+            ArgumentException.ThrowIfNullOrWhiteSpace(tabId);
+
+            State.TryGetOpenTab(tabId, out var closingTab);
+
+            _logger.LogInformation(
+                "Closing Workbench tab {TabId} for tool {ToolId}. Current active tab: {ActiveTabId}.",
+                tabId,
+                closingTab?.ToolInstance.Definition.Id,
+                State.ActiveTab?.Id);
+
+            try
+            {
+                var nextActiveTab = _toolActivationManager.CloseTab(tabId);
+
+                if (nextActiveTab is null)
+                {
+                    // The empty-shell path is logged separately because it restores explorer focus instead of activating another tab.
+                    _logger.LogInformation(
+                        "Closed Workbench tab {TabId}. The center surface is now empty and explorer focus has been restored.",
+                        tabId);
+                }
+                else
+                {
+                    // Successful close operations log the tab promoted by the most-recently-active close rule.
+                    _logger.LogInformation(
+                        "Closed Workbench tab {TabId}. Activated remaining tab {NextTabId} for tool {NextToolId}.",
+                        tabId,
+                        nextActiveTab.Id,
+                        nextActiveTab.ToolInstance.Definition.Id);
+                }
+
+                NotifyStateChanged();
+            }
+            catch (Exception exception)
+            {
+                _logger.LogError(
+                    exception,
+                    "Workbench tab close failed for tab {TabId}. Current active tab: {ActiveTabId}.",
+                    tabId,
+                    State.ActiveTab?.Id);
                 RaiseSafeFailureNotification();
                 throw;
             }
@@ -361,9 +507,31 @@ namespace UKHO.Workbench.Services.Shell
         public void UpdateTitle(string toolInstanceId, string title)
         {
             // Runtime shell metadata changes are bounded to tracked tool instances so the host retains shell ownership.
-            var toolInstance = ResolveRequiredToolInstance(toolInstanceId);
-            toolInstance.UpdateTitle(title);
-            NotifyStateChanged();
+            _logger.LogInformation(
+                "Updating Workbench tab title for tool instance {ToolInstanceId}. Current active tab: {ActiveTabId}.",
+                toolInstanceId,
+                State.ActiveTab?.Id);
+
+            try
+            {
+                var toolInstance = ResolveRequiredToolInstance(toolInstanceId);
+                toolInstance.UpdateTitle(title);
+                NotifyStateChanged();
+                _logger.LogInformation(
+                    "Updated Workbench tab title for tool instance {ToolInstanceId} to {Title}.",
+                    toolInstanceId,
+                    title);
+            }
+            catch (Exception exception)
+            {
+                _logger.LogError(
+                    exception,
+                    "Workbench tab title update failed for tool instance {ToolInstanceId}. Current active tab: {ActiveTabId}.",
+                    toolInstanceId,
+                    State.ActiveTab?.Id);
+                RaiseSafeFailureNotification();
+                throw;
+            }
         }
 
         /// <summary>
@@ -374,9 +542,31 @@ namespace UKHO.Workbench.Services.Shell
         public void UpdateIcon(string toolInstanceId, string icon)
         {
             // Icon updates follow the same bounded metadata path as title updates.
-            var toolInstance = ResolveRequiredToolInstance(toolInstanceId);
-            toolInstance.UpdateIcon(icon);
-            NotifyStateChanged();
+            _logger.LogInformation(
+                "Updating Workbench tab icon for tool instance {ToolInstanceId}. Current active tab: {ActiveTabId}.",
+                toolInstanceId,
+                State.ActiveTab?.Id);
+
+            try
+            {
+                var toolInstance = ResolveRequiredToolInstance(toolInstanceId);
+                toolInstance.UpdateIcon(icon);
+                NotifyStateChanged();
+                _logger.LogInformation(
+                    "Updated Workbench tab icon for tool instance {ToolInstanceId} to {Icon}.",
+                    toolInstanceId,
+                    icon);
+            }
+            catch (Exception exception)
+            {
+                _logger.LogError(
+                    exception,
+                    "Workbench tab icon update failed for tool instance {ToolInstanceId}. Current active tab: {ActiveTabId}.",
+                    toolInstanceId,
+                    State.ActiveTab?.Id);
+                RaiseSafeFailureNotification();
+                throw;
+            }
         }
 
         /// <summary>
@@ -481,9 +671,10 @@ namespace UKHO.Workbench.Services.Shell
         /// </summary>
         private void NotifyStateChanged()
         {
-            // The Blazor host uses this event to re-render the shell whenever explorer or active-tool state changes.
+            // The Blazor host uses this event to re-render the shell whenever explorer selection, tab state, or active-tool state changes.
             StateChanged?.Invoke(this, EventArgs.Empty);
         }
+
 
         /// <summary>
         /// Resolves a tracked tool instance or throws when the supplied identifier is unknown.

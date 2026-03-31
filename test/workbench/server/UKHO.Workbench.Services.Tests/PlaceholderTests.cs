@@ -10,17 +10,17 @@ using Xunit;
 namespace UKHO.Workbench.Services.Tests
 {
     /// <summary>
-    /// Verifies command routing, fixed context publication, and runtime contribution recomposition for the Workbench service layer.
+    /// Verifies the Workbench service-layer orchestration introduced for the first tabbed Workbench slice.
     /// </summary>
     public class PlaceholderTests
     {
         /// <summary>
-        /// Confirms a declarative activation command opens a tool and then reuses the existing singleton instance when executed again.
+        /// Confirms executing the same activation command twice focuses the existing logical tab instead of opening a duplicate tab.
         /// </summary>
         [Fact]
-        public async Task ExecuteRegisteredActivationCommandAndRefocusTheExistingSingletonTool()
+        public async Task ExecuteRegisteredActivationCommandAndFocusTheExistingLogicalTab()
         {
-            // The shell manager now routes explorer, menu, toolbar, and hosted-tool actions through the same command path.
+            // The shell manager should route repeated activation requests through the shared open-or-focus contract so logical targets reuse tabs.
             var shellManager = new WorkbenchShellManager(NullLogger<WorkbenchShellManager>.Instance);
             shellManager.RegisterTool(new ToolDefinition("tool.search", "Search", typeof(TestToolComponent), "explorer.bootstrap", "search"));
             shellManager.RegisterCommand(
@@ -30,7 +30,6 @@ namespace UKHO.Workbench.Services.Tests
                     CommandScope.Host,
                     activationTarget: ActivationTarget.CreateToolSurfaceTarget("tool.search")));
 
-            // Executing the same activation command twice should keep the singleton tool policy intact.
             await shellManager.ExecuteCommandAsync("command.search.open");
             var firstActivation = shellManager.State.ActiveTool;
             await shellManager.ExecuteCommandAsync("command.search.open");
@@ -38,23 +37,136 @@ namespace UKHO.Workbench.Services.Tests
 
             firstActivation.ShouldNotBeNull();
             secondActivation.ShouldBeSameAs(firstActivation);
-            shellManager.State.ToolInstances.Count.ShouldBe(1);
+            shellManager.OpenTabs.Count.ShouldBe(1);
+            shellManager.State.ActiveTab.ShouldNotBeNull();
+            shellManager.State.ActiveTab.ToolInstance.ShouldBe(firstActivation);
         }
 
         /// <summary>
-        /// Confirms runtime menu and status-bar contributions participate only while their owning tool is active.
+        /// Confirms activation requests for the same tool respect parameter identity across command entry points.
         /// </summary>
         [Fact]
-        public void RecomposeRuntimeContributionsWhenToolFocusChanges()
+        public async Task OpenSeparateTabsForDifferentParameterIdentitiesAndReuseMatchingOnes()
         {
-            // Static shell contributions remain visible, while tool runtime contributions should disappear automatically when focus moves away.
+            // Activation-capable commands should all route through the same parameter-aware open-or-focus contract so matching requests reuse a tab and different requests open another tab.
+            var shellManager = new WorkbenchShellManager(NullLogger<WorkbenchShellManager>.Instance);
+            shellManager.RegisterTool(new ToolDefinition("tool.search", "Search", typeof(TestToolComponent), "explorer.bootstrap", "search"));
+            shellManager.RegisterCommand(
+                new CommandContribution(
+                    "command.search.open.one",
+                    "Open Search 1",
+                    CommandScope.Host,
+                    activationTarget: ActivationTarget.CreateToolSurfaceTarget("tool.search", parameterIdentity: "query=id:1")));
+            shellManager.RegisterCommand(
+                new CommandContribution(
+                    "command.search.open.two",
+                    "Open Search 2",
+                    CommandScope.Host,
+                    activationTarget: ActivationTarget.CreateToolSurfaceTarget("tool.search", parameterIdentity: "query=id:2")));
+
+            await shellManager.ExecuteCommandAsync("command.search.open.one");
+            var firstActivation = shellManager.State.ActiveTool;
+            await shellManager.ExecuteCommandAsync("command.search.open.one");
+            var matchingActivation = shellManager.State.ActiveTool;
+            await shellManager.ExecuteCommandAsync("command.search.open.two");
+            var differentActivation = shellManager.State.ActiveTool;
+
+            matchingActivation.ShouldBeSameAs(firstActivation);
+            differentActivation.ShouldNotBeSameAs(firstActivation);
+            shellManager.OpenTabs.Count.ShouldBe(2);
+            shellManager.OpenTabs.Select(openTab => openTab.ParameterIdentity).ShouldBe([
+                "query=id:1",
+                "query=id:2"
+            ]);
+        }
+
+        /// <summary>
+        /// Confirms tool-context-driven activation requests honor the same parameter-aware reuse rules as host-driven activation requests.
+        /// </summary>
+        [Fact]
+        public async Task HonorSharedReuseRulesForToolContextOpenRequests()
+        {
+            // Hosted tools should not be able to bypass the shared reuse rules when they request another tool through the bounded context bridge.
+            var shellManager = new WorkbenchShellManager(NullLogger<WorkbenchShellManager>.Instance);
+            shellManager.RegisterTool(new ToolDefinition("tool.overview", "Overview", typeof(TestToolComponent), "explorer.bootstrap", "dashboard"));
+            shellManager.RegisterTool(new ToolDefinition("tool.search", "Search", typeof(TestToolComponent), "explorer.bootstrap", "search"));
+
+            var overviewTool = shellManager.ActivateTool(ActivationTarget.CreateToolSurfaceTarget("tool.overview"));
+
+            await overviewTool.Context.OpenToolAsync(ActivationTarget.CreateToolSurfaceTarget("tool.search", parameterIdentity: "query=id:1"));
+            var firstSearchTab = shellManager.State.ActiveTab;
+            await overviewTool.Context.OpenToolAsync(ActivationTarget.CreateToolSurfaceTarget("tool.search", parameterIdentity: "query=id:1"));
+            var reusedSearchTab = shellManager.State.ActiveTab;
+            await overviewTool.Context.OpenToolAsync(ActivationTarget.CreateToolSurfaceTarget("tool.search", parameterIdentity: "query=id:2"));
+            var secondSearchTab = shellManager.State.ActiveTab;
+
+            reusedSearchTab.ShouldNotBeNull();
+            firstSearchTab.ShouldNotBeNull();
+            secondSearchTab.ShouldNotBeNull();
+            reusedSearchTab.ShouldBe(firstSearchTab);
+            secondSearchTab.ShouldNotBe(firstSearchTab);
+            shellManager.OpenTabs.Count.ShouldBe(3);
+        }
+
+        /// <summary>
+        /// Confirms tab close orchestration promotes the most recently active remaining tab when the active tab is closed.
+        /// </summary>
+        [Fact]
+        public void CloseTheActiveTabAndPromoteTheMostRecentlyActiveRemainingTab()
+        {
+            // The shell manager should preserve the user's recent focus history so closing the active tab returns them to the most relevant remaining tab.
+            var shellManager = new WorkbenchShellManager(NullLogger<WorkbenchShellManager>.Instance);
+            shellManager.RegisterTool(new ToolDefinition("tool.overview", "Overview", typeof(TestToolComponent), "explorer.bootstrap", "dashboard"));
+            shellManager.RegisterTool(new ToolDefinition("tool.search", "Search", typeof(TestToolComponent), "explorer.bootstrap", "search"));
+            shellManager.RegisterTool(new ToolDefinition("tool.admin", "Admin", typeof(TestToolComponent), "explorer.bootstrap", "build"));
+
+            var overviewTool = shellManager.ActivateTool(ActivationTarget.CreateToolSurfaceTarget("tool.overview"));
+            _ = shellManager.ActivateTool(ActivationTarget.CreateToolSurfaceTarget("tool.search"));
+            var adminTool = shellManager.ActivateTool(ActivationTarget.CreateToolSurfaceTarget("tool.admin"));
+            shellManager.ActivateTab(overviewTool.InstanceId);
+
+            shellManager.CloseTab(overviewTool.InstanceId);
+
+            shellManager.State.ActiveTool.ShouldBe(adminTool);
+            shellManager.OpenTabs.Select(openTab => openTab.ToolInstance.Definition.Id).ShouldBe([
+                "tool.search",
+                "tool.admin"
+            ]);
+        }
+
+        /// <summary>
+        /// Confirms closing the final tab leaves the center surface empty and restores explorer focus.
+        /// </summary>
+        [Fact]
+        public void CloseTheFinalTabAndRestoreExplorerFocus()
+        {
+            // The empty-shell close path should remove the final tab cleanly and return focus responsibility to the explorer pane.
+            var shellManager = new WorkbenchShellManager(NullLogger<WorkbenchShellManager>.Instance);
+            shellManager.RegisterTool(new ToolDefinition("tool.overview", "Overview", typeof(TestToolComponent), "explorer.bootstrap", "dashboard"));
+            shellManager.SelectExplorerItem("explorer.item.bootstrap.overview");
+
+            var activeTool = shellManager.ActivateTool(ActivationTarget.CreateToolSurfaceTarget("tool.overview"));
+            shellManager.CloseTab(activeTool.InstanceId);
+
+            shellManager.OpenTabs.Count.ShouldBe(0);
+            shellManager.State.ActiveTab.ShouldBeNull();
+            shellManager.State.IsExplorerFocused.ShouldBeTrue();
+            shellManager.State.SelectedExplorerItemId.ShouldBe("explorer.item.bootstrap.overview");
+        }
+
+        /// <summary>
+        /// Confirms runtime menu and status-bar contributions participate only while their owning tab is active.
+        /// </summary>
+        [Fact]
+        public void RecomposeRuntimeContributionsWhenTheActiveTabChanges()
+        {
+            // Static shell contributions remain visible, while tab-owned runtime contributions should disappear automatically when focus moves away.
             var shellManager = new WorkbenchShellManager(NullLogger<WorkbenchShellManager>.Instance);
             shellManager.RegisterTool(new ToolDefinition("tool.overview", "Overview", typeof(TestToolComponent), "explorer.bootstrap", "dashboard"));
             shellManager.RegisterTool(new ToolDefinition("tool.search", "Search", typeof(TestToolComponent), "explorer.bootstrap", "search"));
             shellManager.RegisterMenu(new MenuContribution("menu.host.overview", "Overview", "command.host.overview", order: 100));
             shellManager.RegisterStatusBar(new StatusBarContribution("status.host.ready", "Workbench ready", order: 100));
 
-            // The Search tool publishes runtime contributions through its bounded context once it is active.
             var searchTool = shellManager.ActivateTool(ActivationTarget.CreateToolSurfaceTarget("tool.search"));
             searchTool.Context.SetRuntimeMenuContributions([new MenuContribution("menu.runtime.search", "Run sample query", "command.search.run", ownerToolId: "tool.search", order: 200)]);
             searchTool.Context.SetRuntimeStatusBarContributions([new StatusBarContribution("status.runtime.search", "Sample query executed", ownerToolId: "tool.search", order: 200)]);
@@ -62,7 +174,6 @@ namespace UKHO.Workbench.Services.Tests
             shellManager.MenuContributions.Select(menuContribution => menuContribution.DisplayName).ShouldContain("Run sample query");
             shellManager.StatusBarContributions.Select(statusBarContribution => statusBarContribution.Text).ShouldContain("Sample query executed");
 
-            // Activating the overview tool should automatically hide the Search tool runtime contributions while keeping static host contributions visible.
             shellManager.ActivateTool(ActivationTarget.CreateToolSurfaceTarget("tool.overview"));
 
             shellManager.MenuContributions.Select(menuContribution => menuContribution.DisplayName).ShouldContain("Overview");
@@ -72,12 +183,81 @@ namespace UKHO.Workbench.Services.Tests
         }
 
         /// <summary>
-        /// Confirms the fixed Workbench context values reflect the current active tool and published selection summary.
+        /// Confirms inactive tabs receive title and icon updates immediately through the shared runtime metadata path.
         /// </summary>
         [Fact]
-        public void ExposeTheFixedContextKeysForTheActiveTool()
+        public void UpdateInactiveTabMetadataImmediately()
         {
-            // The first context model is intentionally small and fixed, so the shell should surface the current active tool and selection summary clearly.
+            // Hosted views should be able to update their tab metadata while inactive so the shell reflects background state changes without forcing focus changes.
+            var shellManager = new WorkbenchShellManager(NullLogger<WorkbenchShellManager>.Instance);
+            shellManager.RegisterTool(new ToolDefinition("tool.one", "Runtime tool one", typeof(TestToolComponent), "explorer.bootstrap", "dashboard"));
+            shellManager.RegisterTool(new ToolDefinition("tool.two", "Runtime tool two", typeof(TestToolComponent), "explorer.bootstrap", "build"));
+
+            var firstTool = shellManager.ActivateTool(
+                ActivationTarget.CreateToolSurfaceTarget(
+                    "tool.one",
+                    parameterIdentity: "item=1",
+                    initialTitle: "Explorer tool one",
+                    initialIcon: "explore"));
+            _ = shellManager.ActivateTool(ActivationTarget.CreateToolSurfaceTarget("tool.two"));
+
+            firstTool.Context.SetTitle("Updated inactive title");
+            firstTool.Context.SetIcon("travel_explore");
+
+            shellManager.OpenTabs[0].Title.ShouldBe("Updated inactive title");
+            shellManager.OpenTabs[0].Icon.ShouldBe("travel_explore");
+        }
+
+        /// <summary>
+        /// Confirms overflow-driven tab activation keeps the full open order intact while shifting the visible window only enough to reveal the selected tab.
+        /// </summary>
+        [Fact]
+        public void ActivateAnOverflowTabAndShiftTheVisibleWindowMinimally()
+        {
+            // Overflow activation should reuse the shared tab-focus path while giving the layout a stable, minimally adjusted visible tab segment to render.
+            var shellManager = new WorkbenchShellManager(NullLogger<WorkbenchShellManager>.Instance);
+
+            foreach (var index in Enumerable.Range(1, 6))
+            {
+                shellManager.RegisterTool(new ToolDefinition($"tool.{index}", $"Tool {index}", typeof(TestToolComponent), "explorer.bootstrap", $"looks_{index}"));
+                shellManager.ActivateTool(ActivationTarget.CreateToolSurfaceTarget($"tool.{index}"));
+            }
+
+            shellManager.VisibleTabs.Select(openTab => openTab.ToolInstance.Definition.Id).ShouldBe([
+                "tool.3",
+                "tool.4",
+                "tool.5",
+                "tool.6"
+            ]);
+
+            var selectedOverflowTabId = shellManager.OpenTabs[1].Id;
+            shellManager.ActivateTabFromOverflow(selectedOverflowTabId);
+
+            shellManager.State.ActiveTab.ShouldNotBeNull();
+            shellManager.State.ActiveTab.Id.ShouldBe(selectedOverflowTabId);
+            shellManager.OpenTabs.Select(openTab => openTab.ToolInstance.Definition.Id).ShouldBe([
+                "tool.1",
+                "tool.2",
+                "tool.3",
+                "tool.4",
+                "tool.5",
+                "tool.6"
+            ]);
+            shellManager.VisibleTabs.Select(openTab => openTab.ToolInstance.Definition.Id).ShouldBe([
+                "tool.2",
+                "tool.3",
+                "tool.4",
+                "tool.5"
+            ]);
+        }
+
+        /// <summary>
+        /// Confirms the fixed Workbench context values reflect the current active tab and published selection summary.
+        /// </summary>
+        [Fact]
+        public void ExposeTheFixedContextKeysForTheActiveTab()
+        {
+            // The fixed context model should continue to describe the currently active tab even after the shell moved away from the single-active-tool implementation.
             var shellManager = new WorkbenchShellManager(NullLogger<WorkbenchShellManager>.Instance);
             shellManager.RegisterTool(new ToolDefinition("tool.search", "Search", typeof(TestToolComponent), "explorer.bootstrap", "search"));
 
@@ -92,28 +272,39 @@ namespace UKHO.Workbench.Services.Tests
         }
 
         /// <summary>
-        /// Confirms the shell raises a user-safe notification when a command cannot activate its requested tool.
+        /// Confirms the shell raises a user-safe notification when a close request targets an unknown tab.
         /// </summary>
         [Fact]
-        public async Task RaiseASafeNotificationWhenCommandExecutionFails()
+        public void RaiseASafeNotificationWhenClosingAnUnknownTabFails()
         {
-            // The shell should surface recoverable command failures as safe notifications so UI callers do not need to translate infrastructure details.
+            // Close-path failures should surface through the same safe-notification path as activation failures so the host receives consistent UX behavior.
             var shellManager = new WorkbenchShellManager(NullLogger<WorkbenchShellManager>.Instance);
-            shellManager.RegisterCommand(
-                new CommandContribution(
-                    "command.missing.open",
-                    "Open missing tool",
-                    CommandScope.Host,
-                    activationTarget: ActivationTarget.CreateToolSurfaceTarget("tool.missing")));
-
             WorkbenchNotificationEventArgs? notification = null;
             shellManager.NotificationRaised += (_, args) => notification = args;
 
-            await shellManager.ExecuteCommandAsync("command.missing.open");
+            var exception = Should.Throw<InvalidOperationException>(() => shellManager.CloseTab("tab.unknown"));
 
+            exception.Message.ShouldContain("tab.unknown");
             notification.ShouldNotBeNull();
             notification.Summary.ShouldBe("Workbench action failed");
             notification.Detail.ShouldBe("The selected Workbench action could not be completed. Check the application logs for more detail.");
+        }
+
+        /// <summary>
+        /// Confirms closing a tab marks the runtime instance disposed immediately.
+        /// </summary>
+        [Fact]
+        public void DisposeTheClosedToolInstanceImmediately()
+        {
+            // Removing the tab from shell state should also dispose the runtime instance so per-tab state is released immediately on close.
+            var shellManager = new WorkbenchShellManager(NullLogger<WorkbenchShellManager>.Instance);
+            shellManager.RegisterTool(new ToolDefinition("tool.overview", "Overview", typeof(TestToolComponent), "explorer.bootstrap", "dashboard"));
+
+            var activeTool = shellManager.ActivateTool(ActivationTarget.CreateToolSurfaceTarget("tool.overview"));
+
+            shellManager.CloseTab(activeTool.InstanceId);
+
+            activeTool.IsDisposed.ShouldBeTrue();
         }
 
         /// <summary>
