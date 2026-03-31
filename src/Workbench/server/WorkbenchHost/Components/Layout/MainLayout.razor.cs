@@ -1699,7 +1699,8 @@ namespace WorkbenchHost.Components.Layout
                 return;
             }
 
-            foreach (var outputEntry in _pendingOutputTerminalEntries)
+            var pendingEntries = _pendingOutputTerminalEntries.ToArray();
+            foreach (var outputEntry in pendingEntries)
             {
                 // Appended entries use the same styled line projection as retained-history rebuilds so both code paths stay visually identical.
                 foreach (var terminalLine in BuildOutputTerminalRenderableLines(outputEntry))
@@ -1709,9 +1710,40 @@ namespace WorkbenchHost.Components.Layout
             }
 
             _projectedOutputEntryIds = _projectedOutputEntryIds
-                .Concat(_pendingOutputTerminalEntries.Select(outputEntry => outputEntry.Id))
+                .Concat(pendingEntries.Select(outputEntry => outputEntry.Id))
                 .ToArray();
+
+            var remainingPendingEntries = BuildRemainingPendingOutputEntries(_pendingOutputTerminalEntries, pendingEntries);
             _pendingOutputTerminalEntries.Clear();
+            _pendingOutputTerminalEntries.AddRange(remainingPendingEntries);
+        }
+
+        /// <summary>
+        /// Returns the pending entries that should remain queued after one append pass flushes a snapshot of entries to the terminal.
+        /// </summary>
+        /// <param name="currentPendingEntries">The live pending-entry queue, which may already include newer entries that arrived mid-append.</param>
+        /// <param name="flushedEntries">The stable append snapshot that was successfully written to the terminal.</param>
+        /// <returns>The remaining pending entries that still need a later append pass.</returns>
+        private static IReadOnlyList<OutputEntry> BuildRemainingPendingOutputEntries(
+            IReadOnlyList<OutputEntry> currentPendingEntries,
+            IReadOnlyList<OutputEntry> flushedEntries)
+        {
+            // Removing only the flushed identifiers preserves output that arrived while awaited terminal writes were still in progress.
+            ArgumentNullException.ThrowIfNull(currentPendingEntries);
+            ArgumentNullException.ThrowIfNull(flushedEntries);
+
+            if (currentPendingEntries.Count == 0 || flushedEntries.Count == 0)
+            {
+                return currentPendingEntries.ToArray();
+            }
+
+            var flushedEntryIds = flushedEntries
+                .Select(outputEntry => outputEntry.Id)
+                .ToHashSet(StringComparer.Ordinal);
+
+            return currentPendingEntries
+                .Where(outputEntry => !flushedEntryIds.Contains(outputEntry.Id))
+                .ToArray();
         }
 
         /// <summary>

@@ -154,6 +154,27 @@ namespace WorkbenchHost.Tests
         }
 
         /// <summary>
+        /// Confirms only the flushed append snapshot is removed from the live queue so later entries remain pending for the next render.
+        /// </summary>
+        [Fact]
+        public void KeepNewlyQueuedEntriesWhenRemovingFlushedAppendEntries()
+        {
+            // Output can arrive while awaited terminal writes are in progress, so append cleanup must preserve any newer entries that were not part of the flushed snapshot.
+            var firstEntry = CreateOutputEntry("entry-flush-1", OutputLevel.Info, "Shell", "Workbench ready.");
+            var secondEntry = CreateOutputEntry("entry-flush-2", OutputLevel.Warning, "Shell", "Workbench warning.");
+            var laterEntry = CreateOutputEntry("entry-flush-3", OutputLevel.Error, "Shell", "Workbench error.");
+
+            var remainingEntries = InvokeStaticPrivateMethod(
+                typeof(MainLayout),
+                "BuildRemainingPendingOutputEntries",
+                [new[] { firstEntry, secondEntry, laterEntry }, new[] { firstEntry, secondEntry }]) as IReadOnlyList<OutputEntry>;
+
+            remainingEntries.ShouldNotBeNull();
+            remainingEntries.Count.ShouldBe(1);
+            remainingEntries[0].Id.ShouldBe(laterEntry.Id);
+        }
+
+        /// <summary>
         /// Confirms browser-derived shell theme values are mapped into terminal options used by the Workbench output surface.
         /// </summary>
         [Fact]
