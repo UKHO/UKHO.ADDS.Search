@@ -17,7 +17,7 @@
 
 ## Output Foundation Slice
 
-- [ ] Work Item 1: Deliver a runnable shell-owned output stream with a collapsible bottom panel
+- [x] Work Item 1: Deliver a runnable shell-owned output stream with a collapsible bottom panel - Completed
   - **Purpose**: Establish the smallest end-to-end Workbench output capability by introducing the shared output contracts and service, wiring a real shell-produced entry into the stream, and rendering a hidden-by-default bottom panel that can be toggled open from the far-left of the status bar.
   - **Acceptance Criteria**:
     - The Workbench starts with the `Output` panel collapsed.
@@ -32,34 +32,40 @@
     - Documentation updated
     - `./.github/instructions/documentation-pass.instructions.md` fully applied and treated as a hard gate
     - Can execute end-to-end via: `dotnet run --project src/Workbench/server/WorkbenchHost/WorkbenchHost.csproj`
-  - [ ] Task 1: Introduce shared Workbench output contracts in `UKHO.Workbench`
-    - [ ] Step 1: Add one-public-type-per-file shared models such as `OutputEntry`, `OutputLevel`, and `OutputPanelState` under `src/Workbench/server/UKHO.Workbench`.
-    - [ ] Step 2: Add the initial `IWorkbenchOutputService` abstraction with write, clear, and state-notification responsibilities suitable for a shell-wide append-only stream.
-    - [ ] Step 3: Keep output-entry records immutable and keep panel UI state separate from entry data.
-    - [ ] Step 4: Implement all new and updated code in full compliance with `./.github/instructions/documentation-pass.instructions.md`, including mandatory comments on every class, method, constructor, parameter, and non-obvious property touched by this task.
-  - [ ] Task 2: Add an in-memory shell-wide output service in `UKHO.Workbench.Services`
-    - [ ] Step 1: Implement a bounded in-memory `WorkbenchOutputService` that stores the session stream, raises change notifications, and preserves chronological ordering.
-    - [ ] Step 2: Seed the default retention behavior so the service keeps the newest `250` entries and discards the oldest entries when the limit is exceeded.
-    - [ ] Step 3: Keep the implementation lightweight and host-agnostic so host code, shell services, and module code can all append output entries through the same abstraction.
-    - [ ] Step 4: Register the new service through the existing Workbench service composition path so it is available to the host and the shell.
-    - [ ] Step 5: Implement all new and updated code in full compliance with `./.github/instructions/documentation-pass.instructions.md`, including mandatory comments on every class, method, constructor, parameter, and non-obvious property touched by this task.
-  - [ ] Task 3: Render the first output panel shell slice in `WorkbenchHost`
-    - [ ] Step 1: Update `MainLayout.razor`, `MainLayout.razor.cs`, and `MainLayout.razor.css` so the shell can render a bottom output panel above the status bar using the existing grid and splitter primitives.
-    - [ ] Step 2: Add the far-left `Output` toggle to the status bar and keep the panel hidden by default.
-    - [ ] Step 3: Use the first-open height ratio of approximately `1* : 4*` output-to-centre when the panel becomes visible.
-    - [ ] Step 4: Render a minimal compact entry list using the new output service and keep the panel empty rather than showing a dedicated empty-state message when no entries exist.
-    - [ ] Step 5: Ensure the panel remains collapsed on startup even if startup entries already exist in the stream.
-    - [ ] Step 6: Implement all new and updated code in full compliance with `./.github/instructions/documentation-pass.instructions.md`, including mandatory comments on every class, method, constructor, parameter, and non-obvious property touched by this task.
-  - [ ] Task 4: Route the first real shell-produced entries through the output stream
-    - [ ] Step 1: Update `Program.cs` and any shell bootstrap code so at least one real shell-owned event is written into the output stream rather than relying on synthetic demo content.
-    - [ ] Step 2: Keep existing `ILogger` usage intact and complement it with output-stream projection rather than replacing structured logging.
-    - [ ] Step 3: Ensure the initial slice stays runnable even before the later migration of all status-bar and notification pathways is complete.
-    - [ ] Step 4: Implement all new and updated code in full compliance with `./.github/instructions/documentation-pass.instructions.md`, including mandatory comments on every class, method, constructor, parameter, and non-obvious property touched by this task.
-  - [ ] Task 5: Add focused verification for the output foundation slice
-    - [ ] Step 1: Add service tests in `test/workbench/server/UKHO.Workbench.Services.Tests` covering append order, immutability, and oldest-first eviction at the retention boundary.
-    - [ ] Step 2: Add host rendering tests in `test/workbench/server/WorkbenchHost.Tests/MainLayoutRenderingTests.cs` confirming the `Output` toggle renders on the far left and the panel is hidden by default.
-    - [ ] Step 3: Add focused layout verification confirming the panel appears above the status bar and below the centre pane when toggled open.
-    - [ ] Step 4: Implement all new and updated code in full compliance with `./.github/instructions/documentation-pass.instructions.md`, including mandatory comments on every class, method, constructor, parameter, and non-obvious property touched by this task.
+  - Summary: Added shared output contracts, a bounded in-memory output service, shell UI integration, bootstrap output projection, focused service and layout tests, and a wiki update for the new output foundation slice.
+  - [x] Task 1: Introduce shared Workbench output contracts in `UKHO.Workbench` - Completed
+    - [x] Step 1: Add one-public-type-per-file shared models such as `OutputEntry`, `OutputLevel`, and `OutputPanelState` under `src/Workbench/server/UKHO.Workbench`.
+    - [x] Step 2: Add the initial `IWorkbenchOutputService` abstraction with write, clear, and state-notification responsibilities suitable for a shell-wide append-only stream.
+    - [x] Step 3: Keep output-entry records immutable and keep panel UI state separate from entry data.
+    - [x] Step 4: Implement all new and updated code in full compliance with `./.github/instructions/documentation-pass.instructions.md`, including mandatory comments on every class, method, constructor, parameter, and non-obvious property touched by this task.
+    - Summary: Added immutable output entry and level contracts, a dedicated output-panel state model, and the shell-wide output-service abstraction under `UKHO.Workbench.Output`.
+  - [x] Task 2: Add an in-memory shell-wide output service in `UKHO.Workbench.Services` - Completed
+    - [x] Step 1: Implement a bounded in-memory `WorkbenchOutputService` that stores the session stream, raises change notifications, and preserves chronological ordering.
+    - [x] Step 2: Seed the default retention behavior so the service keeps the newest `250` entries and discards the oldest entries when the limit is exceeded.
+    - [x] Step 3: Keep the implementation lightweight and host-agnostic so host code, shell services, and module code can all append output entries through the same abstraction.
+    - [x] Step 4: Register the new service through the existing Workbench service composition path so it is available to the host and the shell.
+    - [x] Step 5: Implement all new and updated code in full compliance with `./.github/instructions/documentation-pass.instructions.md`, including mandatory comments on every class, method, constructor, parameter, and non-obvious property touched by this task.
+    - Summary: Added the singleton in-memory output service with bounded retention, snapshot reads, and service-composition registration for the Workbench host and tests.
+  - [x] Task 3: Render the first output panel shell slice in `WorkbenchHost` - Completed
+    - [x] Step 1: Update `MainLayout.razor`, `MainLayout.razor.cs`, and `MainLayout.razor.css` so the shell can render a bottom output panel above the status bar using the existing grid and splitter primitives.
+    - [x] Step 2: Add the far-left `Output` toggle to the status bar and keep the panel hidden by default.
+    - [x] Step 3: Use the first-open height ratio of approximately `1* : 4*` output-to-centre when the panel becomes visible.
+    - [x] Step 4: Render a minimal compact entry list using the new output service and keep the panel empty rather than showing a dedicated empty-state message when no entries exist.
+    - [x] Step 5: Ensure the panel remains collapsed on startup even if startup entries already exist in the stream.
+    - [x] Step 6: Implement all new and updated code in full compliance with `./.github/instructions/documentation-pass.instructions.md`, including mandatory comments on every class, method, constructor, parameter, and non-obvious property touched by this task.
+    - Summary: Added the shell-owned output toggle, conditional bottom panel, first-open layout ratio, and compact chronological entry rendering without an empty-state placeholder.
+  - [x] Task 4: Route the first real shell-produced entries through the output stream - Completed
+    - [x] Step 1: Update `Program.cs` and any shell bootstrap code so at least one real shell-owned event is written into the output stream rather than relying on synthetic demo content.
+    - [x] Step 2: Keep existing `ILogger` usage intact and complement it with output-stream projection rather than replacing structured logging.
+    - [x] Step 3: Ensure the initial slice stays runnable even before the later migration of all status-bar and notification pathways is complete.
+    - [x] Step 4: Implement all new and updated code in full compliance with `./.github/instructions/documentation-pass.instructions.md`, including mandatory comments on every class, method, constructor, parameter, and non-obvious property touched by this task.
+    - Summary: Projected shell-bootstrap success and failure events into the output stream while preserving the existing structured logging and notification behavior.
+  - [x] Task 5: Add focused verification for the output foundation slice - Completed
+    - [x] Step 1: Add service tests in `test/workbench/server/UKHO.Workbench.Services.Tests` covering append order, immutability, and oldest-first eviction at the retention boundary.
+    - [x] Step 2: Add host rendering tests in `test/workbench/server/WorkbenchHost.Tests/MainLayoutRenderingTests.cs` confirming the `Output` toggle renders on the far left and the panel is hidden by default.
+    - [x] Step 3: Add focused layout verification confirming the panel appears above the status bar and below the centre pane when toggled open.
+    - [x] Step 4: Implement all new and updated code in full compliance with `./.github/instructions/documentation-pass.instructions.md`, including mandatory comments on every class, method, constructor, parameter, and non-obvious property touched by this task.
+    - Summary: Added focused service and host tests, updated module-rendering test composition for the new output dependency, and validated the slice with targeted tests plus a successful workspace build.
   - **Files**:
     - `src/Workbench/server/UKHO.Workbench/Output/OutputEntry.cs`: shared immutable output record.
     - `src/Workbench/server/UKHO.Workbench/Output/OutputLevel.cs`: shared output level enum.
@@ -84,7 +90,7 @@
 
 ## Output Toolbar and Session-State Slice
 
-- [ ] Work Item 2: Deliver a runnable output panel with toolbar actions, unseen severity, and session-resident sizing behavior
+- [x] Work Item 2: Deliver a runnable output panel with toolbar actions, unseen severity, and session-resident sizing behavior - Completed
   - **Purpose**: Make the output panel genuinely usable by adding the operational toolbar, the hidden-panel severity indicator, session-only resizing behavior, and the scroll-state rules that make the panel feel like a real IDE output surface.
   - **Acceptance Criteria**:
     - The output panel includes `Clear`, `Auto-scroll`, `Scroll to end`, `Wrap`, and copy-entry actions in a compact toolbar.
@@ -100,37 +106,42 @@
     - Documentation updated
     - `./.github/instructions/documentation-pass.instructions.md` fully applied and treated as a hard gate
     - Can execute end-to-end via: `dotnet run --project src/Workbench/server/WorkbenchHost/WorkbenchHost.csproj`
-  - [ ] Task 1: Extend shared output state for toolbar and unseen-indicator rules
-    - [ ] Step 1: Update the output state model and service behavior to track hidden-panel unseen severity, session-only height memory, wrap mode, and auto-scroll mode.
-    - [ ] Step 2: Implement the rule that opening the panel clears the hidden unseen severity indicator immediately.
-    - [ ] Step 3: Implement the rule that clearing the stream also resets the hidden unseen severity indicator and leaves the panel empty with no synthetic `Output cleared` entry.
-    - [ ] Step 4: Keep expanded-row state reset-on-reopen behavior explicit in the panel state handling.
-    - [ ] Step 5: Implement all new and updated code in full compliance with `./.github/instructions/documentation-pass.instructions.md`, including mandatory comments on every class, method, constructor, parameter, and non-obvious property touched by this task.
-  - [ ] Task 2: Add the output toolbar and scroll behaviors in the shell UI
-    - [ ] Step 1: Update `MainLayout.razor` and `MainLayout.razor.cs` so the panel renders a compact toolbar with `Clear`, `Auto-scroll`, `Scroll to end`, `Wrap`, and copy-entry commands.
-    - [ ] Step 2: Implement the rule that `Auto-scroll` disables when the user manually scrolls upward away from the newest entries.
-    - [ ] Step 3: Implement the rule that `Scroll to end` also re-enables `Auto-scroll`.
-    - [ ] Step 4: Add any minimal JS interop needed for scroll-to-end, scroll-state detection, or clipboard support without turning the panel into a JavaScript-owned widget.
-    - [ ] Step 5: Keep the toolbar compact, shell-owned, and visually aligned with the Radzen Material Workbench shell.
-    - [ ] Step 6: Implement all new and updated code in full compliance with `./.github/instructions/documentation-pass.instructions.md`, including mandatory comments on every class, method, constructor, parameter, and non-obvious property touched by this task.
-  - [ ] Task 3: Add splitter-backed output height memory for the current session
-    - [ ] Step 1: Update the shell grid composition so the output-panel boundary is resizeable after open.
-    - [ ] Step 2: Track the current-session user-adjusted height and restore it when the panel is closed and reopened in the same session.
-    - [ ] Step 3: Keep cross-session persistence out of scope unless a natural existing shell layout persistence mechanism already supports it.
-    - [ ] Step 4: Implement all new and updated code in full compliance with `./.github/instructions/documentation-pass.instructions.md`, including mandatory comments on every class, method, constructor, parameter, and non-obvious property touched by this task.
-  - [ ] Task 4: Add focused verification for toolbar and session-state behavior
-    - [ ] Step 1: Extend service tests to verify unseen severity calculation, clear behavior, and the no-synthetic-entry rule.
-    - [ ] Step 2: Extend host rendering or component-level tests to verify the toolbar actions, hidden-panel indicator behavior, and no-auto-open rule.
-    - [ ] Step 3: Add focused verification for session-only panel height restoration and auto-scroll transition rules.
-    - [ ] Step 4: Add or update Playwright coverage only if it is practical for the existing Workbench UI test setup; otherwise keep verification targeted to current host test projects plus manual validation.
-    - [ ] Step 5: Implement all new and updated code in full compliance with `./.github/instructions/documentation-pass.instructions.md`, including mandatory comments on every class, method, constructor, parameter, and non-obvious property touched by this task.
+  - Summary: Added shared panel-state tracking for hidden unseen severity, auto-scroll, wrap, expanded rows, and session height memory; implemented the output toolbar, row copy actions, JS-backed scroll and clipboard helpers, splitter-backed height restoration, focused tests, a follow-up shell-grid recreation fix for conditional output-panel rows, a pixel-token grid-size conversion fix for reopened resized panels, and a wiki update for the usable output-panel slice.
+  - [x] Task 1: Extend shared output state for toolbar and unseen-indicator rules - Completed
+    - [x] Step 1: Update the output state model and service behavior to track hidden-panel unseen severity, session-only height memory, wrap mode, and auto-scroll mode.
+    - [x] Step 2: Implement the rule that opening the panel clears the hidden unseen severity indicator immediately.
+    - [x] Step 3: Implement the rule that clearing the stream also resets the hidden unseen severity indicator and leaves the panel empty with no synthetic `Output cleared` entry.
+    - [x] Step 4: Keep expanded-row state reset-on-reopen behavior explicit in the panel state handling.
+    - [x] Step 5: Implement all new and updated code in full compliance with `./.github/instructions/documentation-pass.instructions.md`, including mandatory comments on every class, method, constructor, parameter, and non-obvious property touched by this task.
+    - Summary: Extended `OutputPanelState` and `IWorkbenchOutputService`, then taught `WorkbenchOutputService` to own hidden unseen severity, clear/reset rules, wrap and auto-scroll flags, expanded-row reset, and session-only pane height memory.
+  - [x] Task 2: Add the output toolbar and scroll behaviors in the shell UI - Completed
+    - [x] Step 1: Update `MainLayout.razor` and `MainLayout.razor.cs` so the panel renders a compact toolbar with `Clear`, `Auto-scroll`, `Scroll to end`, `Wrap`, and copy-entry commands.
+    - [x] Step 2: Implement the rule that `Auto-scroll` disables when the user manually scrolls upward away from the newest entries.
+    - [x] Step 3: Implement the rule that `Scroll to end` also re-enables `Auto-scroll`.
+    - [x] Step 4: Add any minimal JS interop needed for scroll-to-end, scroll-state detection, or clipboard support without turning the panel into a JavaScript-owned widget.
+    - [x] Step 5: Keep the toolbar compact, shell-owned, and visually aligned with the Radzen Material Workbench shell.
+    - [x] Step 6: Implement all new and updated code in full compliance with `./.github/instructions/documentation-pass.instructions.md`, including mandatory comments on every class, method, constructor, parameter, and non-obvious property touched by this task.
+    - Summary: Updated `MainLayout` to render the compact output toolbar, hidden unseen-level indicator, wrap styling, and per-entry copy action, and added a component-scoped JS module for scroll tracking, scroll-to-end, and clipboard support.
+  - [x] Task 3: Add splitter-backed output height memory for the current session - Completed
+    - [x] Step 1: Update the shell grid composition so the output-panel boundary is resizeable after open.
+    - [x] Step 2: Track the current-session user-adjusted height and restore it when the panel is closed and reopened in the same session.
+    - [x] Step 3: Keep cross-session persistence out of scope unless a natural existing shell layout persistence mechanism already supports it.
+    - [x] Step 4: Implement all new and updated code in full compliance with `./.github/instructions/documentation-pass.instructions.md`, including mandatory comments on every class, method, constructor, parameter, and non-obvious property touched by this task.
+    - Summary: Wired the outer shell grid resize callback into the shared output-panel state so splitter changes persist for the current session and reopen at the last user-adjusted height, then corrected the shell layout by recreating the outer grid when the output-panel visibility changes so conditional splitter rows and the status bar start from a clean track-registration state, and updated the grid size converter to accept restored CSS pixel tokens such as `559.39px`.
+  - [x] Task 4: Add focused verification for toolbar and session-state behavior - Completed
+    - [x] Step 1: Extend service tests to verify unseen severity calculation, clear behavior, and the no-synthetic-entry rule.
+    - [x] Step 2: Extend host rendering or component-level tests to verify the toolbar actions, hidden-panel indicator behavior, and no-auto-open rule.
+    - [x] Step 3: Add focused verification for session-only panel height restoration and auto-scroll transition rules.
+    - [x] Step 4: Add or update Playwright coverage only if it is practical for the existing Workbench UI test setup; otherwise keep verification targeted to current host test projects plus manual validation.
+    - [x] Step 5: Implement all new and updated code in full compliance with `./.github/instructions/documentation-pass.instructions.md`, including mandatory comments on every class, method, constructor, parameter, and non-obvious property touched by this task.
+    - Summary: Added focused service and host tests for unseen severity, toolbar rendering, no-auto-open behavior, session height restoration, and auto-scroll transitions, then validated the slice with a successful workspace build plus targeted test runs.
   - **Files**:
     - `src/Workbench/server/UKHO.Workbench/Output/OutputPanelState.cs`: extend session-state shape.
     - `src/Workbench/server/UKHO.Workbench.Services/Output/WorkbenchOutputService.cs`: unseen-severity, clear, and retention behavior.
     - `src/Workbench/server/WorkbenchHost/Components/Layout/MainLayout.razor`: toolbar markup and hidden-panel indicator rendering.
     - `src/Workbench/server/WorkbenchHost/Components/Layout/MainLayout.razor.cs`: toolbar actions, scroll coordination, and session height memory.
     - `src/Workbench/server/WorkbenchHost/Components/Layout/MainLayout.razor.css`: toolbar and indicator styling.
-    - `src/Workbench/server/WorkbenchHost/wwwroot/...`: minimal output-panel JS helpers for scrolling or clipboard, if required.
+    - `src/Workbench/server/WorkbenchHost/Components/Layout/MainLayout.razor.js`: minimal output-panel JS helpers for scrolling or clipboard.
     - `test/workbench/server/UKHO.Workbench.Services.Tests/...`: unseen severity and clear behavior tests.
     - `test/workbench/server/WorkbenchHost.Tests/MainLayoutRenderingTests.cs`: toolbar and indicator rendering tests.
   - **Work Item Dependencies**: Depends on Work Item 1.
@@ -144,7 +155,7 @@
 
 ## Structured Output Rendering Slice
 
-- [ ] Work Item 3: Deliver a runnable compact row-based output surface with expansion, copy, wrap, and horizontal scrolling behavior
+- [x] Work Item 3: Deliver a runnable compact row-based output surface with expansion, copy, wrap, and horizontal scrolling behavior - Completed
   - **Purpose**: Move the output panel from a basic stream viewer to the specified compact IDE-like presentation by rendering structured rows with timestamps, sources, subtle level markers, chevron-only expansion, and details that remain useful for developer diagnostics.
   - **Acceptance Criteria**:
     - Collapsed rows show timestamp, source, and summary by default.
@@ -161,32 +172,38 @@
     - Documentation updated
     - `./.github/instructions/documentation-pass.instructions.md` fully applied and treated as a hard gate
     - Can execute end-to-end via: `dotnet run --project src/Workbench/server/WorkbenchHost/WorkbenchHost.csproj`
-  - [ ] Task 1: Create focused output-row rendering components in `WorkbenchHost`
-    - [ ] Step 1: Introduce small shell-owned Blazor components or focused markup regions for output-row rendering rather than letting `MainLayout` grow unbounded.
-    - [ ] Step 2: Render timestamp, source, and summary in the compact row layout and keep the level indication visual rather than textual.
-    - [ ] Step 3: Keep the row density editor-like and avoid card-style layouts or large vertical padding.
-    - [ ] Step 4: Respect light and dark shell themes using the existing Workbench theming direction and CSS variables where appropriate.
-    - [ ] Step 5: Implement all new and updated code in full compliance with `./.github/instructions/documentation-pass.instructions.md`, including mandatory comments on every class, method, constructor, parameter, and non-obvious property touched by this task.
-  - [ ] Task 2: Add expansion, details rendering, and copy-entry behavior
-    - [ ] Step 1: Add a disclosure affordance that expands or collapses a row without turning the whole row into a click target.
-    - [ ] Step 2: Allow multiple rows to remain expanded at the same time.
-    - [ ] Step 3: Render details inline beneath the summary line, preserve whitespace and line breaks, and surface optional event codes there only.
-    - [ ] Step 4: Implement copy behavior for the expanded or otherwise targeted entry only, without adding a general row-selection model.
-    - [ ] Step 5: Reset expanded-row state when the panel is closed and reopened in the same session.
-    - [ ] Step 6: Implement all new and updated code in full compliance with `./.github/instructions/documentation-pass.instructions.md`, including mandatory comments on every class, method, constructor, parameter, and non-obvious property touched by this task.
-  - [ ] Task 3: Finalize wrap and horizontal-scroll presentation rules
-    - [ ] Step 1: Wire the visible `Wrap` toggle into both collapsed and expanded presentation as defined by the specification.
-    - [ ] Step 2: Ensure expanded details follow the global wrap setting rather than a separate details-only setting.
-    - [ ] Step 3: Support horizontal scrolling when wrap is disabled and keep that behavior usable for long diagnostic content.
-    - [ ] Step 4: Keep the implementation accessible and keyboard-usable without adding a first-version keyboard shortcut.
-    - [ ] Step 5: Implement all new and updated code in full compliance with `./.github/instructions/documentation-pass.instructions.md`, including mandatory comments on every class, method, constructor, parameter, and non-obvious property touched by this task.
-  - [ ] Task 4: Add focused verification for structured output rendering
-    - [ ] Step 1: Add host rendering tests confirming timestamps and sources appear in collapsed rows and event codes do not.
-    - [ ] Step 2: Add tests confirming expansion is chevron-only, multiple rows can stay expanded, and expanded content follows the wrap toggle.
-    - [ ] Step 3: Add tests or focused manual verification for horizontal scrolling when wrap is disabled and for copy-entry behavior.
-    - [ ] Step 4: Implement all new and updated code in full compliance with `./.github/instructions/documentation-pass.instructions.md`, including mandatory comments on every class, method, constructor, parameter, and non-obvious property touched by this task.
+  - Summary: Added a focused `WorkbenchOutputRow` component, converted the output panel to compact structured rows with chevron-driven expansion and inline details, moved copy actions into expanded rows, applied wrap-aware horizontal scrolling, extended host rendering tests, and updated the wiki for the structured output slice.
+  - [x] Task 1: Create focused output-row rendering components in `WorkbenchHost` - Completed
+    - [x] Step 1: Introduce small shell-owned Blazor components or focused markup regions for output-row rendering rather than letting `MainLayout` grow unbounded.
+    - [x] Step 2: Render timestamp, source, and summary in the compact row layout and keep the level indication visual rather than textual.
+    - [x] Step 3: Keep the row density editor-like and avoid card-style layouts or large vertical padding.
+    - [x] Step 4: Respect light and dark shell themes using the existing Workbench theming direction and CSS variables where appropriate.
+    - [x] Step 5: Implement all new and updated code in full compliance with `./.github/instructions/documentation-pass.instructions.md`, including mandatory comments on every class, method, constructor, parameter, and non-obvious property touched by this task.
+    - Summary: Added the shell-owned `WorkbenchOutputRow` Blazor component, integrated it into `MainLayout`, and updated the output-row styling for compact timestamp, source, summary, and visual severity rendering.
+  - [x] Task 2: Add expansion, details rendering, and copy-entry behavior - Completed
+    - [x] Step 1: Add a disclosure affordance that expands or collapses a row without turning the whole row into a click target.
+    - [x] Step 2: Allow multiple rows to remain expanded at the same time.
+    - [x] Step 3: Render details inline beneath the summary line, preserve whitespace and line breaks, and surface optional event codes there only.
+    - [x] Step 4: Implement copy behavior for the expanded or otherwise targeted entry only, without adding a general row-selection model.
+    - [x] Step 5: Reset expanded-row state when the panel is closed and reopened in the same session.
+    - [x] Step 6: Implement all new and updated code in full compliance with `./.github/instructions/documentation-pass.instructions.md`, including mandatory comments on every class, method, constructor, parameter, and non-obvious property touched by this task.
+    - Summary: Added chevron-only row expansion, centralized expanded-row toggling in `MainLayout`, rendered inline details and event codes only for expanded rows, and limited copy actions to expanded entries.
+  - [x] Task 3: Finalize wrap and horizontal-scroll presentation rules - Completed
+    - [x] Step 1: Wire the visible `Wrap` toggle into both collapsed and expanded presentation as defined by the specification.
+    - [x] Step 2: Ensure expanded details follow the global wrap setting rather than a separate details-only setting.
+    - [x] Step 3: Support horizontal scrolling when wrap is disabled and keep that behavior usable for long diagnostic content.
+    - [x] Step 4: Keep the implementation accessible and keyboard-usable without adding a first-version keyboard shortcut.
+    - [x] Step 5: Implement all new and updated code in full compliance with `./.github/instructions/documentation-pass.instructions.md`, including mandatory comments on every class, method, constructor, parameter, and non-obvious property touched by this task.
+    - Summary: Applied the shared wrap mode to compact rows and expanded details, exposed wrap versus horizontal scroll state in the rendered output surface, and refined keyboard-usable disclosure and copy controls.
+  - [x] Task 4: Add focused verification for structured output rendering - Completed
+    - [x] Step 1: Add host rendering tests confirming timestamps and sources appear in collapsed rows and event codes do not.
+    - [x] Step 2: Add tests confirming expansion is chevron-only, multiple rows can stay expanded, and expanded content follows the wrap toggle.
+    - [x] Step 3: Add tests or focused manual verification for horizontal scrolling when wrap is disabled and for copy-entry behavior.
+    - [x] Step 4: Implement all new and updated code in full compliance with `./.github/instructions/documentation-pass.instructions.md`, including mandatory comments on every class, method, constructor, parameter, and non-obvious property touched by this task.
+    - Summary: Added focused host rendering coverage for collapsed row content, multi-row expansion, expanded copy actions, and wrap-versus-horizontal-scroll output rendering, then validated the slice with a successful targeted host build and test run.
   - **Files**:
-    - `src/Workbench/server/WorkbenchHost/Components/Layout/...`: new output-row component files if the layout is decomposed.
+    - `src/Workbench/server/WorkbenchHost/Components/Layout/WorkbenchOutputRow.razor`: compact structured output-row markup.
+    - `src/Workbench/server/WorkbenchHost/Components/Layout/WorkbenchOutputRow.razor.cs`: documented row component parameters and callbacks.
     - `src/Workbench/server/WorkbenchHost/Components/Layout/MainLayout.razor`: host integration for output-row components.
     - `src/Workbench/server/WorkbenchHost/Components/Layout/MainLayout.razor.cs`: expansion, wrap, and copy orchestration.
     - `src/Workbench/server/WorkbenchHost/Components/Layout/MainLayout.razor.css`: compact row, details, severity marker, and wrap/scroll styling.
@@ -202,7 +219,7 @@
 
 ## Producer Migration and Status-Bar Simplification Slice
 
-- [ ] Work Item 4: Deliver a runnable output-first shell by migrating startup, notification, and status-bar reporting into the output stream
+- [x] Work Item 4: Deliver a runnable output-first shell by migrating startup, notification, and status-bar reporting into the output stream - Completed
   - **Purpose**: Complete the feature by moving the historical and contextual reporting behaviors defined in the specification away from the status bar and into the shell-wide output stream while preserving concise shell affordances and existing structured logging.
   - **Acceptance Criteria**:
     - Module-loading success messages are written to the output stream as `Debug` entries.
@@ -218,27 +235,32 @@
     - Documentation updated
     - `./.github/instructions/documentation-pass.instructions.md` fully applied and treated as a hard gate
     - Can execute end-to-end via: `dotnet run --project src/Workbench/server/WorkbenchHost/WorkbenchHost.csproj`
-  - [ ] Task 1: Migrate host startup and module-loading messages into the output stream
-    - [ ] Step 1: Update `Program.cs`, startup helper services, and any module-loading orchestration so successful module discovery and loading produce `Debug` output entries.
-    - [ ] Step 2: Keep failure handling dual-pathed where required: structured logging via `ILogger`, user-safe notifications where appropriate, and `Warning` or `Error` output entries in the shell stream.
-    - [ ] Step 3: Ensure the projected output entries use meaningful `Source` values such as shell or module-loader identifiers.
-    - [ ] Step 4: Implement all new and updated code in full compliance with `./.github/instructions/documentation-pass.instructions.md`, including mandatory comments on every class, method, constructor, parameter, and non-obvious property touched by this task.
-  - [ ] Task 2: Project toast and notification messages into the output stream
-    - [ ] Step 1: Update the existing startup-notification and runtime notification pathways so user-facing notifications are also mirrored into the output stream.
-    - [ ] Step 2: Preserve user-safe wording in the output stream and avoid projecting sensitive or overly technical detail where the specification does not allow it.
-    - [ ] Step 3: Keep notification projection additive so existing notification UX continues to function where still required.
-    - [ ] Step 4: Implement all new and updated code in full compliance with `./.github/instructions/documentation-pass.instructions.md`, including mandatory comments on every class, method, constructor, parameter, and non-obvious property touched by this task.
-  - [ ] Task 3: Simplify the status bar and move context reporting into output events
-    - [ ] Step 1: Review current `StatusBarContribution` and context-value rendering in `MainLayout.razor` and identify which items are historical or contextual rather than truly persistent shell affordances.
-    - [ ] Step 2: Move current shell context values from persistent right-aligned status-bar rendering into output events.
-    - [ ] Step 3: Move host- or tool-contributed readiness messages that are historical by nature into output entries.
-    - [ ] Step 4: Leave the status bar focused on the `Output` toggle and any concise affordance-level shell state that still makes sense after the migration.
-    - [ ] Step 5: Implement all new and updated code in full compliance with `./.github/instructions/documentation-pass.instructions.md`, including mandatory comments on every class, method, constructor, parameter, and non-obvious property touched by this task.
-  - [ ] Task 4: Update tests and Workbench documentation for the completed shell output feature
-    - [ ] Step 1: Add or update focused tests confirming module-loading diagnostics, notification mirroring, and status-bar simplification now flow through the output service.
-    - [ ] Step 2: Update `wiki/Workbench-Shell.md` so the Workbench shell documentation describes the output panel, the output-first developer trace, and the reduced status-bar role.
-    - [ ] Step 3: Update any nearby documentation in the work-package folder if implementation details require alignment with the final delivered behavior.
-    - [ ] Step 4: Implement all new and updated code in full compliance with `./.github/instructions/documentation-pass.instructions.md`, including mandatory comments on every class, method, constructor, parameter, and non-obvious property touched by this task.
+  - Summary: Buffered module-loader startup diagnostics for replay into the shared output stream, mirrored startup and runtime notifications into output, projected shell context and historical status messages into output events, simplified the status bar to the `Output` affordance, added focused host verification, and updated the Workbench shell wiki for the output-first behaviour.
+  - [x] Task 1: Migrate host startup and module-loading messages into the output stream - Completed
+    - [x] Step 1: Update `Program.cs`, startup helper services, and any module-loading orchestration so successful module discovery and loading produce `Debug` output entries.
+    - [x] Step 2: Keep failure handling dual-pathed where required: structured logging via `ILogger`, user-safe notifications where appropriate, and `Warning` or `Error` output entries in the shell stream.
+    - [x] Step 3: Ensure the projected output entries use meaningful `Source` values such as shell or module-loader identifiers.
+    - [x] Step 4: Implement all new and updated code in full compliance with `./.github/instructions/documentation-pass.instructions.md`, including mandatory comments on every class, method, constructor, parameter, and non-obvious property touched by this task.
+    - Summary: Extended `WorkbenchStartupNotificationStore` to buffer startup output, updated `Program.cs` to record module-loader success and failure diagnostics with `Module loader` and `Shell` sources, replayed buffered startup output during bootstrap, and moved the host-ready message from the status bar into the output stream.
+  - [x] Task 2: Project toast and notification messages into the output stream - Completed
+    - [x] Step 1: Update the existing startup-notification and runtime notification pathways so user-facing notifications are also mirrored into the output stream.
+    - [x] Step 2: Preserve user-safe wording in the output stream and avoid projecting sensitive or overly technical detail where the specification does not allow it.
+    - [x] Step 3: Keep notification projection additive so existing notification UX continues to function where still required.
+    - [x] Step 4: Implement all new and updated code in full compliance with `./.github/instructions/documentation-pass.instructions.md`, including mandatory comments on every class, method, constructor, parameter, and non-obvious property touched by this task.
+    - Summary: Mirrored startup and runtime notifications into the shared output stream under the `Notifications` source while preserving the existing toast behaviour and user-safe wording.
+  - [x] Task 3: Simplify the status bar and move context reporting into output events - Completed
+    - [x] Step 1: Review current `StatusBarContribution` and context-value rendering in `MainLayout.razor` and identify which items are historical or contextual rather than truly persistent shell affordances.
+    - [x] Step 2: Move current shell context values from persistent right-aligned status-bar rendering into output events.
+    - [x] Step 3: Move host- or tool-contributed readiness messages that are historical by nature into output entries.
+    - [x] Step 4: Leave the status bar focused on the `Output` toggle and any concise affordance-level shell state that still makes sense after the migration.
+    - [x] Step 5: Implement all new and updated code in full compliance with `./.github/instructions/documentation-pass.instructions.md`, including mandatory comments on every class, method, constructor, parameter, and non-obvious property touched by this task.
+    - Summary: Removed persistent status and context rendering from `MainLayout`, projected shell context snapshots into `Shell context` output entries, projected historical status contributions into `Status` output entries, and kept the status bar focused on the output toggle plus unseen-severity indicator.
+  - [x] Task 4: Update tests and Workbench documentation for the completed shell output feature - Completed
+    - [x] Step 1: Add or update focused tests confirming module-loading diagnostics, notification mirroring, and status-bar simplification now flow through the output service.
+    - [x] Step 2: Update `wiki/Workbench-Shell.md` so the Workbench shell documentation describes the output panel, the output-first developer trace, and the reduced status-bar role.
+    - [x] Step 3: Update any nearby documentation in the work-package folder if implementation details require alignment with the final delivered behavior.
+    - [x] Step 4: Implement all new and updated code in full compliance with `./.github/instructions/documentation-pass.instructions.md`, including mandatory comments on every class, method, constructor, parameter, and non-obvious property touched by this task.
+    - Summary: Updated host rendering coverage for startup-output replay, notification mirroring, and simplified status-bar behaviour, then refreshed the Workbench shell wiki and this implementation plan to reflect the completed output-first shell slice.
   - **Files**:
     - `src/Workbench/server/WorkbenchHost/Program.cs`: module-loading output projection and notification mirroring.
     - `src/Workbench/server/WorkbenchHost/Services/WorkbenchStartupNotificationStore.cs`: startup notification integration with the output stream if needed.

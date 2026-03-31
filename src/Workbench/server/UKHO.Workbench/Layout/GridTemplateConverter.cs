@@ -9,7 +9,8 @@ namespace UKHO.Workbench.Layout
 	/// </summary>
 	public class GridTemplateConverter : IEnumerable<string>
 	{
-		private static readonly Regex FixedSizePattern = new Regex("^[0-9]*$", RegexOptions.Compiled);
+      private static readonly Regex FixedSizePattern = new Regex("^[0-9]+(\\.[0-9]+)?$", RegexOptions.Compiled);
+		private static readonly Regex PixelSizePattern = new Regex("^[0-9]+(\\.[0-9]+)?px$", RegexOptions.Compiled | RegexOptions.IgnoreCase);
 		private static readonly Regex ProportionPattern = new Regex("^[0-9]*\\*$", RegexOptions.Compiled);
 		private readonly List<string> _convertedData = new List<string>();
 
@@ -100,6 +101,12 @@ namespace UKHO.Workbench.Layout
 			if (FixedSizePattern.IsMatch(data!))
 			{
 				return data + "px";
+			}
+
+			if (PixelSizePattern.IsMatch(data))
+			{
+				// Resized Workbench grid tracks are restored as CSS pixel tokens, so already-resolved pixel sizes should round-trip unchanged.
+				return data;
 			}
 
 			if (ProportionPattern.IsMatch(data!))

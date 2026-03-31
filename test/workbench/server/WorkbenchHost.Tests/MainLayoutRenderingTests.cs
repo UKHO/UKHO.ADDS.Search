@@ -6,8 +6,10 @@ using Microsoft.JSInterop;
 using Radzen;
 using System.Reflection;
 using Shouldly;
+using UKHO.Workbench.Layout;
 using UKHO.Workbench.Commands;
 using UKHO.Workbench.Explorers;
+using UKHO.Workbench.Output;
 using UKHO.Workbench.Services;
 using UKHO.Workbench.Services.Shell;
 using UKHO.Workbench.Tools;
@@ -31,8 +33,6 @@ namespace WorkbenchHost.Tests
         private const string OverviewCommandId = "command.host.open-overview";
         private const string OverviewMenuId = "menu.host.overview";
         private const string OverviewToolbarId = "toolbar.host.overview";
-        private const string HostReadyStatusId = "status.host.ready";
-
         /// <summary>
         /// Confirms the layout renders the full shell structure, including the visible tab strip above the center surface.
         /// </summary>
@@ -42,8 +42,10 @@ namespace WorkbenchHost.Tests
             // The renderer uses the same shell manager and Radzen registrations as the host so the markup reflects the real shell composition.
             await using var serviceProvider = CreateServiceProvider();
             var shellManager = serviceProvider.GetRequiredService<WorkbenchShellManager>();
+            var outputService = serviceProvider.GetRequiredService<IWorkbenchOutputService>();
             SeedHostShell(shellManager);
             shellManager.ActivateTool(ActivationTarget.CreateToolSurfaceTarget(OverviewToolId));
+            outputService.Write(OutputLevel.Info, "Shell", "Workbench shell bootstrap completed.");
 
             var renderer = new HtmlRenderer(serviceProvider, serviceProvider.GetRequiredService<ILoggerFactory>());
             var html = await RenderLayoutAsync(renderer);
@@ -54,11 +56,281 @@ namespace WorkbenchHost.Tests
             html.ShouldContain("data-region=\"tool-surface\"");
             html.ShouldContain("data-region=\"tab-strip\"");
             html.ShouldContain("data-region=\"status-bar\"");
+            html.ShouldContain("data-role=\"output-toggle\"");
             html.ShouldContain("Workbench overview");
             html.ShouldContain("Home");
             html.ShouldContain("aria-label=\"Workbench\"");
             html.ShouldNotContain("Active tab");
             html.ShouldContain("BodyMarker");
+        }
+
+        /// <summary>
+        /// Confirms the output toggle renders at the far-left side of the status bar while the panel itself stays hidden by default.
+        /// </summary>
+        [Fact]
+        public async Task RenderTheOutputToggleOnTheFarLeftAndKeepThePanelHiddenByDefault()
+        {
+            // Startup entries may already exist, but the first slice still requires the panel to stay collapsed until the user opens it.
+            await using var serviceProvider = CreateServiceProvider();
+            var shellManager = serviceProvider.GetRequiredService<WorkbenchShellManager>();
+            var outputService = serviceProvider.GetRequiredService<IWorkbenchOutputService>();
+            SeedHostShell(shellManager);
+            shellManager.ActivateTool(ActivationTarget.CreateToolSurfaceTarget(OverviewToolId));
+            outputService.Write(OutputLevel.Info, "Shell", "Workbench shell bootstrap completed.");
+
+            var renderer = new HtmlRenderer(serviceProvider, serviceProvider.GetRequiredService<ILoggerFactory>());
+            var html = await RenderLayoutAsync(renderer);
+            var outputToggleIndex = html.IndexOf("data-role=\"output-toggle\"", StringComparison.Ordinal);
+
+            html.ShouldContain("data-output-toggle-state=\"collapsed\"");
+            html.ShouldContain("aria-expanded=\"false\"");
+            html.ShouldNotContain("data-region=\"output-panel\"");
+            html.ShouldNotContain("Workbench shell ready");
+            html.ShouldNotContain("workbench.activeTool:");
+            outputToggleIndex.ShouldBeGreaterThanOrEqualTo(0);
+        }
+
+        /// <summary>
+        /// Confirms opening the output panel applies the expected layout ordering above the status bar and below the centre working area.
+        /// </summary>
+        [Fact]
+        public async Task PlaceTheOpenedOutputPanelAboveTheStatusBarAndBelowTheWorkingArea()
+        {
+            // The first-open layout must keep the output pane between the centre surface and the status bar while using the planned 1:4 split.
+            using var serviceProvider = CreateServiceProvider();
+            var shellManager = serviceProvider.GetRequiredService<WorkbenchShellManager>();
+            SeedHostShell(shellManager);
+            var layout = CreateLayoutInstance(serviceProvider, shellManager);
+
+            await InvokePrivateMethodAsync(layout, "ToggleOutputPanelAsync");
+
+            var outputPanelState = GetPrivatePropertyValue<OutputPanelState>(layout, "OutputPanelState");
+            var workingAreaRow = GetPrivatePropertyValue<int>(layout, "WorkingAreaRow");
+            var outputPanelRow = GetPrivatePropertyValue<int>(layout, "OutputPanelRow");
+            var statusBarRow = GetPrivatePropertyValue<int>(layout, "StatusBarRow");
+            var workingAreaHeight = GetPrivatePropertyValue<string>(layout, "WorkingAreaHeight");
+            var outputPaneHeight = GetPrivatePropertyValue<string>(layout, "OutputPaneHeight");
+
+            outputPanelState.IsVisible.ShouldBeTrue();
+            workingAreaHeight.ShouldBe("4*");
+            outputPaneHeight.ShouldBe("1*");
+            outputPanelRow.ShouldBeGreaterThan(workingAreaRow);
+            statusBarRow.ShouldBeGreaterThan(outputPanelRow);
+        }
+
+        /// <summary>
+        /// Confirms the opened panel renders the compact toolbar actions required for the session-state slice.
+        /// </summary>
+        [Fact]
+        public async Task RenderTheOutputToolbarWhenThePanelIsVisible()
+        {
+            // The second slice turns the panel into a usable output surface, so the toolbar actions should render only when the panel is open.
+            await using var serviceProvider = CreateServiceProvider();
+            var shellManager = serviceProvider.GetRequiredService<WorkbenchShellManager>();
+            var outputService = serviceProvider.GetRequiredService<IWorkbenchOutputService>();
+            SeedHostShell(shellManager);
+            shellManager.ActivateTool(ActivationTarget.CreateToolSurfaceTarget(OverviewToolId));
+            outputService.Write(OutputLevel.Info, "Shell", "Workbench shell bootstrap completed.");
+            outputService.SetPanelVisibility(true);
+
+            var renderer = new HtmlRenderer(serviceProvider, serviceProvider.GetRequiredService<ILoggerFactory>());
+            var html = await RenderLayoutAsync(renderer);
+
+            html.ShouldContain("data-region=\"output-panel\"");
+            html.ShouldContain("data-role=\"output-clear\"");
+            html.ShouldContain("data-role=\"output-auto-scroll\"");
+            html.ShouldContain("data-role=\"output-scroll-to-end\"");
+            html.ShouldContain("data-role=\"output-wrap\"");
+        }
+
+        /// <summary>
+        /// Confirms hidden unseen severity appears on the collapsed toggle without auto-opening the panel.
+        /// </summary>
+        [Fact]
+        public async Task ShowTheMostSevereHiddenIndicatorWithoutAutoOpeningThePanel()
+        {
+            // Unseen warnings and errors should surface on the collapsed toggle so the panel stays hidden until the user chooses to inspect it.
+            await using var serviceProvider = CreateServiceProvider();
+            var shellManager = serviceProvider.GetRequiredService<WorkbenchShellManager>();
+            var outputService = serviceProvider.GetRequiredService<IWorkbenchOutputService>();
+            SeedHostShell(shellManager);
+            shellManager.ActivateTool(ActivationTarget.CreateToolSurfaceTarget(OverviewToolId));
+            outputService.Write(OutputLevel.Warning, "Shell", "A warning was written while the panel was collapsed.");
+
+            var renderer = new HtmlRenderer(serviceProvider, serviceProvider.GetRequiredService<ILoggerFactory>());
+            var html = await RenderLayoutAsync(renderer);
+
+            html.ShouldContain("data-output-toggle-state=\"collapsed\"");
+            html.ShouldContain("data-output-unseen-level=\"warning\"");
+            html.ShouldNotContain("data-region=\"output-panel\"");
+        }
+
+        /// <summary>
+        /// Confirms collapsed structured rows render only the compact timestamp, source, summary, and visual severity marker content.
+        /// </summary>
+        [Fact]
+        public async Task RenderCompactCollapsedOutputRowsWithoutExpandedDetailsOrEventCodes()
+        {
+            // The structured row slice keeps collapsed rows dense, so only the timestamp, source, summary, and disclosure affordance should render by default.
+            await using var serviceProvider = CreateServiceProvider();
+            var shellManager = serviceProvider.GetRequiredService<WorkbenchShellManager>();
+            var outputService = serviceProvider.GetRequiredService<IWorkbenchOutputService>();
+            SeedHostShell(shellManager);
+            shellManager.ActivateTool(ActivationTarget.CreateToolSurfaceTarget(OverviewToolId));
+            outputService.SetPanelVisibility(true);
+
+            var outputEntry = CreateOutputEntry(
+                "entry-collapsed",
+                OutputLevel.Warning,
+                "Module loader",
+                "Search module loaded with warnings.",
+                "The module emitted additional diagnostic detail.",
+                "WB-103");
+            outputService.Write(outputEntry);
+
+            var renderer = new HtmlRenderer(serviceProvider, serviceProvider.GetRequiredService<ILoggerFactory>());
+            var html = await RenderLayoutAsync(renderer);
+
+            html.ShouldContain("data-role=\"output-entry-toggle\"");
+            html.ShouldContain($"data-output-entry-id=\"{outputEntry.Id}\"");
+            html.ShouldContain($"data-output-level=\"{outputEntry.Level.ToString().ToLowerInvariant()}\"");
+            html.ShouldContain(outputEntry.TimestampUtc.ToLocalTime().ToString("HH:mm:ss"));
+            html.ShouldContain(outputEntry.Source);
+            html.ShouldContain(outputEntry.Summary);
+            html.ShouldNotContain(outputEntry.Details!);
+            html.ShouldNotContain($"Event code: {outputEntry.EventCode}");
+            html.ShouldNotContain("data-role=\"output-copy-entry\"");
+        }
+
+        /// <summary>
+        /// Confirms multiple rows can remain expanded simultaneously and render inline details plus copy actions.
+        /// </summary>
+        [Fact]
+        public async Task KeepMultipleOutputRowsExpandedAtTheSameTimeAndRenderTheirDetails()
+        {
+            // The disclosure control owns expansion, and the shell should allow several diagnostics to stay open together without introducing row selection state.
+            await using var serviceProvider = CreateServiceProvider();
+            var shellManager = serviceProvider.GetRequiredService<WorkbenchShellManager>();
+            var outputService = serviceProvider.GetRequiredService<IWorkbenchOutputService>();
+            SeedHostShell(shellManager);
+            outputService.SetPanelVisibility(true);
+
+            var firstEntry = CreateOutputEntry(
+                "entry-expanded-1",
+                OutputLevel.Info,
+                "Shell",
+                "Workbench overview activated.",
+                "Overview tab restored its previous state.",
+                "WB-201");
+            var secondEntry = CreateOutputEntry(
+                "entry-expanded-2",
+                OutputLevel.Error,
+                "Module loader",
+                "Administration module failed to initialise.",
+                "The module assembly could not load a dependent service.",
+                "WB-202");
+            outputService.Write(firstEntry);
+            outputService.Write(secondEntry);
+
+            var layout = CreateLayoutInstance(serviceProvider, shellManager);
+            await InvokePrivateMethodAsync(layout, "ToggleOutputEntryExpansionAsync", firstEntry);
+            await InvokePrivateMethodAsync(layout, "ToggleOutputEntryExpansionAsync", secondEntry);
+
+            var renderer = new HtmlRenderer(serviceProvider, serviceProvider.GetRequiredService<ILoggerFactory>());
+            var html = await RenderLayoutAsync(renderer);
+
+            outputService.PanelState.ExpandedEntryIds.ShouldBe([firstEntry.Id, secondEntry.Id]);
+            html.ShouldContain($"data-output-entry-id=\"{firstEntry.Id}\"");
+            html.ShouldContain($"data-output-entry-id=\"{secondEntry.Id}\"");
+            html.ShouldContain("data-output-expanded=\"true\"");
+            html.ShouldContain(firstEntry.Details!);
+            html.ShouldContain(secondEntry.Details!);
+            html.ShouldContain($"Event code: {firstEntry.EventCode}");
+            html.ShouldContain($"Event code: {secondEntry.EventCode}");
+            CountOccurrences(html, "data-role=\"output-copy-entry\"").ShouldBe(2);
+        }
+
+        /// <summary>
+        /// Confirms expanded details follow the shared wrap toggle and expose the output scroll mode required for long diagnostic content.
+        /// </summary>
+        [Fact]
+        public async Task ApplyTheSharedWrapModeToExpandedOutputDetailsAndScrollState()
+        {
+            // Wrap is a global output-surface setting, so both the summary row and inline details should switch modes together.
+            await using var serviceProvider = CreateServiceProvider();
+            var shellManager = serviceProvider.GetRequiredService<WorkbenchShellManager>();
+            var outputService = serviceProvider.GetRequiredService<IWorkbenchOutputService>();
+            SeedHostShell(shellManager);
+            outputService.SetPanelVisibility(true);
+
+            var outputEntry = CreateOutputEntry(
+                "entry-wrap",
+                OutputLevel.Debug,
+                "Shell",
+                "Long diagnostic summary for wrap verification.",
+                "First detail line.\nSecond detail line with additional diagnostic content.",
+                "WB-301");
+            outputService.Write(outputEntry);
+            outputService.SetExpandedEntryIds([outputEntry.Id]);
+
+            var renderer = new HtmlRenderer(serviceProvider, serviceProvider.GetRequiredService<ILoggerFactory>());
+            var nowrapHtml = await RenderLayoutAsync(renderer);
+
+            nowrapHtml.ShouldContain("data-output-scroll-mode=\"horizontal\"");
+            nowrapHtml.ShouldContain("data-output-wrap-mode=\"nowrap\"");
+            nowrapHtml.ShouldNotContain("workbench-shell__output-stream--wrapped");
+
+            var layout = CreateLayoutInstance(serviceProvider, shellManager);
+            await InvokePrivateMethodAsync(layout, "ToggleWordWrapAsync");
+
+            var wrappedHtml = await RenderLayoutAsync(renderer);
+
+            wrappedHtml.ShouldContain("data-output-scroll-mode=\"wrapped\"");
+            wrappedHtml.ShouldContain("data-output-wrap-mode=\"wrapped\"");
+            wrappedHtml.ShouldContain("workbench-shell__output-stream--wrapped");
+            wrappedHtml.ShouldContain("First detail line.");
+            wrappedHtml.ShouldContain("Second detail line with additional diagnostic content.");
+        }
+
+        /// <summary>
+        /// Confirms session resize memory and auto-scroll state transitions are coordinated through the layout handlers.
+        /// </summary>
+        [Fact]
+        public async Task RestoreTheResizedPanelHeightAndToggleAutoScrollThroughTheLayoutHandlers()
+        {
+            // The shell should preserve the user's in-session splitter size and should disable or re-enable auto-scroll through the expected interaction paths.
+            using var serviceProvider = CreateServiceProvider();
+            var shellManager = serviceProvider.GetRequiredService<WorkbenchShellManager>();
+            var outputService = serviceProvider.GetRequiredService<IWorkbenchOutputService>();
+            SeedHostShell(shellManager);
+            var layout = CreateLayoutInstance(serviceProvider, shellManager);
+
+            await InvokePrivateMethodAsync(layout, "ToggleOutputPanelAsync");
+            await InvokePrivateMethodAsync(
+                layout,
+                "HandleOutputPanelResizeAsync",
+                new GridResizeNotification(
+                    GridResizeDirection.Row,
+                    4,
+                    3,
+                    5,
+                    640,
+                    160,
+                    "48px 44px 640px 4px 160px 30px"));
+            await InvokePrivateMethodAsync(layout, "NotifyOutputViewportStateAsync", false);
+
+            outputService.PanelState.CenterPaneHeight.ShouldBe("640px");
+            outputService.PanelState.OutputPaneHeight.ShouldBe("160px");
+            outputService.PanelState.IsAutoScrollEnabled.ShouldBeFalse();
+
+            await InvokePrivateMethodAsync(layout, "ToggleOutputPanelAsync");
+            await InvokePrivateMethodAsync(layout, "ToggleOutputPanelAsync");
+
+            outputService.PanelState.OutputPaneHeight.ShouldBe("160px");
+
+            await InvokePrivateMethodAsync(layout, "ScrollOutputToEndAsync");
+
+            outputService.PanelState.IsAutoScrollEnabled.ShouldBeTrue();
         }
 
         /// <summary>
@@ -92,16 +364,18 @@ namespace WorkbenchHost.Tests
         }
 
         /// <summary>
-        /// Confirms runtime menu and status-bar contributions render only while their owning tab is active.
+        /// Confirms runtime status-bar messages are projected into the output stream instead of rendering as persistent status-bar text.
         /// </summary>
         [Fact]
-        public async Task RenderRuntimeMenuAndStatusItemsOnlyForTheActiveTab()
+        public async Task ProjectHistoricalStatusMessagesIntoTheOutputStreamAndKeepTheStatusBarSimplified()
         {
-            // The host shell should surface runtime contributions for the focused tab only, even when the inactive tab remains open.
+            // Historical status messages should remain visible in the output stream across navigation, while the status bar itself stays focused on shell affordances.
             await using var serviceProvider = CreateServiceProvider();
             var shellManager = serviceProvider.GetRequiredService<WorkbenchShellManager>();
+            var outputService = serviceProvider.GetRequiredService<IWorkbenchOutputService>();
             SeedHostShell(shellManager);
             SeedSearchShell(shellManager);
+            outputService.SetPanelVisibility(true);
 
             var searchTool = shellManager.ActivateTool(ActivationTarget.CreateToolSurfaceTarget("tool.module.search.query"));
             searchTool.Context.SetRuntimeMenuContributions([new MenuContribution("menu.runtime.search", "Run sample query", "command.search.run", ownerToolId: "tool.module.search.query", order: 200)]);
@@ -112,13 +386,63 @@ namespace WorkbenchHost.Tests
 
             activeSearchHtml.ShouldContain("Run sample query");
             activeSearchHtml.ShouldContain("Sample query executed");
+            activeSearchHtml.ShouldNotContain("workbench-shell__status-bar-items");
 
             shellManager.ActivateTool(ActivationTarget.CreateToolSurfaceTarget(OverviewToolId));
             var activeOverviewHtml = await RenderLayoutAsync(renderer);
 
             activeOverviewHtml.ShouldNotContain("Run sample query");
-            activeOverviewHtml.ShouldNotContain("Sample query executed");
-            activeOverviewHtml.ShouldContain("Workbench shell ready");
+            activeOverviewHtml.ShouldContain("Sample query executed");
+            activeOverviewHtml.ShouldNotContain("Workbench shell ready");
+            activeOverviewHtml.ShouldNotContain("workbench.activeTool:");
+        }
+
+        /// <summary>
+        /// Confirms startup notifications are mirrored into the output stream when the interactive shell replays them.
+        /// </summary>
+        [Fact]
+        public async Task MirrorStartupNotificationsIntoTheOutputStreamWhenTheShellBecomesInteractive()
+        {
+            // Startup notifications are still shown as toasts, but the output-first shell should also capture them in the shared output stream.
+            await using var serviceProvider = CreateServiceProvider();
+            var shellManager = serviceProvider.GetRequiredService<WorkbenchShellManager>();
+            var outputService = serviceProvider.GetRequiredService<IWorkbenchOutputService>();
+            var startupNotificationStore = serviceProvider.GetRequiredService<WorkbenchStartupNotificationStore>();
+            SeedHostShell(shellManager);
+            startupNotificationStore.Add(NotificationSeverity.Warning, "Startup warning", "The Workbench replayed a startup warning.");
+            var layout = CreateLayoutInstance(serviceProvider, shellManager);
+
+            await InvokePrivateMethodAsync(layout, "OnAfterRenderAsync", true);
+
+            outputService.Entries.ShouldContain(entry => entry.Source == "Notifications"
+                && entry.Summary == "Startup warning"
+                && entry.Level == OutputLevel.Warning);
+        }
+
+        /// <summary>
+        /// Confirms buffered startup diagnostics from module discovery are replayed into the shared output stream during shell bootstrap.
+        /// </summary>
+        [Fact]
+        public void ReplayBufferedStartupDiagnosticsIntoTheOutputStreamDuringBootstrap()
+        {
+            // Module discovery runs before DI finalization, so the host must buffer output and replay it once the singleton output service exists.
+            var outputService = new UKHO.Workbench.Services.Output.WorkbenchOutputService();
+            var startupNotificationStore = new WorkbenchStartupNotificationStore();
+            startupNotificationStore.AddOutput(
+                OutputLevel.Debug,
+                "Module loader",
+                "Loaded Workbench module 'UKHO.Workbench.Modules.Search'.",
+                "Assembly path: c:/modules/Search.dll");
+
+            InvokeStaticPrivateMethod(
+                typeof(WorkbenchHost.Program),
+                "ReplayBufferedStartupOutput",
+                [outputService, startupNotificationStore]);
+
+            outputService.Entries.ShouldContain(entry => entry.Source == "Module loader"
+                && entry.Summary == "Loaded Workbench module 'UKHO.Workbench.Modules.Search'."
+                && entry.Level == OutputLevel.Debug);
+            startupNotificationStore.DequeueOutputEntries().ShouldBeEmpty();
         }
 
         /// <summary>
@@ -538,7 +862,6 @@ namespace WorkbenchHost.Tests
                     100));
             shellManager.RegisterMenu(new MenuContribution(OverviewMenuId, "Home", OverviewCommandId, icon: "dashboard", order: 100));
             shellManager.RegisterToolbar(new ToolbarContribution(OverviewToolbarId, "Home", OverviewCommandId, icon: "dashboard", order: 100));
-            shellManager.RegisterStatusBar(new StatusBarContribution(HostReadyStatusId, "Workbench shell ready", icon: "check_circle", order: 100));
             shellManager.SetActiveExplorer(FallbackExplorerId);
         }
 
@@ -571,6 +894,9 @@ namespace WorkbenchHost.Tests
             // The interaction tests call private handlers directly, so the layout instance needs the same injected services the runtime component would receive.
             var layout = new MainLayout();
             SetInjectedProperty(layout, "ShellManager", shellManager);
+            SetInjectedProperty(layout, "WorkbenchOutputService", serviceProvider.GetRequiredService<IWorkbenchOutputService>());
+            SetInjectedProperty(layout, "JsRuntime", serviceProvider.GetRequiredService<IJSRuntime>());
+            SetInjectedProperty(layout, "Logger", serviceProvider.GetRequiredService<ILogger<MainLayout>>());
             SetInjectedProperty(layout, "NotificationService", serviceProvider.GetRequiredService<NotificationService>());
             SetInjectedProperty(layout, "StartupNotificationStore", serviceProvider.GetRequiredService<WorkbenchStartupNotificationStore>());
             SetInjectedProperty(layout, "ContextMenuService", serviceProvider.GetRequiredService<ContextMenuService>());
@@ -598,6 +924,80 @@ namespace WorkbenchHost.Tests
         }
 
         /// <summary>
+        /// Creates a deterministic output entry for rendering tests that need stable timestamps, identifiers, and optional diagnostics.
+        /// </summary>
+        /// <param name="id">The stable output-entry identifier.</param>
+        /// <param name="level">The severity level to assign to the test entry.</param>
+        /// <param name="source">The source value that should be rendered for the test entry.</param>
+        /// <param name="summary">The compact summary that should be rendered for the test entry.</param>
+        /// <param name="details">Optional expanded diagnostic details for the test entry.</param>
+        /// <param name="eventCode">Optional event code rendered only in expanded details.</param>
+        /// <returns>A deterministic immutable output entry suitable for rendering verification.</returns>
+        private static OutputEntry CreateOutputEntry(
+            string id,
+            OutputLevel level,
+            string source,
+            string summary,
+            string? details = null,
+            string? eventCode = null)
+        {
+            // Fixed timestamps keep rendering assertions stable regardless of the machine or time zone that runs the tests.
+            return new OutputEntry(
+                id,
+                new DateTimeOffset(2026, 2, 3, 14, 5, 6, TimeSpan.Zero),
+                level,
+                source,
+                summary,
+                details,
+                eventCode);
+        }
+
+        /// <summary>
+        /// Counts the number of times a rendered HTML fragment contains a specific token.
+        /// </summary>
+        /// <param name="content">The rendered HTML content to inspect.</param>
+        /// <param name="token">The token whose occurrences should be counted.</param>
+        /// <returns>The number of occurrences of the supplied token in the rendered content.</returns>
+        private static int CountOccurrences(string content, string token)
+        {
+            // Stable token counting keeps the assertions lightweight without introducing an HTML parser into the focused rendering tests.
+            ArgumentNullException.ThrowIfNull(content);
+            ArgumentException.ThrowIfNullOrWhiteSpace(token);
+
+            var occurrenceCount = 0;
+            var searchIndex = 0;
+
+            while ((searchIndex = content.IndexOf(token, searchIndex, StringComparison.Ordinal)) >= 0)
+            {
+                occurrenceCount++;
+                searchIndex += token.Length;
+            }
+
+            return occurrenceCount;
+        }
+
+        /// <summary>
+        /// Reads a private property value from the supplied instance.
+        /// </summary>
+        /// <typeparam name="TValue">The expected property value type.</typeparam>
+        /// <param name="instance">The instance that owns the private property.</param>
+        /// <param name="propertyName">The private property name to read.</param>
+        /// <returns>The private property value cast to <typeparamref name="TValue"/>.</returns>
+        private static TValue GetPrivatePropertyValue<TValue>(object instance, string propertyName)
+        {
+            // Reflection keeps layout-only state private while still letting the tests verify shell layout decisions directly.
+            var propertyInfo = instance.GetType().GetProperty(propertyName, BindingFlags.Instance | BindingFlags.NonPublic);
+
+            if (propertyInfo is null)
+            {
+                throw new InvalidOperationException($"The property '{propertyName}' was not found on {instance.GetType().Name}.");
+            }
+
+            return (TValue)(propertyInfo.GetValue(instance)
+                ?? throw new InvalidOperationException($"The property '{propertyName}' did not return a value."));
+        }
+
+        /// <summary>
         /// Invokes a private instance method and returns its result.
         /// </summary>
         /// <param name="instance">The instance that owns the private method.</param>
@@ -607,7 +1007,7 @@ namespace WorkbenchHost.Tests
         private static object? InvokePrivateMethod(object instance, string methodName, object?[] arguments)
         {
             // Reflection keeps the tests focused on Workbench behavior without promoting layout-only helpers into the public surface.
-            var methodInfo = instance.GetType().GetMethod(methodName, BindingFlags.Instance | BindingFlags.NonPublic);
+            var methodInfo = instance.GetType().GetMethod(methodName, BindingFlags.Instance | BindingFlags.NonPublic | BindingFlags.Public);
 
             if (methodInfo is null)
             {
@@ -713,6 +1113,8 @@ namespace WorkbenchHost.Tests
         /// </summary>
         private sealed class TestJsRuntime : IJSRuntime
         {
+            private readonly TestJsModule _module = new();
+
             /// <summary>
             /// Returns a default value because the shell rendering test does not execute JavaScript.
             /// </summary>
@@ -722,7 +1124,12 @@ namespace WorkbenchHost.Tests
             /// <returns>A completed task containing the default value for <typeparamref name="TValue"/>.</returns>
             public ValueTask<TValue> InvokeAsync<TValue>(string identifier, object?[]? args)
             {
-                // Static HTML rendering never executes the Workbench splitter interop, so returning the default value is sufficient for this test.
+                // Static HTML rendering can request JS modules, so the test runtime returns a stable fake module for imports and a default value for everything else.
+                if (typeof(TValue) == typeof(IJSObjectReference) && string.Equals(identifier, "import", StringComparison.Ordinal))
+                {
+                    return ValueTask.FromResult((TValue)(object)_module);
+                }
+
                 return ValueTask.FromResult(default(TValue)!);
             }
 
@@ -736,8 +1143,56 @@ namespace WorkbenchHost.Tests
             /// <returns>A completed task containing the default value for <typeparamref name="TValue"/>.</returns>
             public ValueTask<TValue> InvokeAsync<TValue>(string identifier, CancellationToken cancellationToken, object?[]? args)
             {
-                // Static HTML rendering never executes the Workbench splitter interop, so returning the default value is sufficient for this test.
+                // Static HTML rendering can request JS modules, so the test runtime returns a stable fake module for imports and a default value for everything else.
+                if (typeof(TValue) == typeof(IJSObjectReference) && string.Equals(identifier, "import", StringComparison.Ordinal))
+                {
+                    return ValueTask.FromResult((TValue)(object)_module);
+                }
+
                 return ValueTask.FromResult(default(TValue)!);
+            }
+        }
+
+        /// <summary>
+        /// Supplies a minimal JS module stub for layout tests that now import an output-panel helper.
+        /// </summary>
+        private sealed class TestJsModule : IJSObjectReference
+        {
+            /// <summary>
+            /// Returns a default value because the layout tests only need imported module calls to succeed.
+            /// </summary>
+            /// <typeparam name="TValue">The expected return type.</typeparam>
+            /// <param name="identifier">The exported JavaScript function identifier.</param>
+            /// <param name="args">The arguments that would be passed to the JavaScript function.</param>
+            /// <returns>A completed task containing the default value for <typeparamref name="TValue"/>.</returns>
+            public ValueTask<TValue> InvokeAsync<TValue>(string identifier, object?[]? args)
+            {
+                // The layout tests do not execute browser behavior; they only need module calls to remain non-throwing.
+                return ValueTask.FromResult(default(TValue)!);
+            }
+
+            /// <summary>
+            /// Returns a default value because the layout tests only need imported module calls to succeed.
+            /// </summary>
+            /// <typeparam name="TValue">The expected return type.</typeparam>
+            /// <param name="identifier">The exported JavaScript function identifier.</param>
+            /// <param name="cancellationToken">The cancellation token associated with the invocation.</param>
+            /// <param name="args">The arguments that would be passed to the JavaScript function.</param>
+            /// <returns>A completed task containing the default value for <typeparamref name="TValue"/>.</returns>
+            public ValueTask<TValue> InvokeAsync<TValue>(string identifier, CancellationToken cancellationToken, object?[]? args)
+            {
+                // The layout tests do not execute browser behavior; they only need module calls to remain non-throwing.
+                return ValueTask.FromResult(default(TValue)!);
+            }
+
+            /// <summary>
+            /// Releases the fake module without additional work.
+            /// </summary>
+            /// <returns>A completed value task.</returns>
+            public ValueTask DisposeAsync()
+            {
+                // The fake module owns no unmanaged resources.
+                return ValueTask.CompletedTask;
             }
         }
 

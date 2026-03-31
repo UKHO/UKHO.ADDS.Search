@@ -139,6 +139,16 @@ namespace UKHO.Workbench.Layout
 		}
 
 		/// <summary>
+		/// Clears the currently registered row and column tracks before a new render pass re-registers the authored grid definition components.
+		/// </summary>
+		public void ResetTracks()
+		{
+			// Grid definition components can be inserted, removed, or reordered across rerenders, so the wrapper must rebuild track metadata from the current render tree each time.
+			_columns.Clear();
+			_rows.Clear();
+		}
+
+		/// <summary>
 		/// Returns the CSS needed to apply a row gap when one has been configured.
 		/// </summary>
 		/// <param name="gap">The configured row gap in pixels.</param>

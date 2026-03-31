@@ -92,6 +92,55 @@ namespace UKHO.Workbench.Layout.Tests
             Assert.Equal(expected, wrapper.Css);
         }
 
+        /// <summary>
+        /// Confirms the wrapper can discard a previous render pass before re-registering a different authored track order.
+        /// </summary>
+        [Fact]
+        public void ResetPreviouslyRegisteredTracksBeforeRebuildingAConditionalLayout()
+        {
+            // Conditional Workbench layouts can insert splitter rows between existing rows on rerender, so stale tracks must be cleared before the next pass re-registers them.
+            var wrapper = new GridWrapper();
+
+            wrapper.AddRow("48");
+            wrapper.AddRow("44");
+            wrapper.AddRow("*");
+            wrapper.AddRow("30");
+
+            wrapper.ResetTracks();
+
+            wrapper.AddRow("48");
+            wrapper.AddRow("44");
+            wrapper.AddRow("4*");
+            wrapper.AddSplitterRow("4");
+            wrapper.AddRow("1*");
+            wrapper.AddRow("30");
+
+            Assert.Equal(
+                "display: grid; width: 100%; height: 100%; grid-template-rows: 48px 44px 4fr 4px 1fr 30px;",
+                wrapper.Css);
+        }
+
+        /// <summary>
+        /// Confirms the wrapper accepts resolved CSS pixel tokens when a resized splitter height is restored in the same session.
+        /// </summary>
+        [Fact]
+        public void PreserveResolvedPixelTrackTokensWhenReopeningAResizedLayout()
+        {
+            // The output-panel session state stores splitter results as CSS pixel tokens, so the grid must accept those values when the layout is rebuilt.
+            var wrapper = new GridWrapper();
+
+            wrapper.AddRow("48");
+            wrapper.AddRow("44");
+            wrapper.AddRow("559.39px");
+            wrapper.AddSplitterRow("4");
+            wrapper.AddRow("186.46px");
+            wrapper.AddRow("30");
+
+            Assert.Equal(
+                "display: grid; width: 100%; height: 100%; grid-template-rows: 48px 44px 559.39px 4px 186.46px 30px;",
+                wrapper.Css);
+        }
+
         private class GenerateColumnsTemplatesData : TheoryData<List<string>, string>
         {
             public GenerateColumnsTemplatesData()

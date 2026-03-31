@@ -13,6 +13,7 @@ using UKHO.Workbench.Explorers;
 using UKHO.Workbench.Infrastructure;
 using UKHO.Workbench.Infrastructure.Modules;
 using UKHO.Workbench.Modules;
+using UKHO.Workbench.Output;
 using UKHO.Workbench.Services.Shell;
 using UKHO.Workbench.Tools;
 using UKHO.Workbench.WorkbenchShell;
@@ -192,6 +193,13 @@ namespace WorkbenchHost
                     loadResult.LoadedModules.Count,
                     loadResult.Failures.Count);
 
+                // The output stream becomes the user-visible historical trace for startup work, so the module loader writes its completion summary into the buffered startup output.
+                startupNotificationStore.AddOutput(
+                    OutputLevel.Debug,
+                    "Module loader",
+                    "Workbench module startup completed.",
+                    $"Loaded {loadResult.LoadedModules.Count} module(s) with {loadResult.Failures.Count} failure(s) during startup.");
+
                 foreach (var loadedModule in loadResult.LoadedModules)
                 {
                     // Successful module registrations are logged with the originating probe root so startup diagnostics can trace where each module came from.
@@ -200,6 +208,13 @@ namespace WorkbenchHost
                         loadedModule.Metadata.Id,
                         loadedModule.AssemblyPath,
                         loadedModule.ProbeRoot);
+
+                    // Successful module discovery is also mirrored into the shell output stream so the output panel becomes the primary startup trace.
+                    startupNotificationStore.AddOutput(
+                        OutputLevel.Debug,
+                        "Module loader",
+                        $"Loaded Workbench module '{loadedModule.Metadata.Id}'.",
+                        $"Assembly path: {loadedModule.AssemblyPath}\nProbe root: {loadedModule.ProbeRoot}");
                 }
 
                 foreach (var failure in loadResult.Failures)
@@ -213,6 +228,13 @@ namespace WorkbenchHost
                         failure.ProbeRoot,
                         failure.Message);
 
+                    // Module-load failures remain visible in the shell-owned output stream even when the shell continues running with the remaining modules.
+                    startupNotificationStore.AddOutput(
+                        OutputLevel.Warning,
+                        "Module loader",
+                        $"The Workbench module '{failure.ModuleId}' could not be loaded.",
+                        $"Stage: {failure.FailureStage}\nAssembly path: {failure.AssemblyPath}\nProbe root: {failure.ProbeRoot}\nMessage: {failure.Message}");
+
                     startupNotificationStore.Add(
                         NotificationSeverity.Warning,
                         "Workbench module unavailable",
@@ -223,6 +245,11 @@ namespace WorkbenchHost
             {
                 // A host-level configuration or discovery failure should not prevent the shell from starting with host-owned tools.
                 startupLogger.LogError(exception, "Workbench module startup failed before DI finalization.");
+                startupNotificationStore.AddOutput(
+                    OutputLevel.Error,
+                    "Module loader",
+                    "Workbench module startup failed.",
+                    "Module discovery failed before dependency injection finalization. The shell will continue with host-provided tools only. Check the application logs for more detail.");
                 startupNotificationStore.Add(
                     NotificationSeverity.Warning,
                     "Workbench module startup failed",
@@ -260,8 +287,12 @@ namespace WorkbenchHost
             var loggerFactory = services.GetRequiredService<ILoggerFactory>();
             var logger = loggerFactory.CreateLogger(typeof(Program));
             var shellManager = services.GetRequiredService<WorkbenchShellManager>();
+            var outputService = services.GetRequiredService<IWorkbenchOutputService>();
             var contributionRegistry = services.GetRequiredService<WorkbenchContributionRegistry>();
             var startupNotificationStore = services.GetRequiredService<WorkbenchStartupNotificationStore>();
+
+            // Buffered startup output from the pre-DI module discovery phase is replayed first so later bootstrap entries continue the same chronological shell trace.
+            ReplayBufferedStartupOutput(outputService, startupNotificationStore);
 
             try
             {
@@ -315,7 +346,6 @@ namespace WorkbenchHost
                 }
                 shellManager.RegisterMenu(new MenuContribution(WorkbenchHostShellDefaults.OverviewMenuId, "Home", WorkbenchHostShellDefaults.OverviewCommandId, icon: "dashboard", order: 100));
                 shellManager.RegisterToolbar(new ToolbarContribution(WorkbenchHostShellDefaults.OverviewToolbarId, "Home", WorkbenchHostShellDefaults.OverviewCommandId, icon: "dashboard", order: 100));
-                shellManager.RegisterStatusBar(new StatusBarContribution(WorkbenchHostShellDefaults.HostReadyStatusId, "Workbench shell ready", icon: "check_circle", order: 100));
 
                 // Module-contributed tools and shell surfaces use the same registration path as host-owned contributions.
                 foreach (var moduleToolDefinition in contributionRegistry.ToolDefinitions)
@@ -370,15 +400,56 @@ namespace WorkbenchHost
                     ?? WorkbenchHostShellDefaults.OverviewToolId;
 
                 shellManager.ActivateTool(ActivationTarget.CreateToolSurfaceTarget(initialToolId));
+
+                // Shell bootstrap now projects a real host-owned startup event into the shared output stream so the panel can show meaningful session history immediately.
+                outputService.Write(
+                    OutputLevel.Info,
+                    "Shell",
+                    "Workbench shell ready.",
+                    $"The initial tool '{initialToolId}' was activated during host startup.");
             }
             catch (Exception exception)
             {
                 // Startup failures are logged with enough detail for diagnosis while allowing the host to continue and show any resulting empty shell state.
                 logger.LogError(exception, "Workbench shell bootstrap failed while registering the initial host-owned tool slice.");
+
+                // The shared output stream mirrors the user-visible shell history while structured logs continue to carry the full diagnostic record.
+                outputService.Write(
+                    OutputLevel.Error,
+                    "Shell",
+                    "Workbench shell bootstrap failed.",
+                    "The Workbench shell could not complete startup registration for one or more tools. Check the application logs for more detail.");
+
+                outputService.Write(
+                    OutputLevel.Warning,
+                    "Notifications",
+                    "Workbench shell bootstrap failed",
+                    "The Workbench shell could not complete startup registration for one or more tools. Check the application logs for more detail.");
+
                 startupNotificationStore.Add(
                     NotificationSeverity.Warning,
                     "Workbench shell bootstrap failed",
                     "The Workbench shell could not complete startup registration for one or more tools. Check the application logs for more detail.");
+            }
+        }
+
+        /// <summary>
+        /// Replays buffered startup output entries into the shared shell-wide output service.
+        /// </summary>
+        /// <param name="outputService">The shell-wide output service that should receive the buffered startup entries.</param>
+        /// <param name="startupNotificationStore">The store that buffered startup output before the host service provider existed.</param>
+        private static void ReplayBufferedStartupOutput(
+            IWorkbenchOutputService outputService,
+            WorkbenchStartupNotificationStore startupNotificationStore)
+        {
+            // Startup output must be replayed explicitly because module discovery runs before DI finalization and therefore before the singleton output service can be resolved.
+            ArgumentNullException.ThrowIfNull(outputService);
+            ArgumentNullException.ThrowIfNull(startupNotificationStore);
+
+            foreach (var startupOutputEntry in startupNotificationStore.DequeueOutputEntries())
+            {
+                // The preserved output entry timestamps maintain startup chronology when the buffered events are appended after DI is available.
+                outputService.Write(startupOutputEntry);
             }
         }
     }

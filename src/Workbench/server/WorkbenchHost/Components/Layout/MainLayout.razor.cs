@@ -1,7 +1,11 @@
 using Microsoft.AspNetCore.Components;
 using Microsoft.AspNetCore.Components.Web;
+using Microsoft.Extensions.Logging;
+using Microsoft.JSInterop;
 using Radzen;
 using UKHO.Workbench.Explorers;
+using UKHO.Workbench.Layout;
+using UKHO.Workbench.Output;
 using UKHO.Workbench.Services.Shell;
 using UKHO.Workbench.Tools;
 using UKHO.Workbench.WorkbenchShell;
@@ -13,10 +17,27 @@ namespace WorkbenchHost.Components.Layout
     /// <summary>
     /// Renders and coordinates the bootstrap desktop-like Workbench shell.
     /// </summary>
-    public partial class MainLayout : IDisposable
+    public partial class MainLayout : IDisposable, IAsyncDisposable
     {
+        private const string OutputPanelModulePath = "./Components/Layout/MainLayout.razor.js";
+        private readonly Dictionary<string, string> _projectedStatusContributionTexts = new(StringComparer.Ordinal);
+        private IReadOnlyDictionary<string, string> _lastProjectedContextValues = new Dictionary<string, string>(StringComparer.Ordinal);
+        private DotNetObjectReference<MainLayout>? _dotNetObjectReference;
+        private ElementReference _outputStreamElement = default;
+        private IJSObjectReference? _outputPanelModule;
+        private bool _pendingScrollToEnd;
+
         [Inject]
         private WorkbenchShellManager ShellManager { get; set; } = null!;
+
+        [Inject]
+        private IWorkbenchOutputService WorkbenchOutputService { get; set; } = null!;
+
+        [Inject]
+        private IJSRuntime JsRuntime { get; set; } = null!;
+
+        [Inject]
+        private ILogger<MainLayout> Logger { get; set; } = null!;
 
         [Inject]
         private NotificationService NotificationService { get; set; } = null!;
@@ -84,6 +105,63 @@ namespace WorkbenchHost.Components.Layout
         private IReadOnlyDictionary<string, string> ContextValues => ShellManager.ContextValues;
 
         /// <summary>
+        /// Gets the current shell-wide output entries in chronological order.
+        /// </summary>
+        private IReadOnlyList<OutputEntry> OutputEntries => WorkbenchOutputService.Entries;
+
+        /// <summary>
+        /// Gets the current output-panel session state used by the shell layout.
+        /// </summary>
+        private OutputPanelState OutputPanelState => WorkbenchOutputService.PanelState;
+
+        /// <summary>
+        /// Gets the row index used by the centre working surface.
+        /// </summary>
+        private int WorkingAreaRow => 3;
+
+        /// <summary>
+        /// Gets the row index used by the output panel when it is visible.
+        /// </summary>
+        private int OutputPanelRow => 5;
+
+        /// <summary>
+        /// Gets the row index used by the status bar for the current shell layout shape.
+        /// </summary>
+        private int StatusBarRow => OutputPanelState.IsVisible ? 6 : 4;
+
+        /// <summary>
+        /// Gets the grid-track height used by the centre working area for the current panel state.
+        /// </summary>
+        private string WorkingAreaHeight => OutputPanelState.IsVisible ? OutputPanelState.CenterPaneHeight : "*";
+
+        /// <summary>
+        /// Gets the grid-track height used by the output panel when it is visible.
+        /// </summary>
+        private string OutputPaneHeight => OutputPanelState.OutputPaneHeight;
+
+        /// <summary>
+        /// Gets the icon shown in the status-bar toggle according to the current panel visibility.
+        /// </summary>
+        private string OutputToggleIcon => OutputPanelState.IsVisible ? "keyboard_arrow_down" : "keyboard_arrow_up";
+
+        /// <summary>
+        /// Gets the hidden-panel unseen level rendered on the collapsed toggle, if any.
+        /// </summary>
+        private OutputLevel? HiddenUnseenLevel => OutputPanelState.IsVisible ? null : OutputPanelState.HiddenUnseenLevel;
+
+        /// <summary>
+        /// Gets the CSS class applied to the output stream according to the current wrap mode.
+        /// </summary>
+        private string OutputStreamCss => OutputPanelState.IsWordWrapEnabled
+            ? "workbench-shell__output-stream workbench-shell__output-stream--wrapped"
+            : "workbench-shell__output-stream";
+
+        /// <summary>
+        /// Gets the scroll-mode token rendered for the current output viewport state.
+        /// </summary>
+        private string OutputScrollMode => OutputPanelState.IsWordWrapEnabled ? "wrapped" : "horizontal";
+
+        /// <summary>
         /// Gets the currently active explorer contribution when one is selected.
         /// </summary>
         private ExplorerContribution? ActiveExplorer => string.IsNullOrWhiteSpace(ShellManager.State.ActiveExplorerId)
@@ -110,12 +188,17 @@ namespace WorkbenchHost.Components.Layout
             // The layout listens for shell state changes so explorer clicks and programmatic activation both refresh the visible chrome.
             ShellManager.StateChanged += HandleShellStateChanged;
             ShellManager.NotificationRaised += HandleWorkbenchNotificationRaised;
+            WorkbenchOutputService.EntriesChanged += HandleOutputEntriesChanged;
+            WorkbenchOutputService.PanelStateChanged += HandleOutputPanelStateChanged;
 
             // The shell activates the first registered explorer by default when startup bootstrap has not already selected one.
             if (string.IsNullOrWhiteSpace(ShellManager.State.ActiveExplorerId) && Explorers.Count > 0)
             {
                 ShellManager.SetActiveExplorer(Explorers[0].Id);
             }
+
+            // The output-first shell now projects any current shell context and historical status messages into the shared output stream instead of leaving them in the status bar.
+            ProjectShellTraceStateToOutput();
 
             base.OnInitialized();
         }
@@ -124,24 +207,66 @@ namespace WorkbenchHost.Components.Layout
         /// Presents any buffered startup notifications after the interactive shell becomes available.
         /// </summary>
         /// <param name="firstRender"><see langword="true"/> when this is the first completed render for the layout instance.</param>
-        protected override void OnAfterRender(bool firstRender)
+        /// <returns>A task that completes when startup-notification replay and any output-panel interop work has finished.</returns>
+        protected override async Task OnAfterRenderAsync(bool firstRender)
         {
+            await base.OnAfterRenderAsync(firstRender);
+
             // Startup notifications are deferred until first render because the notification service depends on an interactive shell.
-            if (!firstRender)
+            if (firstRender)
+            {
+                foreach (var notification in StartupNotificationStore.DequeueAll())
+                {
+                    // Each buffered notification is replayed once so users receive safe startup feedback without repeated noise.
+                    WorkbenchOutputService.Write(
+                        MapOutputLevel(notification.Severity),
+                        "Notifications",
+                        notification.Summary,
+                        notification.Detail);
+
+                    NotificationService.Notify(new NotificationMessage
+                    {
+                        Severity = notification.Severity,
+                        Summary = notification.Summary,
+                        Detail = notification.Detail,
+                        Duration = 7000
+                    });
+                }
+            }
+
+            // Output interop is only required while the panel is visible because scroll tracking and copy support are panel-local behaviors.
+            if (!OutputPanelState.IsVisible)
             {
                 return;
             }
 
-            foreach (var notification in StartupNotificationStore.DequeueAll())
+            try
             {
-                // Each buffered notification is replayed once so users receive safe startup feedback without repeated noise.
-                NotificationService.Notify(new NotificationMessage
+                await EnsureOutputPanelInteropAsync();
+
+                if (_pendingScrollToEnd && OutputPanelState.IsAutoScrollEnabled)
                 {
-                    Severity = notification.Severity,
-                    Summary = notification.Summary,
-                    Detail = notification.Detail,
-                    Duration = 7000
-                });
+                    // Deferred scrolling happens after render so the newest output row exists in the DOM before the browser is asked to move the viewport.
+                    await _outputPanelModule!.InvokeVoidAsync("scrollToEnd", _outputStreamElement);
+                }
+
+                _pendingScrollToEnd = false;
+            }
+            catch (JSDisconnectedException)
+            {
+                // Blazor Server can disconnect mid-render; that shutdown path should not surface as a user-facing error.
+            }
+            catch (TaskCanceledException)
+            {
+                // Render-driven interop can be cancelled during navigation or shutdown, which is expected.
+            }
+            catch (ObjectDisposedException)
+            {
+                // The JS runtime can be disposed during teardown before the final render completes.
+            }
+            catch (Exception exception)
+            {
+                Logger.LogError(exception, "The Workbench output panel could not complete its post-render interop work.");
             }
         }
 
@@ -154,6 +279,200 @@ namespace WorkbenchHost.Components.Layout
         {
             // The layout delegates visibility checks to the shell state so later slices can evolve region behavior without changing markup conditions.
             return ShellManager.State.IsRegionVisible(region);
+        }
+
+        /// <summary>
+        /// Toggles the shell-owned output panel between its collapsed and visible states.
+        /// </summary>
+        /// <returns>A completed task because the state change is handled locally by the layout.</returns>
+        private Task ToggleOutputPanelAsync()
+        {
+            // Visibility toggling routes through the shared panel-state service so unseen-severity reset and session height memory stay centralized.
+            return ToggleOutputPanelCoreAsync();
+        }
+
+        /// <summary>
+        /// Toggles the shell-owned output panel while coordinating any required interop cleanup or deferred scrolling.
+        /// </summary>
+        /// <returns>A task that completes when the visibility transition work has finished.</returns>
+        private async Task ToggleOutputPanelCoreAsync()
+        {
+            // Closing the panel disposes browser-side helpers, while opening it preserves the shared session height and clears hidden unseen severity through the service.
+            try
+            {
+                if (OutputPanelState.IsVisible)
+                {
+                    await DisposeOutputPanelInteropAsync();
+                    WorkbenchOutputService.SetPanelVisibility(false);
+                    return;
+                }
+
+                WorkbenchOutputService.SetPanelVisibility(true);
+                _pendingScrollToEnd = OutputPanelState.IsAutoScrollEnabled;
+            }
+            catch (Exception exception) when (exception is not JSDisconnectedException and not TaskCanceledException and not ObjectDisposedException)
+            {
+                Logger.LogError(exception, "The Workbench output panel visibility toggle failed.");
+            }
+        }
+
+        /// <summary>
+        /// Clears every retained output entry from the current Workbench session.
+        /// </summary>
+        /// <returns>A completed task because clearing the in-memory stream is handled synchronously by the shared output service.</returns>
+        private Task ClearOutputAsync()
+        {
+            // Clear is intentionally destructive and silent because the specification requires an empty panel with no synthetic replacement entry.
+            WorkbenchOutputService.Clear();
+            return Task.CompletedTask;
+        }
+
+        /// <summary>
+        /// Toggles whether the output viewport should automatically remain pinned to the newest entry.
+        /// </summary>
+        /// <returns>A completed task because the state change is handled synchronously through the shared output service.</returns>
+        private Task ToggleAutoScrollAsync()
+        {
+            // Toolbar toggles mutate the shared state directly so the UI and later row components read one authoritative flag.
+            WorkbenchOutputService.SetAutoScrollEnabled(!OutputPanelState.IsAutoScrollEnabled);
+            return Task.CompletedTask;
+        }
+
+        /// <summary>
+        /// Scrolls the output viewport to the newest retained entry and re-enables automatic scrolling.
+        /// </summary>
+        /// <returns>A task that completes when the browser-side scroll request has been scheduled.</returns>
+        private Task ScrollOutputToEndAsync()
+        {
+            // Scroll-to-end is the explicit recovery path after a user has manually moved away from the newest entries.
+            WorkbenchOutputService.SetAutoScrollEnabled(true);
+            _pendingScrollToEnd = true;
+            return Task.CompletedTask;
+        }
+
+        /// <summary>
+        /// Toggles whether long output content should wrap within the panel viewport.
+        /// </summary>
+        /// <returns>A completed task because the wrap toggle only updates shared session state.</returns>
+        private Task ToggleWordWrapAsync()
+        {
+            // Wrap remains a global panel toggle so both compact rows and later expanded details follow the same presentation mode.
+            WorkbenchOutputService.SetWordWrapEnabled(!OutputPanelState.IsWordWrapEnabled);
+            return Task.CompletedTask;
+        }
+
+        /// <summary>
+        /// Determines whether the supplied output entry is currently expanded in the shell output surface.
+        /// </summary>
+        /// <param name="outputEntry">The output entry to evaluate.</param>
+        /// <returns><see langword="true"/> when the supplied entry is expanded; otherwise, <see langword="false"/>.</returns>
+        private bool IsOutputEntryExpanded(OutputEntry outputEntry)
+        {
+            // Expansion state is tracked by entry identifier so multiple rows can remain open without mutating the immutable output entries.
+            ArgumentNullException.ThrowIfNull(outputEntry);
+
+            return OutputPanelState.ExpandedEntryIds.Contains(outputEntry.Id, StringComparer.Ordinal);
+        }
+
+        /// <summary>
+        /// Toggles the expanded detail state for one structured output row.
+        /// </summary>
+        /// <param name="outputEntry">The output entry whose details should be expanded or collapsed.</param>
+        /// <returns>A completed task because the shared panel-state update is handled synchronously.</returns>
+        private Task ToggleOutputEntryExpansionAsync(OutputEntry outputEntry)
+        {
+            // The shared panel state keeps expansion centralized so closing and reopening the panel can reset the view consistently.
+            ArgumentNullException.ThrowIfNull(outputEntry);
+
+            var expandedEntryIds = OutputPanelState.ExpandedEntryIds.ToList();
+            var expandedEntryIndex = expandedEntryIds.FindIndex(entryId => string.Equals(entryId, outputEntry.Id, StringComparison.Ordinal));
+
+            if (expandedEntryIndex >= 0)
+            {
+                expandedEntryIds.RemoveAt(expandedEntryIndex);
+            }
+            else
+            {
+                expandedEntryIds.Add(outputEntry.Id);
+            }
+
+            WorkbenchOutputService.SetExpandedEntryIds(expandedEntryIds);
+            return Task.CompletedTask;
+        }
+
+        /// <summary>
+        /// Copies the supplied output entry into the clipboard using the Workbench-owned browser helper.
+        /// </summary>
+        /// <param name="outputEntry">The output entry that should be copied.</param>
+        /// <returns>A task that completes when the copy request has been issued to the browser.</returns>
+        private async Task CopyOutputEntryAsync(OutputEntry outputEntry)
+        {
+            // Copy support stays shell-owned and lightweight so the panel remains a structured output surface rather than a free-form console.
+            ArgumentNullException.ThrowIfNull(outputEntry);
+
+            try
+            {
+                await EnsureOutputPanelInteropAsync();
+                await _outputPanelModule!.InvokeVoidAsync("copyText", BuildCopiedOutputText(outputEntry));
+            }
+            catch (JSException exception)
+            {
+                Logger.LogWarning(exception, "The Workbench output entry could not be copied to the clipboard.");
+            }
+            catch (JSDisconnectedException)
+            {
+                // Blazor Server can disconnect before the browser receives the copy request.
+            }
+            catch (TaskCanceledException)
+            {
+                // Copy requests can be cancelled during navigation or shutdown.
+            }
+            catch (ObjectDisposedException)
+            {
+                // The component or JS runtime was disposed before the browser received the copy request.
+            }
+        }
+
+        /// <summary>
+        /// Updates the retained output-panel heights after the shell splitter has been dragged.
+        /// </summary>
+        /// <param name="resizeNotification">The splitter resize payload raised by the Workbench grid.</param>
+        /// <returns>A completed task because the resize state update is handled synchronously.</returns>
+        private Task HandleOutputPanelResizeAsync(GridResizeNotification resizeNotification)
+        {
+            // Only the row splitter between the centre pane and output pane should influence output height memory for this slice.
+            ArgumentNullException.ThrowIfNull(resizeNotification);
+
+            if (!OutputPanelState.IsVisible
+                || resizeNotification.Direction != GridResizeDirection.Row
+                || resizeNotification.PreviousTrackIndex != WorkingAreaRow
+                || resizeNotification.NextTrackIndex != OutputPanelRow)
+            {
+                return Task.CompletedTask;
+            }
+
+            WorkbenchOutputService.SetPaneHeights(
+                FormatPixelTrackToken(resizeNotification.PreviousTrackSizeInPixels),
+                FormatPixelTrackToken(resizeNotification.NextTrackSizeInPixels));
+
+            return Task.CompletedTask;
+        }
+
+        /// <summary>
+        /// Receives browser-reported output viewport state and disables auto-scroll when the user scrolls away from the newest output.
+        /// </summary>
+        /// <param name="isAtEnd"><see langword="true"/> when the viewport is still at the newest entry; otherwise, <see langword="false"/>.</param>
+        /// <returns>A completed task because the shared state update is synchronous.</returns>
+        [JSInvokable]
+        public Task NotifyOutputViewportStateAsync(bool isAtEnd)
+        {
+            // Manual upward scrolling is the only automatic state transition for this slice, so reaching the end again does not silently re-enable auto-scroll.
+            if (!isAtEnd && OutputPanelState.IsAutoScrollEnabled)
+            {
+                WorkbenchOutputService.SetAutoScrollEnabled(false);
+            }
+
+            return Task.CompletedTask;
         }
 
         /// <summary>
@@ -497,6 +816,7 @@ namespace WorkbenchHost.Components.Layout
         private void HandleShellStateChanged(object? sender, EventArgs e)
         {
             // State changes may arrive from either startup bootstrap or user interaction, so the layout schedules a safe UI refresh on the renderer.
+            ProjectShellTraceStateToOutput();
             _ = InvokeAsync(StateHasChanged);
         }
 
@@ -510,9 +830,15 @@ namespace WorkbenchHost.Components.Layout
             // Runtime tool notifications are marshalled back onto the renderer so they can safely use the Radzen notification service.
             _ = InvokeAsync(() =>
             {
+                WorkbenchOutputService.Write(
+                    MapOutputLevel(e.Severity),
+                    "Notifications",
+                    e.Summary,
+                    e.Detail);
+
                 NotificationService.Notify(new NotificationMessage
                 {
-                    Severity = MapNotificationSeverity(e.Severity),
+                    Severity = MapRadzenNotificationSeverity(e.Severity),
                     Summary = e.Summary,
                     Detail = e.Detail,
                     Duration = 5000
@@ -521,11 +847,174 @@ namespace WorkbenchHost.Components.Layout
         }
 
         /// <summary>
+        /// Projects the current shell context and any newly published status-bar messages into the shared output stream.
+        /// </summary>
+        private void ProjectShellTraceStateToOutput()
+        {
+            // The shell keeps the status bar intentionally concise, so historical shell state and status messages are emitted into the output stream instead.
+            ProjectStatusBarContributionsToOutput();
+            ProjectContextValuesToOutput();
+        }
+
+        /// <summary>
+        /// Writes newly observed status-bar contribution messages into the output stream.
+        /// </summary>
+        private void ProjectStatusBarContributionsToOutput()
+        {
+            // Contribution identifiers remain stable, which lets the shell avoid replaying the same historical status text every time focus returns to a tool.
+            foreach (var statusBarContribution in StatusBarContributions)
+            {
+                if (_projectedStatusContributionTexts.TryGetValue(statusBarContribution.Id, out var previouslyProjectedText)
+                    && string.Equals(previouslyProjectedText, statusBarContribution.Text, StringComparison.Ordinal))
+                {
+                    continue;
+                }
+
+                WorkbenchOutputService.Write(
+                    OutputLevel.Debug,
+                    string.IsNullOrWhiteSpace(statusBarContribution.OwnerToolId) ? "Status" : statusBarContribution.OwnerToolId,
+                    statusBarContribution.Text);
+
+                _projectedStatusContributionTexts[statusBarContribution.Id] = statusBarContribution.Text;
+            }
+        }
+
+        /// <summary>
+        /// Writes shell context snapshots into the output stream whenever the projected context changes.
+        /// </summary>
+        private void ProjectContextValuesToOutput()
+        {
+            // Context values used to live permanently in the status bar, but the output-first shell now records them as historical context snapshots instead.
+            var currentContextValues = new Dictionary<string, string>(ContextValues, StringComparer.Ordinal);
+            if (HaveEquivalentContextValues(_lastProjectedContextValues, currentContextValues))
+            {
+                return;
+            }
+
+            _lastProjectedContextValues = currentContextValues;
+
+            var contextDetails = BuildContextDetails(currentContextValues);
+            if (string.IsNullOrWhiteSpace(contextDetails))
+            {
+                return;
+            }
+
+            WorkbenchOutputService.Write(
+                OutputLevel.Debug,
+                "Shell context",
+                "Workbench context updated.",
+                contextDetails);
+        }
+
+        /// <summary>
+        /// Determines whether two shell-context snapshots contain the same keys and values.
+        /// </summary>
+        /// <param name="previousContextValues">The previously projected shell-context snapshot.</param>
+        /// <param name="currentContextValues">The current shell-context snapshot.</param>
+        /// <returns><see langword="true"/> when both snapshots are equivalent; otherwise, <see langword="false"/>.</returns>
+        private static bool HaveEquivalentContextValues(
+            IReadOnlyDictionary<string, string> previousContextValues,
+            IReadOnlyDictionary<string, string> currentContextValues)
+        {
+            // Comparing the normalized key/value pairs keeps context projection stable without depending on dictionary iteration order.
+            ArgumentNullException.ThrowIfNull(previousContextValues);
+            ArgumentNullException.ThrowIfNull(currentContextValues);
+
+            if (previousContextValues.Count != currentContextValues.Count)
+            {
+                return false;
+            }
+
+            foreach (var currentContextEntry in currentContextValues)
+            {
+                if (!previousContextValues.TryGetValue(currentContextEntry.Key, out var previousValue)
+                    || !string.Equals(previousValue, currentContextEntry.Value, StringComparison.Ordinal))
+                {
+                    return false;
+                }
+            }
+
+            return true;
+        }
+
+        /// <summary>
+        /// Builds the output-panel detail text for a shell-context snapshot.
+        /// </summary>
+        /// <param name="contextValues">The context snapshot that should be converted into output detail text.</param>
+        /// <returns>The formatted detail text, or an empty string when no meaningful context values are present.</returns>
+        private static string BuildContextDetails(IReadOnlyDictionary<string, string> contextValues)
+        {
+            // The shell records only meaningful context values so the output stream stays useful instead of repeating empty placeholders.
+            ArgumentNullException.ThrowIfNull(contextValues);
+
+            var contextLines = new List<string>();
+
+            AddContextLine(contextLines, "Active explorer", GetContextValue(contextValues, WorkbenchContextKeys.ActiveExplorer));
+            AddContextLine(contextLines, "Active tool", GetContextValue(contextValues, WorkbenchContextKeys.ActiveTool));
+            AddContextLine(contextLines, "Active region", GetContextValue(contextValues, WorkbenchContextKeys.ActiveRegion));
+            AddContextLine(contextLines, "Selection type", GetContextValue(contextValues, WorkbenchContextKeys.SelectionType));
+
+            var selectionCount = GetContextValue(contextValues, WorkbenchContextKeys.SelectionCount);
+            if (!string.IsNullOrWhiteSpace(selectionCount)
+                && !string.Equals(selectionCount, "0", StringComparison.Ordinal))
+            {
+                AddContextLine(contextLines, "Selection count", selectionCount);
+            }
+
+            var toolSurfaceReady = GetContextValue(contextValues, WorkbenchContextKeys.ToolSurfaceReady);
+            if (!string.IsNullOrWhiteSpace(toolSurfaceReady)
+                && bool.TryParse(toolSurfaceReady, out var isToolSurfaceReady)
+                && isToolSurfaceReady)
+            {
+                AddContextLine(contextLines, "Tool surface ready", toolSurfaceReady);
+            }
+
+            return string.Join(Environment.NewLine, contextLines);
+        }
+
+        /// <summary>
+        /// Returns one shell-context value from the supplied snapshot.
+        /// </summary>
+        /// <param name="contextValues">The context snapshot that owns the requested key.</param>
+        /// <param name="key">The context key that should be read.</param>
+        /// <returns>The matching context value, or an empty string when the key is absent.</returns>
+        private static string GetContextValue(IReadOnlyDictionary<string, string> contextValues, string key)
+        {
+            // Missing context values are treated as empty so context-detail rendering can stay concise.
+            ArgumentNullException.ThrowIfNull(contextValues);
+            ArgumentException.ThrowIfNullOrWhiteSpace(key);
+
+            return contextValues.TryGetValue(key, out var value)
+                ? value
+                : string.Empty;
+        }
+
+        /// <summary>
+        /// Appends one formatted shell-context detail line when the supplied value is meaningful.
+        /// </summary>
+        /// <param name="contextLines">The context-detail lines being accumulated.</param>
+        /// <param name="label">The human-readable label that should prefix the context value.</param>
+        /// <param name="value">The context value that should be added when present.</param>
+        private static void AddContextLine(List<string> contextLines, string label, string value)
+        {
+            // The helper centralizes blank-value filtering so context-detail formatting stays consistent across all shell keys.
+            ArgumentNullException.ThrowIfNull(contextLines);
+            ArgumentException.ThrowIfNullOrWhiteSpace(label);
+
+            if (string.IsNullOrWhiteSpace(value))
+            {
+                return;
+            }
+
+            contextLines.Add($"{label}: {value}");
+        }
+
+        /// <summary>
         /// Maps a simple Workbench notification severity string to the corresponding Radzen severity.
         /// </summary>
         /// <param name="severity">The shell notification severity expressed as a simple string value.</param>
         /// <returns>The Radzen notification severity used to render the message.</returns>
-        private static NotificationSeverity MapNotificationSeverity(string severity)
+        private static NotificationSeverity MapRadzenNotificationSeverity(string severity)
         {
             // The Workbench contract keeps severity values simple strings so the host owns the presentation-specific mapping.
             return severity.ToLowerInvariant() switch
@@ -538,6 +1027,165 @@ namespace WorkbenchHost.Components.Layout
         }
 
         /// <summary>
+        /// Maps a simple Workbench notification severity string to the corresponding output severity.
+        /// </summary>
+        /// <param name="severity">The shell notification severity expressed as a simple string value.</param>
+        /// <returns>The output severity used by the shared Workbench output stream.</returns>
+        private static OutputLevel MapOutputLevel(string severity)
+        {
+            // Notification mirroring uses the output panel's severity model so toasts and output rows stay aligned at the shell level.
+            ArgumentException.ThrowIfNullOrWhiteSpace(severity);
+
+            return severity.ToLowerInvariant() switch
+            {
+                "success" => OutputLevel.Info,
+                "warning" => OutputLevel.Warning,
+                "error" => OutputLevel.Error,
+                _ => OutputLevel.Info
+            };
+        }
+
+        /// <summary>
+        /// Maps a Radzen notification severity to the corresponding output severity.
+        /// </summary>
+        /// <param name="severity">The Radzen notification severity value.</param>
+        /// <returns>The output severity used by the shared Workbench output stream.</returns>
+        private static OutputLevel MapOutputLevel(NotificationSeverity severity)
+        {
+            // Startup notification replay also mirrors into the output panel, so the host converts Radzen-specific severities back into shell output levels here.
+            return severity switch
+            {
+                NotificationSeverity.Success => OutputLevel.Info,
+                NotificationSeverity.Warning => OutputLevel.Warning,
+                NotificationSeverity.Error => OutputLevel.Error,
+                _ => OutputLevel.Info
+            };
+        }
+
+        /// <summary>
+        /// Formats a pixel size value for reuse as a CSS grid-track token.
+        /// </summary>
+        /// <param name="sizeInPixels">The pixel size reported by the Workbench splitter interop.</param>
+        /// <returns>The pixel token used by the shell grid state.</returns>
+        private static string FormatPixelTrackToken(double sizeInPixels)
+        {
+            // Persisting pixel tokens preserves the user's exact in-session splitter adjustment without introducing cross-session layout storage.
+            return $"{Math.Round(sizeInPixels, 2):0.##}px";
+        }
+
+        /// <summary>
+        /// Builds the clipboard payload for one output entry.
+        /// </summary>
+        /// <param name="outputEntry">The output entry that should be converted into a copyable text payload.</param>
+        /// <returns>The text payload written to the clipboard.</returns>
+        private static string BuildCopiedOutputText(OutputEntry outputEntry)
+        {
+            // Clipboard text includes the row's visible metadata and any optional details so copied diagnostics remain useful outside the shell.
+            ArgumentNullException.ThrowIfNull(outputEntry);
+
+            var builder = new System.Text.StringBuilder()
+                .Append('[')
+                .Append(outputEntry.TimestampUtc.ToLocalTime().ToString("HH:mm:ss"))
+                .Append("] ")
+                .Append(outputEntry.Source)
+                .Append(": ")
+                .Append(outputEntry.Summary);
+
+            if (!string.IsNullOrWhiteSpace(outputEntry.Details))
+            {
+                builder.AppendLine();
+                builder.Append(outputEntry.Details);
+            }
+
+            if (!string.IsNullOrWhiteSpace(outputEntry.EventCode))
+            {
+                builder.AppendLine();
+                builder.Append("Event code: ");
+                builder.Append(outputEntry.EventCode);
+            }
+
+            return builder.ToString();
+        }
+
+        /// <summary>
+        /// Ensures the output-panel JavaScript module is loaded and attached to the current output viewport.
+        /// </summary>
+        /// <returns>A task that completes when the browser helper has been initialized.</returns>
+        private async Task EnsureOutputPanelInteropAsync()
+        {
+            // The module is loaded lazily so collapsed panels do not pay any browser-side setup cost.
+            if (_outputPanelModule is not null)
+            {
+                return;
+            }
+
+            _outputPanelModule = await JsRuntime.InvokeAsync<IJSObjectReference>("import", OutputPanelModulePath);
+            _dotNetObjectReference = DotNetObjectReference.Create(this);
+            await _outputPanelModule.InvokeVoidAsync("initializeOutputPanel", _outputStreamElement, _dotNetObjectReference);
+        }
+
+        /// <summary>
+        /// Releases any browser-side resources owned by the output-panel helper module.
+        /// </summary>
+        /// <returns>A task that completes when the interop resources have been released.</returns>
+        private async Task DisposeOutputPanelInteropAsync()
+        {
+            // Output-panel interop is short-lived and panel-scoped, so closing the panel tears it down immediately instead of waiting for component disposal.
+            if (_outputPanelModule is not null)
+            {
+                try
+                {
+                    await _outputPanelModule.InvokeVoidAsync("disposeOutputPanel", _outputStreamElement);
+                    await _outputPanelModule.DisposeAsync();
+                }
+                catch (JSDisconnectedException)
+                {
+                    // The circuit can disconnect before disposal completes; there is nothing else to clean up in that path.
+                }
+                catch (TaskCanceledException)
+                {
+                    // Browser-side teardown can be cancelled during shutdown.
+                }
+                catch (ObjectDisposedException)
+                {
+                    // The JS runtime can already be gone during final teardown.
+                }
+
+                _outputPanelModule = null;
+            }
+
+            _dotNetObjectReference?.Dispose();
+            _dotNetObjectReference = null;
+        }
+
+        /// <summary>
+        /// Responds to output-stream changes by requesting a shell re-render.
+        /// </summary>
+        /// <param name="sender">The object that raised the change notification.</param>
+        /// <param name="e">The event arguments for the change notification.</param>
+        private void HandleOutputEntriesChanged(object? sender, EventArgs e)
+        {
+            // Output-stream changes can arrive while the panel is either collapsed or visible, so the shell always schedules a safe UI refresh.
+            if (OutputPanelState.IsVisible && OutputPanelState.IsAutoScrollEnabled)
+            {
+                _pendingScrollToEnd = true;
+            }
+
+            _ = InvokeAsync(StateHasChanged);
+        }
+
+        /// <summary>
+        /// Responds to shared output-panel state changes by requesting a shell re-render.
+        /// </summary>
+        /// <param name="sender">The object that raised the event.</param>
+        /// <param name="e">The event arguments for the notification.</param>
+        private void HandleOutputPanelStateChanged(object? sender, EventArgs e)
+        {
+            // Panel-state changes can affect layout rows, toolbar pressed states, and hidden severity indicators, so the shell re-renders from one place.
+            _ = InvokeAsync(StateHasChanged);
+        }
+
+        /// <summary>
         /// Unsubscribes from shell state notifications when the layout is disposed.
         /// </summary>
         public void Dispose()
@@ -545,6 +1193,19 @@ namespace WorkbenchHost.Components.Layout
             // Layout disposal must release the event subscription to avoid retaining old component instances across reconnects or test renders.
             ShellManager.StateChanged -= HandleShellStateChanged;
             ShellManager.NotificationRaised -= HandleWorkbenchNotificationRaised;
+            WorkbenchOutputService.EntriesChanged -= HandleOutputEntriesChanged;
+            WorkbenchOutputService.PanelStateChanged -= HandleOutputPanelStateChanged;
+        }
+
+        /// <summary>
+        /// Releases the output-panel interop resources when the layout is disposed asynchronously.
+        /// </summary>
+        /// <returns>A task that completes when the owned interop resources have been released.</returns>
+        public async ValueTask DisposeAsync()
+        {
+            // Async disposal complements the synchronous event unsubscription path by releasing any browser-side output helpers the layout created.
+            Dispose();
+            await DisposeOutputPanelInteropAsync();
         }
     }
 }

@@ -1,4 +1,6 @@
 using Microsoft.Extensions.DependencyInjection;
+using UKHO.Workbench.Output;
+using UKHO.Workbench.Services.Output;
 using UKHO.Workbench.Services.Shell;
 
 namespace UKHO.Workbench.Services
@@ -20,6 +22,9 @@ namespace UKHO.Workbench.Services
 
             // The bootstrap slice keeps shell orchestration in a singleton manager because the shell itself is singleton-oriented for the first hosted-tool path.
             services.AddSingleton<WorkbenchShellManager>();
+
+            // The output stream is shell-wide for the current session, so the host and shell share one singleton in-memory service.
+            services.AddSingleton<IWorkbenchOutputService, WorkbenchOutputService>();
 
             // Returning the collection preserves the extension point for later work items while centralizing shell orchestration registration here.
             return services;

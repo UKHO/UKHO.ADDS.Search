@@ -20,7 +20,8 @@
 .workbench-shell__status-bar,
 .workbench-shell__activity-rail,
 .workbench-shell__explorer,
-.workbench-shell__tool-surface {
+.workbench-shell__tool-surface,
+.workbench-shell__output-panel {
     background: var(--rz-base-background-color);
     border: 1px solid var(--rz-base-300);
     border-radius: 0;
@@ -31,9 +32,21 @@
 .workbench-shell__status-bar {
     display: flex;
     align-items: center;
-    justify-content: space-between;
+    justify-content: flex-start;
     gap: 1rem;
     padding: 0 1rem;
+}
+
+.workbench-shell__status-bar-items {
+    display: flex;
+    align-items: center;
+    gap: 1rem;
+    min-width: 0;
+    overflow: auto;
+}
+
+.workbench-shell__output-toggle {
+    flex: 0 0 auto;
 }
 
 .workbench-shell__brand {
@@ -56,7 +69,9 @@
 .workbench-shell__activity-button,
 .workbench-shell__tool-button,
 .workbench-shell__tab-button,
-.workbench-shell__tab-close {
+.workbench-shell__tab-close,
+.workbench-shell__output-disclosure,
+.workbench-shell__output-copy {
     appearance: none;
     background: transparent;
     border: 0;
@@ -78,11 +93,15 @@
 .workbench-shell__tool-button:hover,
 .workbench-shell__tab-button:hover,
 .workbench-shell__tab-close:hover,
+.workbench-shell__output-disclosure:hover,
+.workbench-shell__output-copy:hover,
 .workbench-shell__menu-button:focus-visible,
 .workbench-shell__activity-button:focus-visible,
 .workbench-shell__tool-button:focus-visible,
 .workbench-shell__tab-button:focus-visible,
-.workbench-shell__tab-close:focus-visible {
+.workbench-shell__tab-close:focus-visible,
+.workbench-shell__output-disclosure:focus-visible,
+.workbench-shell__output-copy:focus-visible {
     background: var(--rz-base-200);
     outline: none;
 }
@@ -218,6 +237,188 @@
     flex-direction: column;
     height: 100%;
     overflow: hidden;
+}
+
+.workbench-shell__output-panel {
+    display: flex;
+    flex-direction: column;
+    height: 100%;
+    min-height: 0;
+    overflow: hidden;
+}
+
+.workbench-shell__output-toolbar {
+    display: flex;
+    align-items: center;
+    gap: 0.25rem;
+    padding: 0.375rem 0.5rem;
+    border-bottom: 1px solid var(--rz-base-300);
+    background: var(--rz-base-100);
+}
+
+.workbench-shell__output-stream {
+    display: flex;
+    flex: 1 1 auto;
+    flex-direction: column;
+    min-height: 0;
+    padding: 0.25rem 0.5rem;
+    overflow: auto;
+    font-family: Consolas, "Courier New", monospace;
+}
+
+.workbench-shell__output-stream--wrapped {
+    overflow-x: hidden;
+}
+
+.workbench-shell__output-row {
+    display: flex;
+    flex-direction: column;
+    min-width: max-content;
+    padding: 0.125rem 0;
+    border-bottom: 1px solid var(--rz-base-200);
+}
+
+.workbench-shell__output-stream--wrapped .workbench-shell__output-row {
+    min-width: 100%;
+}
+
+.workbench-shell__output-row-summary {
+    display: grid;
+    grid-template-columns: auto auto auto auto minmax(0, 1fr);
+    gap: 0.5rem;
+    align-items: center;
+    min-width: max-content;
+    min-height: 1.75rem;
+    font-size: 0.8125rem;
+}
+
+.workbench-shell__output-stream--wrapped .workbench-shell__output-row-summary {
+    width: 100%;
+    min-width: 0;
+    align-items: start;
+}
+
+.workbench-shell__output-disclosure {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 1.5rem;
+    height: 1.5rem;
+    border-radius: var(--rz-border-radius);
+    color: var(--rz-text-secondary-color);
+}
+
+.workbench-shell__output-level-marker {
+    width: 0.5rem;
+    height: 0.5rem;
+    border-radius: 999px;
+    background: var(--rz-base-300);
+}
+
+.workbench-shell__output-level-marker[data-output-level="debug"] {
+    background: var(--rz-base-300);
+}
+
+.workbench-shell__output-level-marker[data-output-level="info"] {
+    background: var(--rz-info, var(--rz-primary));
+}
+
+.workbench-shell__output-level-marker[data-output-level="warning"] {
+    background: var(--rz-warning, #d88c00);
+}
+
+.workbench-shell__output-level-marker[data-output-level="error"] {
+    background: var(--rz-danger, #d0342c);
+}
+
+.workbench-shell__output-timestamp,
+.workbench-shell__output-source {
+    color: var(--rz-text-secondary-color);
+}
+
+.workbench-shell__output-source {
+    font-weight: 600;
+}
+
+.workbench-shell__output-summary {
+    min-width: 0;
+    white-space: nowrap;
+}
+
+.workbench-shell__output-stream--wrapped .workbench-shell__output-summary {
+    white-space: pre-wrap;
+    overflow-wrap: anywhere;
+}
+
+.workbench-shell__output-row-details {
+    display: flex;
+    flex-direction: column;
+    gap: 0.35rem;
+    padding: 0.125rem 0 0.35rem 2.5rem;
+    color: var(--rz-text-secondary-color);
+    font-size: 0.8125rem;
+}
+
+.workbench-shell__output-details-text {
+    white-space: pre;
+}
+
+.workbench-shell__output-stream--wrapped .workbench-shell__output-details-text {
+    white-space: pre-wrap;
+    overflow-wrap: anywhere;
+}
+
+.workbench-shell__output-event-code {
+    color: var(--rz-text-color);
+}
+
+.workbench-shell__output-detail-actions {
+    display: flex;
+    align-items: center;
+    gap: 0.25rem;
+}
+
+.workbench-shell__output-copy {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    gap: 0.35rem;
+    width: auto;
+    height: 1.75rem;
+    padding: 0 0.5rem;
+    border-radius: var(--rz-border-radius);
+}
+
+.workbench-shell__output-toggle-indicator {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    min-width: 1.5rem;
+    padding: 0.1rem 0.45rem;
+    border-radius: 999px;
+    font-size: 0.7rem;
+    font-weight: 600;
+    text-transform: uppercase;
+}
+
+.workbench-shell__output-toggle-indicator[data-output-unseen-level="debug"] {
+    background: var(--rz-base-200);
+    color: var(--rz-text-secondary-color);
+}
+
+.workbench-shell__output-toggle-indicator[data-output-unseen-level="info"] {
+    background: var(--rz-info-lighter, var(--rz-base-200));
+    color: var(--rz-info-darker, var(--rz-text-color));
+}
+
+.workbench-shell__output-toggle-indicator[data-output-unseen-level="warning"] {
+    background: var(--rz-warning-lighter, var(--rz-base-200));
+    color: var(--rz-warning-darker, var(--rz-text-color));
+}
+
+.workbench-shell__output-toggle-indicator[data-output-unseen-level="error"] {
+    background: var(--rz-danger-lighter, var(--rz-base-200));
+    color: var(--rz-danger-darker, var(--rz-text-color));
 }
 
 .workbench-shell__tab-strip {

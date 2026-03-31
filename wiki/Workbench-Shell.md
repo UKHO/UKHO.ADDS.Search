@@ -58,6 +58,37 @@ The `083-workbench-model` bootstrap slice introduces the first runnable Workbenc
 - the working area now keeps the activity rail fixed at `64px` with no splitter between that rail and the explorer, leaving only the explorer-to-centre boundary resizeable
 - the centre tab host now removes its extra top, bottom, and left shell padding so the tab strip sits flush with the content surface while the always-visible overflow affordance stays anchored to the right edge
 
+## What the output foundation slice adds
+
+- the shell now owns a shared `IWorkbenchOutputService` and immutable output contracts in `UKHO.Workbench.Output`, giving host and shell code a single append-only session stream
+- the output stream is retained in memory with a bounded `250`-entry limit, preserving chronological order while discarding the oldest entries when the limit is exceeded
+- `MainLayout` now renders an `Output` toggle on the far-left side of the status bar and keeps the bottom output panel collapsed by default even when startup entries already exist
+- opening the panel inserts a full-width bottom pane between the centre working area and the status bar using the existing `UKHO.Workbench.Layout` grid and splitter primitives with an initial `1* : 4*` output-to-centre ratio
+- the first shell-owned startup entry is now written during host bootstrap so the output panel shows real Workbench activity rather than synthetic demo text when it is opened
+
+## What the output toolbar and session-state slice adds
+
+- the shared `OutputPanelState` now tracks hidden unseen severity, auto-scroll, wrap mode, expanded-row ids, and the current-session output height so the shell can restore one coherent output-panel view state
+- the status-bar `Output` toggle now shows the most severe unseen hidden output level while the panel remains collapsed and clears that indicator immediately when the panel is opened or the stream is cleared
+- the output panel now includes a compact toolbar with `Clear`, `Auto-scroll`, `Scroll to end`, and `Wrap`, plus a lightweight per-entry copy action that uses a shell-owned browser helper instead of turning the panel into a JavaScript-owned widget
+- manual upward scrolling now disables `Auto-scroll`, while `Scroll to end` re-enables it and requests a deferred browser scroll after the next render
+- dragging the existing shell splitter between the centre surface and the output pane now stores the user-adjusted height for the current session, so closing and reopening the panel restores the last in-session size instead of resetting to the default split
+
+## What the structured output rendering slice adds
+
+- the output panel now renders compact structured rows through a focused shell-owned `WorkbenchOutputRow` component so `MainLayout` can stay readable while the output surface gains IDE-like density
+- collapsed rows now show a disclosure chevron, subtle visual severity marker, local timestamp, source, and summary, while optional event codes remain hidden until the row is expanded
+- multiple rows can remain expanded at once, and expanded details now render inline beneath the summary with preserved line breaks plus a row-scoped copy action
+- the global `Wrap` toggle now applies consistently to both collapsed summaries and expanded details, while the unwrapped mode keeps horizontal scrolling available for long diagnostic content
+
+## What the output-first shell migration slice adds
+
+- module discovery, module-load success, and module-load failure events are now buffered during startup and replayed into the shared Workbench output stream as `Debug`, `Warning`, or `Error` entries once the shell output service is available
+- startup and runtime user-safe notifications are now mirrored into the output stream under the `Notifications` source while the existing toast behaviour continues to surface the same safe summaries to users
+- shell context snapshots and historical status-bar messages are now written into the output stream as `Shell context` and `Status` diagnostics, so the output panel becomes the historical trace for shell state changes
+- the status bar is now intentionally reduced to the far-left `Output` toggle and its hidden unseen-severity indicator instead of carrying persistent right-aligned context and readiness text
+- historical output remains shell-wide for the whole in-memory session, so messages written before navigation or tool switches remain visible after the user changes tabs or explorers
+
 ## Project responsibilities
 
 | Project | Responsibility |
@@ -76,9 +107,9 @@ The `083-workbench-model` bootstrap slice introduces the first runnable Workbenc
 1. `WorkbenchHost` registers the Workbench infrastructure and service-layer dependencies.
 2. `WorkbenchHost` reads `modules.json`, resolves probe roots, and scans for enabled `UKHO.Workbench.Modules.*` assemblies.
 3. Valid modules register services and tool definitions through the bounded `IWorkbenchModule` contract before DI finalization.
-4. Host startup registers the `Workbench overview` tool and then applies module-contributed tools to the tab-aware shell manager.
+4. Host startup registers the `Workbench overview` tool, replays buffered startup output into the shared shell-wide output stream, and then applies module-contributed tools to the tab-aware shell manager.
 5. The shell manager selects the bootstrap explorer and activates the first enabled module tool when one is available, otherwise it falls back to the host-owned overview tool.
-6. `MainLayout` renders the desktop-like shell chrome and replays any buffered startup notifications.
+6. `MainLayout` renders the desktop-like shell chrome, mirrors startup notifications into the output stream, and replays those same safe notifications through the existing toast surface.
 7. `Index` renders the open tab collection into the center working surface and shows only the active tab while inactive tabs remain mounted.
 
 ## Runtime interaction flow
@@ -91,7 +122,7 @@ The `083-workbench-model` bootstrap slice introduces the first runnable Workbenc
 
 ## Verification
 
-Use the targeted commands from `docs/084-workbench-tabs/implementation-plan.md` for this slice:
+Use the targeted commands from `docs/086-workbench-output/implementation-plan.md` for the current output slice:
 
 - `dotnet build src/workbench/server/WorkbenchHost/WorkbenchHost.csproj`
 - `dotnet test test/workbench/server/UKHO.Workbench.Tests/UKHO.Workbench.Tests.csproj`
@@ -100,3 +131,5 @@ Use the targeted commands from `docs/084-workbench-tabs/implementation-plan.md` 
 - `dotnet run --project src/workbench/server/WorkbenchHost/WorkbenchHost.csproj`
 
 When the host starts, browse to `/` and confirm the shell loads with the enabled module map visible in the explorer, that `Search ingestion`, `Search query`, `Ingestion rule editor`, `PKS operations`, `File Share workspace`, and `Administration` open in the center region, and that reopening them re-focuses the existing singleton tool instance. Disable one or more modules in `modules.json` and restart to confirm the disabled tools disappear from the explorer.
+
+For the current output slice, also open the `Output` panel, resize it, close and reopen it, confirm the previous height is restored for the session, collapse it again to watch the hidden severity indicator accumulate unseen output, scroll upward to disable `Auto-scroll`, and use `Scroll to end` to jump back to the newest entry and re-enable automatic scrolling.

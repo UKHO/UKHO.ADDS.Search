@@ -1,0 +1,55 @@
+@using UKHO.Workbench.Output
+
+<div class="workbench-shell__output-row"
+     data-output-entry-id="@Entry.Id"
+     data-output-level="@Entry.Level.ToString().ToLowerInvariant()"
+     data-output-expanded="@IsExpanded.ToString().ToLowerInvariant()"
+     data-output-wrap-mode="@(IsWordWrapEnabled ? "wrapped" : "nowrap")">
+    <div class="workbench-shell__output-row-summary">
+        <button type="button"
+                class="workbench-shell__output-disclosure"
+                data-role="output-entry-toggle"
+                aria-expanded="@IsExpanded"
+                aria-controls="@DetailsRegionId"
+                aria-label="@(IsExpanded ? $"Collapse output entry from {Entry.Source}" : $"Expand output entry from {Entry.Source}")"
+                @onclick="ToggleExpansionAsync">
+            <RadzenIcon Icon="@DisclosureIcon" />
+        </button>
+
+        <span class="workbench-shell__output-level-marker"
+              data-output-level="@Entry.Level.ToString().ToLowerInvariant()"
+              title="@LevelMarkerTooltip"
+              aria-hidden="true"></span>
+        <span class="workbench-shell__output-timestamp">@FormattedTimestamp</span>
+        <span class="workbench-shell__output-source">@Entry.Source</span>
+        <span class="workbench-shell__output-summary">@Entry.Summary</span>
+    </div>
+
+    @if (IsExpanded)
+    {
+        <div id="@DetailsRegionId"
+             class="workbench-shell__output-row-details"
+             data-role="output-entry-details">
+            @if (!string.IsNullOrWhiteSpace(Entry.Details))
+            {
+                <div class="workbench-shell__output-details-text">@Entry.Details</div>
+            }
+
+            @if (!string.IsNullOrWhiteSpace(Entry.EventCode))
+            {
+                <div class="workbench-shell__output-event-code" data-role="output-event-code">Event code: @Entry.EventCode</div>
+            }
+
+            <div class="workbench-shell__output-detail-actions">
+                <button type="button"
+                        class="workbench-shell__menu-button workbench-shell__output-copy"
+                        data-role="output-copy-entry"
+                        aria-label="Copy output entry from @Entry.Source"
+                        @onclick="CopyAsync">
+                    <RadzenIcon Icon="content_copy" />
+                    <span>Copy</span>
+                </button>
+            </div>
+        </div>
+    }
+</div>

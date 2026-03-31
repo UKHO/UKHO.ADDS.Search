@@ -169,7 +169,7 @@ namespace UKHO.Workbench.Layout
         /// </summary>
         protected override void OnParametersSet()
         {
-            // Parameter updates only need to refresh container sizing because track definitions are supplied by child components.
+            // Parameter updates only need to refresh container sizing because track definitions are supplied by child components for the lifetime of this grid instance.
             _wrapper.SetWidth(Width);
             _wrapper.SetHeight(Height);
             base.OnParametersSet();

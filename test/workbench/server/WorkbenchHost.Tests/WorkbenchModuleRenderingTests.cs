@@ -14,6 +14,7 @@ using UKHO.Workbench.Modules.Admin;
 using UKHO.Workbench.Modules.FileShare;
 using UKHO.Workbench.Modules.PKS;
 using UKHO.Workbench.Modules.Search;
+using UKHO.Workbench.Services;
 using UKHO.Workbench.Services.Shell;
 using UKHO.Workbench.Tools;
 using UKHO.Workbench.WorkbenchShell;
@@ -36,8 +37,6 @@ namespace WorkbenchHost.Tests
         private const string OverviewCommandId = "command.host.open-overview";
         private const string OverviewMenuId = "menu.host.overview";
         private const string OverviewToolbarId = "toolbar.host.overview";
-        private const string HostReadyStatusId = "status.host.ready";
-
         /// <summary>
         /// Confirms the full initial module map can be discovered, rendered, and activated through the shared singleton shell path.
         /// </summary>
@@ -242,8 +241,6 @@ namespace WorkbenchHost.Tests
 
             shellManager.RegisterMenu(new MenuContribution(OverviewMenuId, "Overview", OverviewCommandId, icon: "dashboard", order: 100));
             shellManager.RegisterToolbar(new ToolbarContribution(OverviewToolbarId, "Overview", OverviewCommandId, icon: "dashboard", order: 100));
-            shellManager.RegisterStatusBar(new StatusBarContribution(HostReadyStatusId, "Workbench shell ready", icon: "check_circle", order: 100));
-
             foreach (var moduleToolDefinition in moduleContributions.ToolDefinitions)
             {
                 // Module-contributed tools are registered through the same shell manager entry point used by host-owned tools.
@@ -310,6 +307,7 @@ namespace WorkbenchHost.Tests
             var services = new ServiceCollection();
             services.AddLogging();
             services.AddRadzenComponents();
+            services.AddWorkbenchServices();
             services.AddSingleton(shellManager);
             services.AddSingleton<WorkbenchStartupNotificationStore>();
             services.AddSingleton<IJSRuntime, TestJsRuntime>();
