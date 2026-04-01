@@ -117,6 +117,8 @@ For authoritative details on those meters and instruments, use the OpenTelemetry
 
 ## Related pages
 
-- [Ingestion pipeline](Ingestion-Pipeline)
-- [Project setup](Project-Setup)
-- [Documentation source map](Documentation-Source-Map)
+- [Project setup](Project-Setup.md)
+- [Setup walkthrough](Setup-Walkthrough.md)
+- [Setup troubleshooting](Setup-Troubleshooting.md)
+- [Ingestion pipeline](Ingestion-Pipeline.md)
+- [Documentation source map](Documentation-Source-Map.md)

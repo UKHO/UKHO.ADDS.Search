@@ -1,230 +1,202 @@
 # Ingestion pipeline
 
-The ingestion runtime is a supervised pipeline built on `System.Threading.Channels`.
+This page is the narrative entry point for the ingestion section.
 
-At a high level it reads provider queue messages, validates them, partitions them by key into ordered lanes, enriches them into canonical index operations, micro-batches those operations, bulk indexes them into Elasticsearch, and persists failures to dead-letter storage.
+Use it when you want the current repository view of how a provider message becomes a canonical search document, where failure boundaries sit, and which supporting pages to read next.
 
-## Why channels are used
+## Reading path
 
-The `src/UKHO.Search` project provides a generic node/channel runtime with these characteristics:
+- Read [Ingestion graph runtime foundations](Ingestion-Graph-Runtime.md) if you want the in-depth explanation of the generic node/channel runtime that sits underneath the concrete ingestion graph.
+- Continue to [Ingestion walkthrough](Ingestion-Walkthrough.md) for a code-oriented trace through the host, provider, rules, and indexing flow.
+- Read [Ingestion rules](Ingestion-Rules.md) and [Appendix: rule syntax quick reference](Appendix-Rule-Syntax-Quick-Reference.md) when the change you are making affects canonical enrichment logic.
+- Use [Ingestion troubleshooting](Ingestion-Troubleshooting.md) when the runtime does not behave as expected.
+- Keep [File Share provider](FileShare-Provider.md) and [CanonicalDocument and discovery taxonomy](CanonicalDocument-and-Discovery-Taxonomy.md) nearby when you need the provider-specific and canonical-model details.
 
-- bounded channels for backpressure
-- explicit node boundaries
+## What the ingestion runtime is trying to achieve
+
+The current ingestion runtime turns source-specific queue messages into provider-independent search documents.
+
+At a high level it:
+
+1. polls provider queues
+2. validates incoming requests
+3. partitions work by key into ordered lanes
+4. creates index operations and minimal canonical documents
+5. applies provider enrichers and rules
+6. micro-batches and bulk indexes the result
+7. acknowledges success or persists terminal failures to dead-letter storage
+
+That sequence is intentionally split across infrastructure, provider, and canonical-model boundaries so a provider can stay source-specific without teaching the rest of the repository its private schema.
+
+## Current runtime map
+
+```mermaid
+flowchart LR
+    Queue[(Azure Queue)] --> Infra[Infrastructure ingress]
+    Infra --> Validate[Validate request]
+    Validate --> Partition[Partition by key]
+    Partition --> Dispatch[Dispatch to index operation]
+    Dispatch --> Enrich[Provider enrichers + rules]
+    Enrich --> Batch[Microbatch]
+    Batch --> Index[Bulk index]
+    Index --> Ack[Acknowledge queue message]
+    Validate --> RequestDlq[Request dead-letter]
+    Enrich --> IndexDlq[Index dead-letter]
+    Index --> Diag[Diagnostics sink]
+```
+
+The current concrete processing graph lives in `src/Providers/UKHO.Search.Ingestion.Providers.FileShare/Pipeline/FileShareIngestionProcessingGraph.cs`.
+
+## The generic runtime matters as much as the concrete graph
+
+One risk in documentation like this is that the concrete File Share graph can crowd out the more general architecture it is built on. That would leave the reader with a list of stages but not with the deeper explanation of why the runtime behaves the way it does.
+
+The concrete graph is only half of the story. Underneath it sits the reusable node-and-channel runtime in `src/UKHO.Search`. That runtime gives the repository its vocabulary of nodes, channels, envelopes, supervision, queue-depth tracking, and metrics. Without that foundation, terms like `lane`, `hot key`, `backpressure`, and `lane-blocking retry` sound like local jargon. With the foundation in view, they become understandable design choices.
+
+If you want that deeper architectural layer explained in detail, read [Ingestion graph runtime foundations](Ingestion-Graph-Runtime.md) before continuing.
+
+## Why the pipeline runtime is channel-based
+
+The repository uses a channel-based graph because ingestion has to reconcile several needs at once: continuous asynchronous input, bounded memory use, per-key ordering, useful concurrency, and operational visibility.
+
+The generic runtime in `src/UKHO.Search` provides the core pieces that make that possible:
+
+- bounded channels for controlled flow rather than unbounded buffering
+- explicit node boundaries so each stage has a clear responsibility
 - queue-depth tracking via `CountingChannel`
 - fail-fast supervision via `PipelineSupervisor`
 - per-node metrics via `NodeMetrics`
 
-This gives ingestion a deterministic, testable pipeline runtime without coupling the design to a single provider.
+In plain English, the runtime is designed to make pressure and ordering visible instead of accidental. If one stage becomes slow, the graph does not hide that slowness behind infinite buffering. If one document key receives disproportionate traffic, the graph preserves correctness for that key even when it makes one lane busier than the others. If one node fails structurally, the graph stops coherently rather than degrading into a half-broken background process.
 
-## File Share processing graph
+That is why the channel-based runtime is not an implementation detail. It is the architectural basis of the ingestion system.
 
-The current concrete graph is built in:
+## Stage-by-stage view
 
-- `src/Providers/UKHO.Search.Ingestion.Providers.FileShare/Pipeline/FileShareIngestionProcessingGraph.cs`
+### 1. Queue ingress stays in infrastructure
 
-The graph is lane-based. A single validated request stream is partitioned into `laneCount` independent ordered lanes, and each lane gets its own dispatch, enrichment, batching, indexing, ack, dead-letter, and diagnostics flow.
+Infrastructure owns queue polling, visibility management, poison-queue handling, and acknowledgement plumbing.
 
-```mermaid
-flowchart LR
-    SRC[Provider ingress channel] --> VAL[ingestion-validate]
-    VAL --> PART[ingestion-partition]
+By the time a provider sees a message, the runtime has already wrapped it in an `Envelope<IngestionRequest>` that carries:
 
-    PART --> L0[Lane 0 dispatch]
-    PART --> L1[Lane 1 dispatch]
-    PART --> LN[Lane N dispatch]
+- message identity
+- document key
+- timestamps and attempt information
+- acknowledgement context
+- provider-scoped context needed later in the graph
 
-    L0 --> D0[dispatch-0]
-    D0 --> E0[enrich-0]
-    E0 --> MB0[microbatch-0]
-    MB0 --> BI0[bulk-index-0]
-    BI0 --> ACK0[ack-0]
+That split is deliberate: providers should focus on request processing rather than on Azure Queue mechanics.
 
-    L1 --> D1[dispatch-1]
-    D1 --> E1[enrich-1]
-    E1 --> MB1[microbatch-1]
-    MB1 --> BI1[bulk-index-1]
-    BI1 --> ACK1[ack-1]
+### 2. Validation rejects structurally bad requests early
 
-    VAL --> DLR1[request dead-letter merge/sink]
-    D0 --> DLR1
-    E0 --> DLR2[index dead-letter merge/sink]
-    BI0 --> DLR2
-    E0 --> DIAG[diagnostics merge/sink]
-    BI0 --> DIAG
-    ACK1 --> PAD[ ]
-    DIAG --> PAD
+`IngestionRequestValidateNode` checks the structural contract before expensive work begins.
 
-    classDef hidden fill:#ffffff,stroke:#ffffff,color:#ffffff;
-    class PAD hidden;
-```
-
-## Runtime stages
-
-### 1. Queue ingress
-
-Infrastructure owns queue polling and deserialization. Providers own request processing.
-
-The provider-facing contract is:
-
-- `DeserializeIngestionRequestAsync(...)`
-- `ProcessIngestionRequestAsync(Envelope<IngestionRequest> ...)`
-
-By the time a request reaches the provider graph, it is already wrapped in an `Envelope<T>` with key/message metadata, queue-ack context, and provider-scoped context needed later in the pipeline.
-
-In practice, queue ingress also includes infrastructure concerns that sit just outside the provider graph:
-
-- polling Azure Queue Storage in batches
-- setting and renewing message visibility timeouts while work is in flight
-- moving over-dequeued messages to a poison queue
-- attaching an acknowledgement/deletion callback into envelope context so successful or dead-lettered terminal outcomes can remove the original queue message
-
-That split is deliberate: infrastructure owns queue mechanics, while the provider owns request processing.
-
-For canonical document construction, the important provider-scoped value is the provider identifier itself. File Share attaches that context at ingress so later generic pipeline nodes can forward it without becoming provider-specific.
-
-### 2. Validation
-
-`IngestionRequestValidateNode` performs structural checks such as:
+Typical checks include:
 
 - exactly one of `IndexItem`, `DeleteItem`, or `UpdateAcl` is present
-- the payload id is non-empty
-- security tokens are valid where required
+- payload ids are non-empty
+- security tokens are valid when required
 - `Envelope.Key` matches the payload id
 
-Validation failures are marked on the envelope and sent to request dead-letter.
+Validation failures are treated as request-level dead-letter outcomes rather than as graph-fatal exceptions.
 
-### 3. Partitioning into lanes
+### 3. Partitioning preserves ordering per document key
 
-`KeyPartitionNode<T>` hashes `Envelope.Key` using a stable FNV-1a hash and writes the message to one of `laneCount` outputs.
+`KeyPartitionNode<T>` hashes `Envelope.Key` into one of `laneCount` ordered lanes.
 
-Why this matters:
+This is the point where a key term enters the design.
 
-- all messages for the same key go to the same lane
-- each lane is processed sequentially
-- ordering for a given document id is preserved
+A **lane** is one ordered stream of work inside a wider concurrent graph. The graph can have several lanes active at once, which is where throughput comes from, but each individual lane still processes its own messages sequentially. That gives the runtime a controlled compromise between concurrency and correctness.
 
-### 4. Dispatch
+What that means in practice is that all messages for the same key stay on the same lane, and later updates for that document cannot jump ahead of earlier work for that same document. The system therefore preserves per-document ordering without forcing the entire ingestion host to process everything one message at a time.
 
-`IngestionRequestDispatchNode` converts a valid request into an `IndexOperation`:
+This is also where the idea of a **hot key** becomes relevant. A hot key is simply a document key that receives much more work than most others. Because all work for that key stays on one lane, that one lane can become unusually busy while the rest of the graph remains healthy. That is not necessarily a defect. It is often the runtime preserving the exact ordering guarantee it was designed to protect.
+
+### 4. Dispatch creates index operations and the minimal canonical document
+
+`IngestionRequestDispatchNode` turns a validated request into an `IndexOperation`:
 
 - `IndexItem` -> `UpsertOperation`
 - `DeleteItem` -> `DeleteOperation`
 - `UpdateAcl` -> `AclUpdateOperation`
 
-For upserts it also creates the initial minimal `CanonicalDocument`.
+For upserts, dispatch also creates the minimal `CanonicalDocument` containing source/provenance fields such as `Id`, `Provider`, `Source`, and `Timestamp`.
 
-That minimal document now includes the immutable `Provider` field. Dispatch resolves provider-scoped parameters propagated from queue ingress and passes them into `CanonicalDocumentBuilder`, which means `Provider` is always set before enrichment or indexing begins.
+Everything developer-facing on the discovery surface is added later by enrichers and rules.
 
-### 5. Enrichment
+### 5. Enrichment combines provider logic with shared rule logic
 
-`ApplyEnrichmentNode` resolves all registered `IIngestionEnricher` instances, sorts them by ordinal, and applies them to the `UpsertOperation` document.
+`ApplyEnrichmentNode` resolves all registered `IIngestionEnricher` instances, orders them by ordinal, and applies them to the upsert document.
 
-Important characteristics:
+Important current behavior:
 
 - enrichers run inside a scoped DI scope
-- provider name is exposed through `IIngestionProviderContext`
-- after enrichers finish, successful upserts are validated to ensure the canonical document retained at least one title
-- transient enrichment failures (`TimeoutException`, `HttpRequestException`, `IOException`, non-cancelled `TaskCanceledException`) are retried with exponential backoff + jitter
-- exhausted retries or non-transient errors dead-letter the index operation
+- provider name is available through `IIngestionProviderContext`
+- transient enrichment failures are retried with backoff and jitter
+- non-transient or exhausted failures go to index dead letter
+- after enrichment completes, the pipeline verifies that the final canonical document retained at least one title
 
-### 6. Micro-batching
+That last rule is important: a document without a retained title is considered a failed ingestion outcome, not a partially useful one.
+
+### 6. Microbatching is the boundary between per-item work and indexing efficiency
 
 `MicroBatchNode<T>` accumulates lane-local items until either:
 
 - `microbatchMaxItems` is reached, or
 - `microbatchMaxDelayMilliseconds` expires
 
-The batch carries:
+The batch metadata keeps enough timing and partition information for diagnostics while still preserving lane ordering.
 
-- partition id
-- created/flushed timestamps
-- min/max item timestamps
-- optional estimated total bytes
+### 7. Bulk indexing stays lane-blocking on purpose
 
-This is the boundary between per-item enrichment and bulk indexing efficiency.
+Infrastructure bulk-index code maps each `IndexOperation` to the Elasticsearch bulk API.
 
-### 7. Bulk indexing
+The current projection preserves `Provider` as a `keyword` field so exact-match filtering and provenance diagnostics can distinguish documents by source.
 
-Infrastructure bulk-index code converts each `IndexOperation` into an Elasticsearch bulk operation:
+Retries are intentionally lane-blocking. This is one of the most important design decisions in the runtime. If Elasticsearch is slow or rejecting work for one lane, later work for the same key is not allowed to overtake the current batch. The system deliberately chooses correctness over superficial throughput.
 
-- upsert -> `BulkIndexOperation<CanonicalIndexDocument>`
-- delete -> `BulkDeleteOperation`
-- ACL update -> partial update of `source.securityTokens`
+That means a slow lane should not automatically be read as a design failure. Sometimes it is the sign that the runtime is doing exactly what it was asked to do: protecting the order of related document updates until the current batch has either succeeded or reached a terminal failure path.
 
-Before bulk indexing, the client ensures the index exists and validates expected field mappings.
+### 8. Acknowledgement only happens on successful terminal outcomes
 
-The canonical index projection preserves `Provider` and maps it as a `keyword` so exact-match filtering and diagnostics can distinguish documents by their originating provider.
+Successful index operations reach an acknowledgement node that uses the queue acker stored in envelope context to delete the original queue message.
 
-An important design detail is that retries for indexing are intentionally lane-blocking. If Elasticsearch is slow or rejecting a lane's current batch, later messages for the same key cannot jump ahead. This preserves per-key ordering guarantees all the way through to the index.
+### 9. Dead-lettering is part of the normal operating model
 
-### 8. Acknowledgement
-
-Successful index operations are passed to an ack node, which uses the queue acker stored in envelope context to delete the original queue message.
-
-### 9. Dead-lettering
-
-There are two main dead-letter flows:
+There are two main dead-letter paths:
 
 - **request dead-letter** for invalid or dispatch-failed `IngestionRequest` envelopes
-- **index dead-letter** for failed enrichment or indexing `IndexOperation` envelopes
+- **index dead-letter** for enrichment or indexing failures on `IndexOperation` envelopes
 
-Missing-title validation now uses the index-operation dead-letter path. If the final canonical upsert document has no retained title after enrichment/rules processing, the message is marked failed with `CANONICAL_TITLE_REQUIRED`, persisted through the existing dead-letter flow, and withheld from normal indexing output.
-
-Blob persistence is handled by:
-
-- `src/UKHO.Search.Infrastructure.Ingestion/DeadLetter/BlobDeadLetterSinkNode.cs`
-
-Blob path format:
+The dead-letter blob path format is:
 
 - `<deadletterBlobPrefix>/yyyy/MM/dd/<key>/<messageId>.json`
 
-Recent dead-letter work added richer payload diagnostics so persisted dead letters show the runtime payload shape, including `CanonicalDocument` detail for failed upserts.
+Dead-letter records are intentionally rich enough to help diagnose payload shape, canonical state, and failure reason after the fact.
 
-There is also a distinction between **poison queue handling** and **dead-letter persistence**:
-
-- the **poison queue** is a queue-ingress concern for messages that have exceeded dequeue limits before successful terminal processing
-- the **dead-letter blob/container** is the diagnostic artifact store for requests or index operations that reached a terminal failure path inside the ingestion runtime
-
-The result is two complementary safety nets:
-
-- queue-level isolation for repeatedly failing messages
-- rich persisted diagnostics for understanding why a message or operation failed
-
-## Diagnostics sinks
-
-The graph does not only produce success and dead-letter paths. It also tees selected messages into diagnostics flows.
-
-Dispatch and successful bulk-index outputs are merged into a diagnostics sink so the host can emit structured operational records about what the pipeline is doing without changing the core indexing path.
-
-This is why the graph contains separate merge/sink paths for:
-
-- request dead-letter
-- index dead-letter
-- diagnostics
-
-## Channels and backpressure
+## Channels, backpressure, and lane health
 
 All graph boundaries use bounded channels from `BoundedChannelFactory`.
 
-Important capacities are read from configuration:
+Important capacities are configured through settings such as:
 
 - `ingestion:channelCapacityPrePartition`
 - `ingestion:channelCapacityPerLane`
 - `ingestion:channelCapacityMicrobatchOut`
 
-The runtime uses `BoundedChannelFullMode.Wait`, so slow downstream nodes naturally backpressure upstream writers instead of dropping data.
+The runtime uses `BoundedChannelFullMode.Wait`, which means downstream slowness naturally backpressures upstream writers instead of dropping work.
 
-`CountingChannel` also tracks queue depth so metrics can surface input backlog.
+In plain language, **backpressure** means the graph refuses to pretend that every stage can accept unlimited work forever. If a downstream node is full or busy, upstream writers have to wait. That keeps memory growth controlled and makes bottlenecks visible instead of hidden.
 
-This matters operationally because queue growth can happen at different boundaries for different reasons:
+Operationally, that means different queue-depth symptoms point at different bottlenecks:
 
-- pre-partition pressure can indicate slow global validation/dispatch ingress
-- per-lane pressure can indicate a hot key or skewed partition distribution
-- microbatch output pressure can indicate Elasticsearch or downstream indexing slowdown
+- pre-partition growth can indicate slow ingress, validation, or dispatch
+- per-lane growth can indicate a hot key or skewed partitioning
+- microbatch output growth often points at downstream indexing pressure
 
-## Supervision model
+## Supervision and fatal faults
 
-`PipelineSupervisor` starts all nodes and cancels the graph when a node reports a fatal error.
+`PipelineSupervisor` starts all nodes and cancels the graph when a node reports a fatal structural/runtime failure.
 
 ```mermaid
 sequenceDiagram
@@ -243,63 +215,62 @@ sequenceDiagram
     Sup->>NodeC: stop by cancellation
 ```
 
-This preserves a fail-fast model for structural/runtime faults while still allowing node-level business failures to be dead-lettered as data, not fatal process crashes.
+This preserves a fail-fast model for structural faults while still allowing business-data failures to be represented as dead-letter outcomes instead of process crashes.
 
 ## Metrics and observability
 
-`UKHO.Search.ServiceDefaults` explicitly subscribes the custom meter:
+`UKHO.Search.ServiceDefaults` subscribes the custom meter `UKHO.Search.Ingestion.Pipeline`.
 
-- `UKHO.Search.Ingestion.Pipeline`
-
-The pipeline emits metrics such as:
+The runtime emits metrics such as:
 
 - `ukho.pipeline.node.in`
 - `ukho.pipeline.node.out`
 - `ukho.pipeline.node.failed`
-- `ukho.pipeline.node.dropped`
 - `ukho.pipeline.node.duration_ms`
 - `ukho.pipeline.node.inflight`
 - `ukho.pipeline.node.queue_depth`
 
-Use the Aspire dashboard to inspect metrics by node and provider.
+Use the Aspire dashboard to inspect metrics by node and provider, and pair those metrics with dead-letter blobs and diagnostics output when the graph is misbehaving.
 
-For the full meter contract, dimensions, instrument semantics, dead-letter metric impact, and built-in OpenTelemetry instrumentation notes, see [Metrics in the Aspire dashboard](Metrics-in-the-Aspire-Dashboard).
+For the full meter contract and local dashboard usage, see [Metrics in the Aspire dashboard](Metrics-in-the-Aspire-Dashboard.md).
 
-## Local operational guidance
+## Practical local commands
 
-### Queue to index loop
+Start the full local services stack:
 
-A common local loop is:
+```powershell
+dotnet run --project src/Hosts/AppHost/AppHost.csproj
+```
 
-1. use `FileShareEmulator` to submit a batch
-2. ingestion host polls the queue
-3. the provider graph processes the message
-4. Elasticsearch receives the canonical document
-5. Aspire shows metrics/logs
-6. failures appear in dead-letter blob storage
+Start only the ingestion host when you need a tighter loop:
 
-### What to inspect when debugging
+```powershell
+dotnet run --project src/Hosts/IngestionServiceHost/IngestionServiceHost.csproj
+```
 
-- queue depth and lane hotspots in Aspire metrics
-- Kibana from the Aspire dashboard for Elasticsearch index inspection, query investigation, and index management
-- dead-letter blob content for failed requests/index operations
-- poison queue growth when messages repeatedly fail before terminal success
-- Elasticsearch mapping creation/validation failures
-- enrichment warnings for ZIP/S-57/S-101/Kreuzberg stages
-- diagnostics sink output for confirmation that messages are being dispatched and indexed as expected
+Run ingestion-focused tests:
 
-## Design implications
+```powershell
+dotnet test test/UKHO.Search.Infrastructure.Ingestion.Tests/UKHO.Search.Infrastructure.Ingestion.Tests.csproj
+```
 
-This architecture intentionally separates concerns:
+## When to read the next ingestion pages
 
-- infrastructure handles polling, clients, storage, and indexing adapters
-- providers own processing graphs
-- enrichers turn source-specific data into a canonical document
-- the domain pipeline runtime remains reusable across providers
+| If you need to understand... | Read next |
+|---|---|
+| The code path from AppHost to provider graph | [Ingestion walkthrough](Ingestion-Walkthrough.md) |
+| Rule syntax, semantics, and authoring flow | [Ingestion rules](Ingestion-Rules.md) |
+| Fast syntax lookups while writing rules | [Appendix: rule syntax quick reference](Appendix-Rule-Syntax-Quick-Reference.md) |
+| Startup, dead-letter, or rules-mismatch symptoms | [Ingestion troubleshooting](Ingestion-Troubleshooting.md) |
 
 ## Related pages
 
-- [Ingestion service provider mechanism](Ingestion-Service-Provider-Mechanism)
-- [File Share provider](FileShare-Provider)
-- [Ingestion rules](Ingestion-Rules)
-- [CanonicalDocument and discovery taxonomy](CanonicalDocument-and-Discovery-Taxonomy)
+- [Ingestion graph runtime foundations](Ingestion-Graph-Runtime.md)
+- [Ingestion walkthrough](Ingestion-Walkthrough.md)
+- [Ingestion rules](Ingestion-Rules.md)
+- [Appendix: rule syntax quick reference](Appendix-Rule-Syntax-Quick-Reference.md)
+- [Ingestion troubleshooting](Ingestion-Troubleshooting.md)
+- [Ingestion service provider mechanism](Ingestion-Service-Provider-Mechanism.md)
+- [File Share provider](FileShare-Provider.md)
+- [CanonicalDocument and discovery taxonomy](CanonicalDocument-and-Discovery-Taxonomy.md)
+- [Metrics in the Aspire dashboard](Metrics-in-the-Aspire-Dashboard.md)

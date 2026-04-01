@@ -2,102 +2,138 @@
 
 Welcome to the developer wiki for `UKHO.Search`.
 
-This wiki consolidates the repository's architecture notes, work-package history, operational guidance, and tooling documentation into a single onboarding path for contributors.
+Use this page as the start of the repository reading path. It explains what the solution does, where to go next for your role, and which pages matter most when you are tracing architecture, setting up the stack, or extending ingestion and Workbench features.
 
-## What this solution is
+## What this repository does
 
-`UKHO.Search` is a search and ingestion platform built around:
+`UKHO.Search` combines four closely related concerns:
 
-- an **ingestion pipeline** that reads provider messages, enriches them, and indexes a canonical search document into Elasticsearch
-- a **query service** that reads from the same canonical index
-- an **Aspire AppHost** that orchestrates the local stack
-- a set of **developer tools** for emulating File Share data, importing/exporting data images, and evaluating ingestion rules
+- a provider-aware **ingestion pipeline** that turns source messages into a shared search shape
+- a **query path** that reads from the indexed canonical form
+- an **Aspire AppHost** that orchestrates the local developer environment
+- a set of **developer tools** that make File Share workflows, rule authoring, and Workbench exploration practical during day-to-day development
 
-At the center of the design is a provider-independent `CanonicalDocument`. Providers turn source-specific payloads into that shared discovery contract, and the infrastructure layer projects it into Elasticsearch.
+The repository's central contract is the [`CanonicalDocument`](Glossary.md#canonicaldocument). Providers build or enrich that shared model, the infrastructure layer projects it into Elasticsearch, and the query side reads the indexed result.
 
 ```mermaid
 flowchart LR
-    FS[File Share batch metadata + content] --> ING[Ingestion pipeline]
-    ING --> CD[CanonicalDocument]
-    CD --> ES[(Elasticsearch)]
-    ES --> QRY[Query service]
-    QRY --> PAD[ ]
-    DEV[Developer tooling] --> ING
-    DEV --> FS
-    APP[Aspire AppHost] --> DEV
-    APP --> ING
-    APP --> QRY
-
-    classDef hidden fill:#ffffff,stroke:#ffffff,color:#ffffff;
-    class PAD hidden;
+    Start[Start here] --> Glossary[Glossary]
+    Glossary --> Architecture[Solution architecture]
+    Architecture --> Walkthrough[Architecture walkthrough]
+    Walkthrough --> Setup[Project setup]
+    Setup --> SetupWalkthrough[Setup walkthrough]
+    SetupWalkthrough --> SetupTroubleshooting[Setup troubleshooting]
+    SetupWalkthrough --> CommandReference[Command reference]
+    Walkthrough --> Ingestion[Ingestion pipeline]
+    Walkthrough --> Workbench[Workbench introduction]
+    Workbench --> WorkbenchArchitecture[Workbench architecture]
+    WorkbenchArchitecture --> WorkbenchCommands[Workbench commands and tools]
+    WorkbenchCommands --> WorkbenchTabs[Workbench tabs and layout]
+    WorkbenchTabs --> WorkbenchOutput[Workbench output and notifications]
+    WorkbenchOutput --> WorkbenchTutorials[Workbench tutorials]
+    WorkbenchTutorials --> WorkbenchTroubleshooting[Workbench troubleshooting]
+    Ingestion --> Runtime[Graph runtime foundations]
+    Runtime --> IngestionWalkthrough[Ingestion walkthrough]
+    IngestionWalkthrough --> Rules[Ingestion rules]
+    Rules --> RuleReference[Rule syntax quick reference]
+    Rules --> IngestionTroubleshooting[Ingestion troubleshooting]
 ```
 
-## Start here
+## Reading routes by audience
 
-- [Solution architecture](Solution-Architecture)
-- [Project setup](Project-Setup)
-- [Tools: `FileShareImageLoader` and `FileShareEmulator`](Tools-FileShareImageLoader-and-FileShareEmulator)
-- [Tools (advanced): `FileShareImageBuilder`](Tools-Advanced-FileShareImageBuilder)
-- [Tools: `RulesWorkbench`](Tools-RulesWorkbench)
-- [Workbench shell](Workbench-Shell)
-- [Ingestion pipeline](Ingestion-Pipeline)
-- [Metrics in the Aspire dashboard](Metrics-in-the-Aspire-Dashboard)
-- [How to write ingestion rules](Ingestion-Rules)
-- [CanonicalDocument and discovery taxonomy](CanonicalDocument-and-Discovery-Taxonomy)
-- [Ingestion service provider mechanism](Ingestion-Service-Provider-Mechanism)
-- [Provider metadata and split registration](Provider-Metadata-and-Split-Registration)
-- [File Share provider deep dive](FileShare-Provider)
-- [Documentation source map](Documentation-Source-Map)
+| If you are... | Start with | Then continue to |
+|---|---|---|
+| New to the repository | [Glossary](Glossary.md) | [Solution architecture](Solution-Architecture.md) -> [Architecture walkthrough](Architecture-Walkthrough.md) -> [Project setup](Project-Setup.md) |
+| Setting up the local stack | [Project setup](Project-Setup.md) | [Setup walkthrough](Setup-Walkthrough.md) -> [Setup troubleshooting](Setup-Troubleshooting.md) -> [Appendix: command reference](Appendix-Command-Reference.md) -> [Tools: `FileShareImageLoader` and `FileShareEmulator`](Tools-FileShareImageLoader-and-FileShareEmulator.md) |
+| Working on ingestion | [Ingestion pipeline](Ingestion-Pipeline.md) | [Ingestion graph runtime foundations](Ingestion-Graph-Runtime.md) -> [Ingestion walkthrough](Ingestion-Walkthrough.md) -> [Ingestion rules](Ingestion-Rules.md) -> [Appendix: rule syntax quick reference](Appendix-Rule-Syntax-Quick-Reference.md) -> [Ingestion troubleshooting](Ingestion-Troubleshooting.md) |
+| Working on Workbench or Blazor UI | [Solution architecture](Solution-Architecture.md) | [Architecture walkthrough](Architecture-Walkthrough.md) -> [Workbench introduction](Workbench-Introduction.md) -> [Workbench architecture](Workbench-Architecture.md) -> [Workbench commands and tools](Workbench-Commands-and-Tools.md) -> [Workbench tabs and layout](Workbench-Tabs-and-Layout.md) |
+| Tracing repository history or design background | [Documentation source map](Documentation-Source-Map.md) | Related work-package documents in `docs/` |
+
+## Major areas of the wiki
+
+### Architecture
+
+Start with [Solution architecture](Solution-Architecture.md) for the current repository shape, project responsibilities, and runtime boundaries. Then continue to [Architecture walkthrough](Architecture-Walkthrough.md) for a code-oriented explanation of how requests, tools, and startup flows move through the solution.
+
+### Setup
+
+[Project setup](Project-Setup.md) is the narrative entry point for the local AppHost-driven workflow, the `runmode` model, and the File Share data-image loop. Follow it with [Setup walkthrough](Setup-Walkthrough.md), [Setup troubleshooting](Setup-Troubleshooting.md), and [Appendix: command reference](Appendix-Command-Reference.md) when you need the full guided onboarding path.
+
+### Ingestion
+
+[Ingestion pipeline](Ingestion-Pipeline.md) is the conceptual entry point for the message-processing path. Follow it with [Ingestion graph runtime foundations](Ingestion-Graph-Runtime.md) for the generic base library and terminology, then [Ingestion walkthrough](Ingestion-Walkthrough.md), [Ingestion rules](Ingestion-Rules.md), [Appendix: rule syntax quick reference](Appendix-Rule-Syntax-Quick-Reference.md), and [Ingestion troubleshooting](Ingestion-Troubleshooting.md) when you need to understand runtime flow, rule evaluation, canonical indexing, and failure handling.
+
+### Workbench
+
+[Workbench introduction](Workbench-Introduction.md) is the entry point for the full Workbench guide. Follow it into [Workbench architecture](Workbench-Architecture.md), [Workbench shell guide](Workbench-Shell-Guide.md), [Workbench modules and contributions](Workbench-Modules-and-Contributions.md), [Workbench commands and tools](Workbench-Commands-and-Tools.md), [Workbench tabs and layout](Workbench-Tabs-and-Layout.md), [Workbench output and notifications](Workbench-Output-and-Notifications.md), [Workbench tutorials](Workbench-Tutorials.md), and [Workbench troubleshooting](Workbench-Troubleshooting.md) when you need the current shell model, extension rules, practical recipes, and diagnostics guidance.
+
+### Troubleshooting and observability
+
+[Setup troubleshooting](Setup-Troubleshooting.md) covers environment bring-up issues, [Ingestion troubleshooting](Ingestion-Troubleshooting.md) covers queue, rules, and dead-letter symptoms, and [Metrics in the Aspire dashboard](Metrics-in-the-Aspire-Dashboard.md) remains the runtime visibility companion for local orchestration, indexing, and performance symptoms.
+
+### Glossary
+
+[Glossary](Glossary.md) centralizes repository vocabulary such as `CanonicalDocument`, provider model, Workbench module, explorer item, output panel, and AppHost terminology. Read it early if the repository-specific terms are unfamiliar.
+
+### Appendices and supporting references
+
+Several pages are intentionally deeper reference material rather than first-read narrative pages. Useful starting points are [Appendix: command reference](Appendix-Command-Reference.md), [Documentation source map](Documentation-Source-Map.md), [Provider metadata and split registration](Provider-Metadata-and-Split-Registration.md), and the more specialized ingestion and tooling pages linked throughout this wiki.
 
 ## Quick orientation
 
 ### Main runtime entry points
 
-- `src/Hosts/AppHost` — Aspire orchestration and `runmode` switching
-- `src/Hosts/IngestionServiceHost` — ingestion host and bootstrap/runtime wiring
-- `src/Hosts/QueryServiceHost` — query-side host
-- `src/workbench/server/WorkbenchHost` — Workbench shell host for modular tool composition across Search, PKS, File Share, and Admin dummy modules
-- `tools/FileShareEmulator` — local File Share emulator UI/API
-- `tools/RulesWorkbench` — rule inspection, evaluation, and checker tooling
+| Path | Responsibility |
+|---|---|
+| `src/Hosts/AppHost` | Starts the local Aspire-orchestrated environment and switches between import, services, and export workflows. |
+| `src/Hosts/IngestionServiceHost` | Hosts the ingestion runtime, infrastructure wiring, and indexing path. |
+| `src/Hosts/QueryServiceHost` | Hosts the query-facing runtime and endpoint surface. |
+| `src/workbench/server/WorkbenchHost` | Hosts the desktop-like Blazor Server Workbench shell and module composition surface. |
+| `tools/FileShareEmulator` | Provides the local File Share emulator UI and API. |
+| `tools/RulesWorkbench` | Provides rule inspection, evaluation, and checker tooling. |
 
-### Core libraries
+### Core implementation areas
 
-- `src/UKHO.Search` — pipeline runtime, channels, supervision, metrics, dead-letter primitives
-- `src/UKHO.Search.ProviderModel` — shared provider identity, metadata, catalogs, and registration helpers used by ingestion runtime and provider-aware tooling
-- `src/UKHO.Search.Ingestion` — ingestion contracts and `CanonicalDocument`
-- `src/Providers/UKHO.Search.Ingestion.Providers.FileShare` — File Share provider processing graph and enrichers
-- `src/UKHO.Search.Infrastructure.Ingestion` — queue, blob dead-letter, bootstrap, and Elasticsearch integration
+| Path | Responsibility |
+|---|---|
+| `src/UKHO.Search` | Channel-based pipeline runtime, supervision, metrics, and core primitives. |
+| `src/UKHO.Search.ProviderModel` | Shared provider identity, metadata, catalogs, and split registration helpers. |
+| `src/UKHO.Search.Ingestion` | Ingestion contracts and the canonical discovery model. |
+| `src/Providers/UKHO.Search.Ingestion.Providers.FileShare` | Concrete File Share provider processing graph and enrichers. |
+| `src/UKHO.Search.Infrastructure.Ingestion` | Queue, blob dead-letter, bootstrap, and Elasticsearch integration. |
+| `src/workbench/server/UKHO.Workbench*` | Workbench contracts, services, infrastructure, and shell composition support. |
 
-### Test estate
+### Common first workflow
 
-- `test/<ProductionProjectName>.Tests` — the default project-specific test layout used across domain, services, infrastructure, hosts, tools, and configuration projects
-- `test/UKHO.Search.Tests.Common` — shared helper-only test infrastructure, including sample-data resolution helpers
-- `test/UKHO.Search.IntegrationTests` — intentionally cross-project integration coverage at the outer test layer
-- `test/sample-data` — canonical shared fixture location for repository-wide test assets
+1. Read the [Glossary](Glossary.md) if the repository terms are new.
+2. Read [Solution architecture](Solution-Architecture.md) for the stable current-state map.
+3. Read [Architecture walkthrough](Architecture-Walkthrough.md) to trace the main repository flows.
+4. Follow [Project setup](Project-Setup.md) and [Setup walkthrough](Setup-Walkthrough.md) if you need a local environment.
+5. Move into the ingestion or Workbench pages that match the area you are changing.
 
-### Local workflow at a glance
+## Design themes that show up across the repository
 
-1. Acquire or build a File Share data image.
-2. Run `AppHost` in `import` mode and start the loader.
-3. Run `AppHost` in `services` mode.
-4. Use `FileShareEmulator` to inspect data and enqueue batches.
-5. Use Kibana from the Aspire dashboard for Elasticsearch index inspection, management, and query work.
-6. Watch ingestion metrics/logs in Aspire and inspect Elasticsearch/query behavior.
+- **Onion architecture** keeps dependency direction moving inward.
+- **Provider-aware ingestion** preserves source-specific behaviour while normalizing into a shared discovery contract.
+- **Canonical indexing** gives query and diagnostics features one stable search shape.
+- **Rules-driven enrichment** adds mapping flexibility without hard-coding every transformation into the pipeline.
+- **Developer tooling** is part of the normal workflow, not an afterthought.
+- **Workbench composition** uses a bounded module and contribution model so tools can extend the shell without taking ownership of it.
 
-If your task is rule authoring or rule diagnosis, open [`RulesWorkbench`](Tools-RulesWorkbench) as part of that loop.
+## Related supporting pages
 
-Retained `src/Studio/**` code remains in source control for later refactoring, but it is no longer part of the active solution, Aspire startup path, or default contributor workflow.
+- [CanonicalDocument and discovery taxonomy](CanonicalDocument-and-Discovery-Taxonomy.md)
+- [Setup walkthrough](Setup-Walkthrough.md)
+- [Setup troubleshooting](Setup-Troubleshooting.md)
+- [Appendix: command reference](Appendix-Command-Reference.md)
+- [Ingestion graph runtime foundations](Ingestion-Graph-Runtime.md)
+- [Ingestion walkthrough](Ingestion-Walkthrough.md)
+- [Ingestion rules](Ingestion-Rules.md)
+- [Appendix: rule syntax quick reference](Appendix-Rule-Syntax-Quick-Reference.md)
+- [Ingestion troubleshooting](Ingestion-Troubleshooting.md)
+- [Ingestion service provider mechanism](Ingestion-Service-Provider-Mechanism.md)
+- [Provider metadata and split registration](Provider-Metadata-and-Split-Registration.md)
+- [Tools: `RulesWorkbench`](Tools-RulesWorkbench.md)
+- [Metrics in the Aspire dashboard](Metrics-in-the-Aspire-Dashboard.md)
 
-## Design themes carried through the repo
-
-- **Onion architecture** keeps domain logic inward and infrastructure outward.
-- **Channels + supervised nodes** provide the ingestion runtime.
-- **Provider-specific enrichment** feeds a **provider-agnostic search model**.
-- **Rules** provide additive enrichment without hard-coding every mapping into C#.
-- **Rule titles** now provide the canonical display title contract for indexed documents, and missing titles are treated as ingestion failures.
-- **Developer tooling** is first-class, especially for local File Share workflows.
-- **Provider metadata** is shared across hosts through `UKHO.Search.ProviderModel`, with mandatory split registration for provider packages and provider-aware rule loading.
-
-## Historical design lineage
-
-The repository contains a substantial design history in `docs/`. This wiki is intentionally derived from that corpus rather than replacing it. Use the [documentation source map](Documentation-Source-Map) when you want to trace a topic back to the originating work packages, plans, or architecture notes.
+_Current as of 2026-04-01._

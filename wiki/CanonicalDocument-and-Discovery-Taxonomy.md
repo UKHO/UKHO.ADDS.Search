@@ -217,7 +217,9 @@ flowchart TD
 
 ## Related pages
 
-- [Ingestion pipeline](Ingestion-Pipeline)
-- [Ingestion rules](Ingestion-Rules)
-- [Ingestion service provider mechanism](Ingestion-Service-Provider-Mechanism)
-- [File Share provider](FileShare-Provider)
+- [Ingestion pipeline](Ingestion-Pipeline.md)
+- [Ingestion walkthrough](Ingestion-Walkthrough.md)
+- [Ingestion rules](Ingestion-Rules.md)
+- [Appendix: rule syntax quick reference](Appendix-Rule-Syntax-Quick-Reference.md)
+- [Ingestion service provider mechanism](Ingestion-Service-Provider-Mechanism.md)
+- [File Share provider](FileShare-Provider.md)

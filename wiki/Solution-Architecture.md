@@ -1,251 +1,179 @@
 # Solution architecture
 
-This repository follows **Onion Architecture**.
+This page explains the current repository shape in narrative form. Read it after the [Glossary](Glossary.md) if the repository terms are unfamiliar, then continue to the [Architecture walkthrough](Architecture-Walkthrough.md) when you want a more code-oriented trace through the main runtime flows.
 
-The dependency direction is:
+`UKHO.Search` follows **Onion Architecture**. The normal dependency direction is:
 
 `Hosts / UI -> Infrastructure -> Services -> Domain`
 
-Tools and configuration projects sit alongside that main path, but the same intent applies: domain models and pipeline primitives stay inward; adapters and startup wiring stay outward.
+That rule explains most of the structure in the repository: the inward layers define contracts and behaviour, while the outer layers wire external systems, runtime composition, and user-facing entry points around them.
 
-This page documents the retained active solution and local runtime workflow. Retained Studio and Theia source remains in the repository for later refactoring, but it is intentionally detached from the active solution, Aspire startup path, and contributor setup guidance.
+The important part of that statement is not only the direction of dependencies. It is the design intent behind the dependency rule. The repository is trying to keep long-lived search concepts stable even when local tooling, provider behavior, runtime hosts, or external systems change around them. That is why host projects stay responsible for startup and composition, infrastructure projects stay responsible for adapters and operational concerns, and the inner projects hold the concepts that the rest of the solution keeps returning to.
 
-## High-level structure
+## Why the repository is shaped this way
+
+The repository solves a problem that would become fragile very quickly if every source-specific concern leaked across the whole solution. File Share ingestion has its own payloads, download behavior, rules, and enrichment steps. Local development has its own orchestration needs, seeded data flow, and authentication surface. Query has its own read-focused concerns. Workbench adds a shell and module model for developer tools. If those concerns were allowed to mix freely, every contributor would have to understand every external shape and every startup detail before making even a small change.
+
+The current architecture is intended to prevent that sprawl. The inner layers define the shared runtime vocabulary and the shared search contract. The outer layers then adapt concrete systems and workflows onto that shared core. This keeps provider-specific parsing and enrichment at the edge, keeps indexing and query aligned on one canonical document shape, and keeps local developer tooling visible as part of the architecture rather than as undocumented side utilities.
+
+That last point matters more than it first appears. In this repository, AppHost, File Share support tools, RulesWorkbench, and the Blazor-based Workbench shell are part of the normal engineering path. They are not disposable bootstrap helpers. They are the way contributors see the runtime, seed local data, inspect indexing behavior, author rules, and exercise module-based tooling. A useful architecture guide therefore has to explain those runtime surfaces as first-class architecture decisions, not as optional appendices.
+
+## Start with these architecture ideas
+
+Three ideas explain most of what you will see in the codebase:
+
+1. **Provider-aware ingestion** keeps source-specific parsing and enrichment out at the provider boundary while producing one shared search model.
+2. **Canonical indexing** gives the query side one stable discovery contract instead of making every consumer understand every source payload shape.
+3. **Tool-assisted development** treats local tooling, AppHost orchestration, and Workbench composition as part of the normal engineering workflow.
+
+Those ideas are tightly connected. Provider-aware ingestion would be hard to operate if the canonical model were vague. Canonical indexing would be harder to trust if the local tooling did not let contributors inspect the seeded data, queue activity, rules, and indexed results. Tool-assisted development would be much less useful if the underlying layering rules were weak enough that every tool had to reach directly into source-specific or host-specific implementation details. The repository shape is therefore not a set of separate conventions. It is one coordinated attempt to make ingestion, query, and tooling understandable without flattening them into one large undifferentiated application.
+
+## Solution composition
 
 ```mermaid
 flowchart TB
-    subgraph Hosts[Hosts / UI]
+    subgraph HostsAndUi[Hosts and UI]
         AppHost[AppHost]
         IngestionHost[IngestionServiceHost]
         QueryHost[QueryServiceHost]
-        ServiceDefaults[UKHO.Search.ServiceDefaults]
+        WorkbenchHost[WorkbenchHost]
     end
 
     subgraph Infrastructure[Infrastructure]
-        InfraCore[UKHO.Search.Infrastructure]
         InfraIngestion[UKHO.Search.Infrastructure.Ingestion]
         InfraQuery[UKHO.Search.Infrastructure.Query]
+        WorkbenchInfra[UKHO.Workbench.Infrastructure]
     end
 
     subgraph Services[Services]
-        ServicesCore[UKHO.Search.Services]
-        ServicesIngestion[UKHO.Search.Services.Ingestion]
-        ServicesQuery[UKHO.Search.Services.Query]
+        SearchServices[UKHO.Search.Services.*]
+        WorkbenchServices[UKHO.Workbench.Services]
     end
 
-    subgraph Domain[Domain]
-        Search[UKHO.Search]
-        Ingestion[UKHO.Search.Ingestion]
-        Query[UKHO.Search.Query]
+    subgraph Domain[Domain and shared contracts]
+        SearchCore[UKHO.Search]
+        IngestionCore[UKHO.Search.Ingestion]
+        QueryCore[UKHO.Search.Query]
+        ProviderModel[UKHO.Search.ProviderModel]
+        WorkbenchCore[UKHO.Workbench]
     end
 
     AppHost --> IngestionHost
     AppHost --> QueryHost
+    AppHost --> WorkbenchHost
     IngestionHost --> InfraIngestion
     QueryHost --> InfraQuery
-    InfraIngestion --> ServicesIngestion
-    InfraQuery --> ServicesQuery
-    ServicesIngestion --> Ingestion
-    ServicesQuery --> Query
-    InfraIngestion --> Search
-    InfraQuery --> Search
-    ServicesIngestion --> Search
-    ServicesQuery --> Search
+    WorkbenchHost --> WorkbenchInfra
+    InfraIngestion --> SearchServices
+    InfraQuery --> SearchServices
+    WorkbenchInfra --> WorkbenchServices
+    SearchServices --> SearchCore
+    SearchServices --> IngestionCore
+    SearchServices --> QueryCore
+    InfraIngestion --> ProviderModel
+    WorkbenchServices --> WorkbenchCore
 ```
 
-## Project map
+## How to read the repository
 
-### Hosts and UI
+If you are new to the solution, read the repository from outside inward.
 
-| Project | Purpose |
-|---|---|
-| `src/Hosts/AppHost` | Aspire orchestration, container/resource definitions, and run-mode switching for local workflows. |
-| `src/Hosts/IngestionServiceHost` | Ingestion host, DI/bootstrap, Elasticsearch/blob/queue client wiring, operational UI. |
-| `src/Hosts/QueryServiceHost` | Query-side host and external endpoint surface. |
-| `src/Hosts/UKHO.Search.ServiceDefaults` | Shared Aspire/OpenTelemetry/health-check defaults for hosts. |
-| `src/workbench/server/WorkbenchHost` | Blazor Server Workbench shell host that renders the desktop-like bootstrap shell and hosts the first exemplar tool slice. |
+Start with the hosts because they tell you which executable surfaces are actually active in day-to-day work. Then move inward to the infrastructure and service layers to understand how those hosts talk to queues, storage, Elasticsearch, Keycloak, and module discovery. Only after that should you settle into the inner contracts, runtime primitives, and canonical models that the outer layers are composing. This order matters because it keeps architecture reading grounded in the current runtime instead of in an abstract project list.
 
-### Workbench support libraries
+### Hosts and UI own runtime composition
 
-| Project | Purpose |
-|---|---|
-| `src/workbench/server/UKHO.Workbench` | Shared Workbench shell contracts, layout primitives, bootstrap shell models, and bounded module registration contracts such as `IWorkbenchModule` and `ModuleRegistrationContext`. |
-| `src/workbench/server/UKHO.Workbench.Services` | Workbench orchestration services, including command routing, explorer composition, singleton tool activation, runtime menu/toolbar/status composition, fixed context projection, and the host-facing shell manager. |
-| `src/workbench/server/UKHO.Workbench.Infrastructure` | Workbench infrastructure composition, `modules.json` configuration reading, approved probe-root scanning, and bounded reflection-based module loading. |
-| `src/Workbench/modules/UKHO.Workbench.Modules.Search` | Dynamic Search Workbench module assembly contributing the dummy `Search ingestion`, `Search query`, and `Ingestion rule editor` tools used to verify multi-tool module discovery and shell activation. |
-| `src/Workbench/modules/UKHO.Workbench.Modules.PKS` | Dynamic PKS Workbench module assembly contributing the dummy `PKS operations` tool. |
-| `src/Workbench/modules/UKHO.Workbench.Modules.FileShare` | Dynamic File Share Workbench module assembly contributing the dummy `File Share workspace` tool. |
-| `src/Workbench/modules/UKHO.Workbench.Modules.Admin` | Dynamic Admin Workbench module assembly contributing the dummy `Administration` tool. |
+The host projects are the outer entry points.
 
-### Shared provider support
+They matter architecturally because they express the current runtime story in executable form. `AppHost` tells you which local services and tools belong to the expected developer environment. `IngestionServiceHost` tells you how the pipeline is composed for real work rather than for isolated unit tests. `QueryServiceHost` tells you where the canonical index is read. `WorkbenchHost` tells you how the desktop-like Blazor shell becomes the runtime container for module-driven tooling. When a contributor wants to understand what the repository is really doing today, these hosts are the most honest starting point.
 
-| Project | Purpose |
-|---|---|
-| `src/UKHO.Search.ProviderModel` | Shared provider descriptors, catalogs, and registration helpers used by ingestion and provider-aware tooling. |
+| Area | Key paths | Responsibility |
+|---|---|---|
+| Aspire orchestration | `src/Hosts/AppHost` | Starts and coordinates the local environment, including service containers, tool processes, and run-mode switching. |
+| Ingestion runtime host | `src/Hosts/IngestionServiceHost` | Wires queue polling, provider registration, enrichment, Elasticsearch indexing, and dead-letter handling into one executable host. |
+| Query runtime host | `src/Hosts/QueryServiceHost` | Exposes the query-side runtime that reads the indexed canonical form. |
+| Workbench UI host | `src/workbench/server/WorkbenchHost` | Runs the desktop-like Blazor Server shell and hosts module-driven tools. |
 
-### Domain
+### Domain and contracts stay inward
 
-| Project | Purpose |
-|---|---|
-| `src/UKHO.Search` | Pipeline runtime primitives: envelopes, nodes, channels, supervision, retry, dead-letter, geo primitives, metrics. |
-| `src/UKHO.Search.Ingestion` | Ingestion request contracts, canonical document model, provider abstractions, enrichment node. |
-| `src/UKHO.Search.Query` | Query-side domain concerns such as token normalization. |
+The inner projects define the repository's reusable runtime and model concepts.
 
-### Services
+These projects are where the repository tries to stay stable as outer implementation details move. The graph runtime, ingestion contracts, canonical model, provider metadata, and Workbench contracts form the vocabulary that the rest of the solution keeps reusing. If an idea belongs in these inner layers, it usually means the repository expects that idea to survive provider changes, host reshaping, or tooling evolution. If an idea only matters because one concrete adapter or runtime process needs it, it normally belongs farther out.
 
-| Project | Purpose |
-|---|---|
-| `src/UKHO.Search.Services` | Shared service-layer orchestration concerns. |
-| `src/UKHO.Search.Services.Ingestion` | Ingestion service orchestration and provider-level coordination. |
-| `src/UKHO.Search.Services.Query` | Query service orchestration. |
+| Area | Key paths | Responsibility |
+|---|---|---|
+| Pipeline runtime | `src/UKHO.Search` | Defines channels, envelopes, nodes, supervision, metrics, and other primitives used by ingestion. |
+| Canonical ingestion model | `src/UKHO.Search.Ingestion` | Defines ingestion contracts, provider abstractions, and the shared `CanonicalDocument` discovery shape. |
+| Query model | `src/UKHO.Search.Query` | Holds the query-side domain concerns that sit on the canonical index. |
+| Provider metadata | `src/UKHO.Search.ProviderModel` | Shares provider identity, metadata, and split registration helpers across hosts and tooling. |
+| Workbench contracts | `src/workbench/server/UKHO.Workbench` | Defines shell contracts, models, and module registration boundaries for Workbench. |
 
-### Infrastructure
+### Services and infrastructure translate between the edges and the core
 
-| Project | Purpose |
-|---|---|
-| `src/UKHO.Search.Infrastructure` | Shared infrastructure utilities and adapters. |
-| `src/UKHO.Search.Infrastructure.Ingestion` | Ingestion bootstrap, queue/blob/Elasticsearch integrations, rules-engine runtime infrastructure. |
-| `src/UKHO.Search.Infrastructure.Query` | Query-side infrastructure adapters. |
+The service and infrastructure layers bridge external systems, runtime policies, and domain contracts.
 
-### Provider project
+This bridge role is important because it stops two unhelpful extremes. It stops the hosts from becoming giant composition-plus-business-logic applications, and it stops the inner layers from growing direct knowledge of queues, blob storage, Elasticsearch, OpenID Connect, module probing, or other operational mechanics. Contributors will often find the real answer to a design question here, because this is the place where repository policy meets concrete runtime integration.
 
-| Project | Purpose |
-|---|---|
-| `src/Providers/UKHO.Search.Ingestion.Providers.FileShare` | The current concrete ingestion provider. Owns the File Share processing graph, request dispatch, ZIP/content enrichers, and provider-specific parsing. |
+| Area | Key paths | Responsibility |
+|---|---|---|
+| Search services | `src/UKHO.Search.Services.*` | Coordinate domain behaviours into host-friendly application flows. |
+| Ingestion infrastructure | `src/UKHO.Search.Infrastructure.Ingestion` | Owns queue integration, Elasticsearch projection, dead-letter persistence, bootstrap, and rule runtime infrastructure. |
+| Query infrastructure | `src/UKHO.Search.Infrastructure.Query` | Owns query-side infrastructure adapters. |
+| Workbench services | `src/workbench/server/UKHO.Workbench.Services` | Owns tool activation, command routing, contribution composition, and shell-facing orchestration. |
+| Workbench infrastructure | `src/workbench/server/UKHO.Workbench.Infrastructure` | Owns `modules.json` reading, probe-root scanning, and bounded module loading. |
 
-### Configuration projects
+### Provider and tool projects sit at purposeful edges
 
-| Project | Purpose |
-|---|---|
-| `configuration/UKHO.Aspire.Configuration` | Shared configuration support. |
-| `configuration/UKHO.Aspire.Configuration.Hosting` | Aspire-side configuration integration. |
-| `configuration/UKHO.Aspire.Configuration.Seeder` | Configuration seeding support. |
-| `configuration/UKHO.Aspire.Configuration.Emulator` | Local emulator configuration behavior. |
+These projects sit at the edge on purpose rather than by accident. The concrete File Share provider is allowed to know about File Share-specific request dispatch, enrichers, and parsing because that knowledge should not spread inward. The local tools are allowed to be strongly task-focused because their job is to make a specific engineering workflow visible and operable. Workbench modules are allowed to contribute bounded features because the shell keeps ownership of composition and layout. Thinking about these projects as purposeful edges helps prevent a common mistake: assuming that because something is operationally important, it therefore belongs in the inner shared model.
 
-### Developer tools
+| Area | Key paths | Responsibility |
+|---|---|---|
+| Current concrete provider | `src/Providers/UKHO.Search.Ingestion.Providers.FileShare` | Owns File Share request dispatch, processing graph, enrichers, and source-specific parsing. |
+| Local tools | `tools/FileShareEmulator`, `tools/FileShareImageLoader`, `tools/FileShareImageBuilder`, `tools/RulesWorkbench` | Support local data workflows, diagnostics, and rule authoring. |
+| Workbench modules | `src/Workbench/modules/UKHO.Workbench.Modules.*` | Contribute tools into the shell through bounded module contracts. |
 
-| Project | Purpose |
-|---|---|
-| `tools/FileShareEmulator` | Local File Share emulator UI/API. |
-| `tools/FileShareEmulator.Common` | Shared emulator types/utilities. |
-| `tools/FileShareImageLoader` | Imports a Docker data image into local SQL/blob storage. |
-| `tools/FileShareImageBuilder` | Builds a Docker data image from a remote File Share environment. |
-| `tools/RulesWorkbench` | Rule inspection, evaluation, batch scan, and rule-checker tooling. |
-
-### Tests
-
-The repository now uses a project-aligned test layout under `test/`.
-
-General rule:
-
-- each production project has a matching `<ProductionProjectName>.Tests` project
-- broad helper-only test infrastructure lives in `test/UKHO.Search.Tests.Common`
-- intentionally cross-project integration coverage lives in `test/UKHO.Search.IntegrationTests`
-- canonical shared fixtures live in `test/sample-data`
-
-Current aligned structure:
-
-| Area | Matching test projects |
-|---|---|
-| Domain | `test/UKHO.Search.Tests`, `test/UKHO.Search.Ingestion.Tests`, `test/UKHO.Search.Query.Tests` |
-| Services | `test/UKHO.Search.Services.Tests`, `test/UKHO.Search.Services.Ingestion.Tests`, `test/UKHO.Search.Services.Query.Tests` |
-| Provider | `test/UKHO.Search.Ingestion.Providers.FileShare.Tests` |
-| Infrastructure | `test/UKHO.Search.Infrastructure.Tests`, `test/UKHO.Search.Infrastructure.Ingestion.Tests`, `test/UKHO.Search.Infrastructure.Query.Tests` |
-| Hosts / UI | `test/AppHost.Tests`, `test/IngestionServiceHost.Tests`, `test/QueryServiceHost.Tests`, `test/UKHO.Search.ServiceDefaults.Tests` |
-| Tools | `test/FileShareEmulator.Tests`, `test/FileShareEmulator.Common.Tests`, `test/FileShareImageBuilder.Tests`, `test/FileShareImageLoader.Tests`, `test/RulesWorkbench.Tests` |
-| Configuration | `test/UKHO.Aspire.Configuration.Tests`, `test/UKHO.Aspire.Configuration.Hosting.Tests`, `test/UKHO.Aspire.Configuration.Seeder.Tests`, `test/UKHO.Aspire.Configuration.Emulator.Tests` |
-| Shared / integration exceptions | `test/UKHO.Search.Tests.Common`, `test/UKHO.Search.IntegrationTests` |
-
-Some audited projects currently contain placeholder smoke tests so the matching test-project structure is explicit even before real project-specific tests are added.
-
-Shared test-asset conventions:
-
-- `test/sample-data` is the canonical shared fixture folder
-- keep `test/sample-data` flat rather than introducing per-feature subfolders
-- use `SampleDataFileLocator` from `test/UKHO.Search.Tests.Common` when tests need to resolve those shared assets from build output locations
-
-## Runtime architecture
+## High-level subsystem interactions
 
 ```mermaid
 flowchart LR
-    subgraph Orchestration
-        AH[AppHost]
-    end
+    AppHost[AppHost] --> LocalServices[Local containers and processes]
+    LocalServices --> IngestionHost[IngestionServiceHost]
+    LocalServices --> QueryHost[QueryServiceHost]
+    LocalServices --> WorkbenchHost[WorkbenchHost]
+    LocalServices --> RulesWorkbench[RulesWorkbench]
+    LocalServices --> Emulator[FileShareEmulator]
 
-    subgraph LocalServices[Local services started by Aspire]
-        AZ[Azurite]
-        SQL[SQL Server]
-        ES[Elasticsearch + Kibana]
-        KC[Keycloak]
-        ING[IngestionServiceHost]
-        QRY[QueryServiceHost]
-        FSE[FileShareEmulator]
-        RWB[RulesWorkbench]
-    end
-
-    AH --> AZ
-    AH --> SQL
-    AH --> ES
-    AH --> KC
-    AH --> ING
-    AH --> QRY
-    AH --> FSE
-    AH --> RWB
-
-    FSE --> SQL
-    FSE --> AZ
-    FSE --> ES
-    ING --> AZ
-    ING --> ES
-    QRY --> ES
-    RWB --> SQL
-    RWB --> AZ
-    RWB --> PAD[ ]
-
-    classDef hidden fill:#ffffff,stroke:#ffffff,color:#ffffff;
-    class PAD hidden;
+    Emulator --> IngestionHost
+    RulesWorkbench --> IngestionHost
+    IngestionHost --> Canonical[CanonicalDocument]
+    Canonical --> Elasticsearch[(Elasticsearch)]
+    QueryHost --> Elasticsearch
+    WorkbenchHost --> WorkbenchModules[Workbench modules]
 ```
 
-## Where major concerns live
+## Test estate in one view
 
-### Workbench module startup
+The repository uses a project-aligned test layout under `test/`.
 
-- shared module/tool registration contracts: `src/workbench/server/UKHO.Workbench/Modules`
-- discovery configuration and probe-root scanning: `src/workbench/server/UKHO.Workbench.Infrastructure/Modules`
-- host-owned startup orchestration, user-safe startup notifications, and Blazor shell rendering: `src/workbench/server/WorkbenchHost`
-- command routing, explorer composition, active-tool runtime contributions, and fixed Workbench context projection: `src/workbench/server/UKHO.Workbench.Services`
-- delivered initial module map: `src/Workbench/modules/UKHO.Workbench.Modules.Search`, `src/Workbench/modules/UKHO.Workbench.Modules.PKS`, `src/Workbench/modules/UKHO.Workbench.Modules.FileShare`, and `src/Workbench/modules/UKHO.Workbench.Modules.Admin`
+- most production projects have a matching `<ProductionProjectName>.Tests` project
+- shared helper-only test infrastructure lives in `test/UKHO.Search.Tests.Common`
+- intentionally cross-project verification lives in `test/UKHO.Search.IntegrationTests`
+- canonical shared fixtures live in `test/sample-data`
 
-### Ingestion runtime
+This structure matters architecturally because it mirrors ownership boundaries: tests usually live with the production project they verify, while cross-project behaviour is pushed to the outer integration layer.
 
-- queue polling, Elasticsearch indexing, blob dead-letter persistence: `src/UKHO.Search.Infrastructure.Ingestion`
-- node/channel runtime: `src/UKHO.Search`
-- request contracts and `CanonicalDocument`: `src/UKHO.Search.Ingestion`
-- File Share provider graph/enrichers: `src/Providers/UKHO.Search.Ingestion.Providers.FileShare`
+That mirroring is part of the architecture story rather than a separate test-only concern. The repository is trying to make ownership visible everywhere: in project references, in host composition, in provider boundaries, and in the way test projects line up with production projects. When you are deciding where a change belongs, the test layout often reinforces the same answer that the production layering already suggests.
 
-### Query/runtime discovery model
+## Common pitfalls when reading the architecture
 
-- canonical search shape starts in `src/UKHO.Search.Ingestion`
-- Elasticsearch projection lives in `src/UKHO.Search.Infrastructure.Ingestion/Elastic`
-- query-side services/hosts consume the indexed form
+- Do not start with one deep implementation file and assume it represents the whole solution. Start with the host, then trace inward.
+- Do not treat `UKHO.Search.ProviderModel` as provider-specific implementation code. It is shared metadata and registration infrastructure.
+- Do not treat Workbench modules as shell owners. The shell stays in `WorkbenchHost` and `UKHO.Workbench*`; modules contribute bounded tools and services.
+- Do not assume query reads source payloads directly. Query reads the indexed canonical projection.
+- Do not assume all retained repository code is part of the active local workflow. Follow the active hosts and tools linked from [Home](Home.md).
 
-### Local developer tooling
+## Recommended next pages
 
-- emulator UI/API: `tools/FileShareEmulator`
-- rule tooling: `tools/RulesWorkbench`
-- data-image import/export: `tools/FileShareImageLoader`, `tools/FileShareImageBuilder`
-
-## Architectural intent
-
-Three design choices explain most of the repository:
-
-1. **Provider extensibility** — the ingestion host is designed to support multiple providers, even though File Share is the current concrete implementation.
-2. **Canonical indexing** — source-specific payloads are normalized into a shared discovery contract before indexing.
-3. **Tool-assisted local development** — the emulator, loader, builder, and RulesWorkbench reduce dependence on live environments.
-
-For the provider and ingestion runtime details, continue to:
-
-- [Ingestion pipeline](Ingestion-Pipeline)
-- [Ingestion service provider mechanism](Ingestion-Service-Provider-Mechanism)
-- [File Share provider](FileShare-Provider)
-- [Tools: `RulesWorkbench`](Tools-RulesWorkbench)
+- Continue to the [Architecture walkthrough](Architecture-Walkthrough.md) for code-oriented runtime flows.
+- Follow the [Ingestion pipeline](Ingestion-Pipeline.md) path when you need the detailed processing graph and stage-by-stage runtime explanation.
+- Follow the current [Workbench introduction](Workbench-Introduction.md) guidance when you need shell composition, module loading, and tool activation detail.
+- Return to the [Glossary](Glossary.md) if repository-specific terms become ambiguous while reading.

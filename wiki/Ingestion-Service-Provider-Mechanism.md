@@ -1,8 +1,10 @@
 # Ingestion service provider mechanism
 
-The ingestion service is built around a provider abstraction so that queue polling, host wiring, and generic pipeline runtime can remain stable while source-specific processing graphs vary by provider.
+This page explains the boundary between the stable ingestion host/infrastructure path and the provider-owned runtime path.
 
-The current concrete provider is File Share, but the architecture is intentionally broader than that single implementation.
+Read it after [Ingestion pipeline](Ingestion-Pipeline.md) when you need to understand why provider registration, queue ownership, and provider metadata are split the way they are.
+
+The current concrete provider is File Share, but the abstraction is intentionally broader than that single implementation.
 
 ## Core contracts
 
@@ -206,7 +208,9 @@ sequenceDiagram
 
 ## Related pages
 
-- [Ingestion pipeline](Ingestion-Pipeline)
-- [CanonicalDocument and discovery taxonomy](CanonicalDocument-and-Discovery-Taxonomy)
-- [File Share provider](FileShare-Provider)
-- [Provider metadata and split registration](Provider-Metadata-and-Split-Registration)
+- [Ingestion pipeline](Ingestion-Pipeline.md)
+- [Ingestion walkthrough](Ingestion-Walkthrough.md)
+- [CanonicalDocument and discovery taxonomy](CanonicalDocument-and-Discovery-Taxonomy.md)
+- [File Share provider](FileShare-Provider.md)
+- [Provider metadata and split registration](Provider-Metadata-and-Split-Registration.md)
+- [Ingestion troubleshooting](Ingestion-Troubleshooting.md)

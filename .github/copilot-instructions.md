@@ -28,6 +28,7 @@ Be concise but complete. Prefer current research (Microsoft Learn) for Microsoft
 - When collaborating on specifications in this repository, do not repeat the draft spec in chat before clarification questions; ask the next question directly and keep the evolving draft in the spec file instead. If remaining questions are about look and feel only, use sensible defaults and revisit later instead of continuing to ask those presentation questions.
 - When documentation references repository wiki pages, prefer proper markdown links rather than inline code-formatted URLs or plain page names.
 - Repository documentation standards should be captured in `.github/instructions/documentation-pass.instructions.md` and referenced as a non-negotiable requirement from planning and execution prompts so they are enforced in every coding task.
+- Documentation should prefer book-like narrative depth over terse, bullet-heavy wiki pages, especially for core architecture, runtime foundations, and other critical concepts. This preference should be reflected in repository instructions and prompts.
 
 ## Blazor Server Guidelines
 - For Blazor Server (Razor Components) pages, explicitly add `@rendermode InteractiveServer` on pages that must handle input/click events; otherwise, pages may render non-interactively even when other pages (e.g., Counter) are interactive.
