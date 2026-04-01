@@ -1,4 +1,5 @@
 @inherits LayoutComponentBase
+@using UKHO.Workbench.Output
 
 <RadzenComponents />
 
@@ -9,7 +10,10 @@
             <ColumnDefinition Width="*" />
         </ColumnDefinitions>
         <RowDefinitions>
-            <RowDefinition Height="48" />
+            @if (IsRegionVisible(WorkbenchShellRegion.MenuBar))
+            {
+                <RowDefinition Height="48" />
+            }
             <RowDefinition Height="44" />
             <RowDefinition Height="@WorkingAreaHeight" />
             @if (OutputPanelState.IsVisible)
@@ -47,16 +51,13 @@
                             </ul>
                         </nav>
 
-                        <div class="workbench-shell__menu-actions">
-                            <RadzenAppearanceToggle />
-                        </div>
                     </header>
                 </GridElement>
             }
 
             @if (IsRegionVisible(WorkbenchShellRegion.ActiveToolToolbar))
             {
-                <GridElement Row="2" Column="1">
+                <GridElement Row="@ToolbarRow" Column="1">
                     <section class="workbench-shell__toolbar" data-region="toolbar" aria-label="Workbench toolbar">
                         <div class="workbench-shell__toolbar-home">
                             @if (HomeToolbarContribution is not null)
@@ -90,6 +91,10 @@
                                 </button>
                             }
                         </div>
+
+                        <div class="workbench-shell__toolbar-actions" data-role="toolbar-actions">
+                            <RadzenAppearanceToggle />
+                        </div>
                     </section>
                 </GridElement>
             }
@@ -99,48 +104,76 @@
                 <GridElement Row="@OutputPanelRow" Column="1">
                     <section class="workbench-shell__output-panel" data-region="output-panel" aria-label="Workbench output">
                         <div class="workbench-shell__output-toolbar" role="toolbar" aria-label="Output panel actions">
-                            <button type="button"
-                                    class="workbench-shell__menu-button"
-                                    data-role="output-copy-selected"
-                                    disabled="@(!IsOutputSelectionAvailable)"
-                                    @onclick="CopySelectedOutputAsync">
-                                <RadzenIcon Icon="content_copy" />
-                                <span>Copy selected</span>
-                            </button>
+                            <div class="workbench-shell__output-toolbar-group workbench-shell__output-toolbar-group--leading">
+                                <div class="workbench-shell__output-level-filter" data-role="output-level-filter">
+                                    <label class="workbench-shell__output-level-filter-label" for="workbench-output-level-filter">Level</label>
+                                    <RadzenDropDown TValue="OutputLevel"
+                                                    Name="workbench-output-level-filter"
+                                                    Data="@GetOutputLevelFilterOptions()"
+                                                    Value="@OutputPanelState.MinimumVisibleLevel"
+                                                    AllowClear="false"
+                                                    Change="HandleOutputLevelFilterChangedAsync"
+                                                    class="workbench-shell__output-level-filter-dropdown"
+                                                    aria-label="Minimum visible output level">
+                                        <ValueTemplate Context="selectedLevel">
+                                            <span>@GetOutputLevelFilterLabel((OutputLevel)selectedLevel)</span>
+                                        </ValueTemplate>
+                                        <Template Context="levelContext">
+                                            @{ var outputLevel = (OutputLevel)levelContext; }
+                                            <span>@GetOutputLevelFilterLabel(outputLevel)</span>
+                                        </Template>
+                                    </RadzenDropDown>
+                                </div>
 
-                            <button type="button"
-                                    class="workbench-shell__menu-button"
-                                    data-role="output-find"
-                                    aria-pressed="@IsOutputFindVisible"
-                                    @onclick="OpenOutputFindAsync">
-                                <RadzenIcon Icon="search" />
-                                <span>Find</span>
-                            </button>
+                                <span class="workbench-shell__output-visibility-summary" data-role="output-visibility-summary">
+                                    @GetOutputVisibilitySummary(OutputPanelState.MinimumVisibleLevel)
+                                </span>
+                            </div>
 
-                            <button type="button"
-                                    class="workbench-shell__menu-button"
-                                    data-role="output-clear"
-                                    @onclick="ClearOutputAsync">
-                                <RadzenIcon Icon="delete_sweep" />
-                                <span>Clear</span>
-                            </button>
+                            <div class="workbench-shell__output-toolbar-group workbench-shell__output-toolbar-group--actions">
+                                <button type="button"
+                                        class="workbench-shell__menu-button"
+                                        data-role="output-copy-selected"
+                                        disabled="@(!IsOutputSelectionAvailable)"
+                                        @onclick="CopySelectedOutputAsync">
+                                    <RadzenIcon Icon="content_copy" />
+                                    <span>Copy selected</span>
+                                </button>
 
-                            <button type="button"
-                                    class="workbench-shell__menu-button"
-                                    data-role="output-auto-scroll"
-                                    aria-pressed="@OutputPanelState.IsAutoScrollEnabled"
-                                    @onclick="ToggleAutoScrollAsync">
-                                <RadzenIcon Icon="vertical_align_bottom" />
-                                <span>Auto-scroll</span>
-                            </button>
+                                <button type="button"
+                                        class="workbench-shell__menu-button"
+                                        data-role="output-find"
+                                        aria-pressed="@IsOutputFindVisible"
+                                        @onclick="OpenOutputFindAsync">
+                                    <RadzenIcon Icon="search" />
+                                    <span>Find</span>
+                                </button>
 
-                            <button type="button"
-                                    class="workbench-shell__menu-button"
-                                    data-role="output-scroll-to-end"
-                                    @onclick="ScrollOutputToEndAsync">
-                                <RadzenIcon Icon="arrow_downward" />
-                                <span>Scroll to end</span>
-                            </button>
+                                <button type="button"
+                                        class="workbench-shell__menu-button"
+                                        data-role="output-clear"
+                                        @onclick="ClearOutputAsync">
+                                    <RadzenIcon Icon="delete_sweep" />
+                                    <span>Clear</span>
+                                </button>
+
+                                <button type="button"
+                                        class="workbench-shell__menu-button"
+                                        data-role="output-auto-scroll"
+                                        aria-pressed="@OutputPanelState.IsAutoScrollEnabled"
+                                        @onclick="ToggleAutoScrollAsync">
+                                    <RadzenIcon Icon="vertical_align_bottom" />
+                                    <span>Auto-scroll</span>
+                                </button>
+
+                                <button type="button"
+                                        class="workbench-shell__menu-button"
+                                        data-role="output-scroll-to-end"
+                                        @onclick="ScrollOutputToEndAsync">
+                                    <RadzenIcon Icon="arrow_downward" />
+                                    <span>Scroll to end</span>
+                                </button>
+                            </div>
                         </div>
 
                         @if (IsOutputFindVisible)

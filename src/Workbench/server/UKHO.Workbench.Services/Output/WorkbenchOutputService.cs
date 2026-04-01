@@ -105,7 +105,7 @@ namespace UKHO.Workbench.Services.Output
             {
                 if (!_panelState.IsVisible)
                 {
-                    var unseenLevel = GetMostSevereLevel(_panelState.HiddenUnseenLevel, entry.Level);
+                    var unseenLevel = GetMostSevereVisibleLevel(_panelState.HiddenUnseenLevel, entry.Level, _panelState.MinimumVisibleLevel);
                     if (_panelState.HiddenUnseenLevel != unseenLevel)
                     {
                         _panelState = _panelState with
@@ -256,6 +256,25 @@ namespace UKHO.Workbench.Services.Output
         }
 
         /// <summary>
+        /// Updates the minimum output level that the current session should render in the output pane.
+        /// </summary>
+        /// <param name="minimumVisibleLevel">The minimum output level that should remain visible in the output pane.</param>
+        public void SetMinimumVisibleLevel(OutputLevel minimumVisibleLevel)
+        {
+            // The minimum visible level is shared session state so the output pane, hidden indicator, and later toolbar refreshes all use one authoritative threshold.
+            UpdatePanelState(currentState => currentState.MinimumVisibleLevel == minimumVisibleLevel
+                ? currentState
+                : currentState with
+                {
+                    MinimumVisibleLevel = minimumVisibleLevel,
+                    HiddenUnseenLevel = currentState.HiddenUnseenLevel is { } hiddenUnseenLevel
+                        && hiddenUnseenLevel.IsVisibleAtOrAbove(minimumVisibleLevel)
+                            ? hiddenUnseenLevel
+                            : null
+                });
+        }
+
+        /// <summary>
         /// Replaces the current set of expanded output-entry identifiers.
         /// </summary>
         /// <param name="expandedEntryIds">The identifiers of entries whose details are currently expanded.</param>
@@ -309,35 +328,23 @@ namespace UKHO.Workbench.Services.Output
         /// <param name="currentLevel">The currently tracked unseen level.</param>
         /// <param name="candidateLevel">The newly observed level to compare.</param>
         /// <returns>The most severe of the two supplied levels.</returns>
-        private static OutputLevel GetMostSevereLevel(OutputLevel? currentLevel, OutputLevel candidateLevel)
+        private static OutputLevel? GetMostSevereVisibleLevel(OutputLevel? currentLevel, OutputLevel candidateLevel, OutputLevel minimumVisibleLevel)
         {
-            // Severity ranking is explicit so hidden-panel indicators reflect the highest urgency seen while the panel was collapsed.
+            // Hidden indicators should ignore entries below the current visible threshold so default Info filtering does not surface hidden Debug-only noise.
+            if (!candidateLevel.IsVisibleAtOrAbove(minimumVisibleLevel))
+            {
+                return currentLevel;
+            }
+
+            // Severity ranking remains explicit so hidden-panel indicators reflect the highest urgency seen while the panel was collapsed.
             if (currentLevel is null)
             {
                 return candidateLevel;
             }
 
-            return GetSeverityRank(candidateLevel) > GetSeverityRank(currentLevel.Value)
+            return candidateLevel.ToSeverityRank() > currentLevel.Value.ToSeverityRank()
                 ? candidateLevel
                 : currentLevel.Value;
-        }
-
-        /// <summary>
-        /// Converts an output level into an integer rank for severity comparisons.
-        /// </summary>
-        /// <param name="level">The output level whose severity rank should be returned.</param>
-        /// <returns>An integer rank where larger values represent more severe output.</returns>
-        private static int GetSeverityRank(OutputLevel level)
-        {
-            // The ranking matches the enum's user-facing urgency order rather than relying on enum values remaining fixed forever.
-            return level switch
-            {
-                OutputLevel.Debug => 0,
-                OutputLevel.Info => 1,
-                OutputLevel.Warning => 2,
-                OutputLevel.Error => 3,
-                _ => throw new ArgumentOutOfRangeException(nameof(level), level, "The output level is not supported.")
-            };
         }
 
         /// <summary>

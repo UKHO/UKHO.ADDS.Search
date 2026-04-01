@@ -78,6 +78,12 @@ namespace UKHO.Workbench.Output
         void SetWordWrapEnabled(bool isEnabled);
 
         /// <summary>
+        /// Updates the minimum output level that the current session should render in the output pane.
+        /// </summary>
+        /// <param name="minimumVisibleLevel">The minimum output level that should remain visible in the output pane.</param>
+        void SetMinimumVisibleLevel(OutputLevel minimumVisibleLevel);
+
+        /// <summary>
         /// Replaces the current set of expanded output-entry identifiers.
         /// </summary>
         /// <param name="expandedEntryIds">The identifiers of entries whose details are currently expanded.</param>

@@ -89,6 +89,51 @@ namespace UKHO.Workbench.Services.Tests
         }
 
         /// <summary>
+        /// Confirms a new session defaults the output pane to showing informational output and above.
+        /// </summary>
+        [Fact]
+        public void InitializeTheMinimumVisibleOutputLevelToInfoAndAboveByDefault()
+        {
+            // The default session view should be quieter than the raw retained stream, so new sessions start at the Info threshold.
+            var service = new WorkbenchOutputService();
+
+            service.PanelState.MinimumVisibleLevel.ShouldBe(OutputLevel.Info);
+        }
+
+        /// <summary>
+        /// Confirms the shared panel state tracks the current minimum visible output level for the active session.
+        /// </summary>
+        [Fact]
+        public void TrackTheCurrentMinimumVisibleOutputLevelInTheSharedPanelState()
+        {
+            // The output-pane selector needs one session-scoped source of truth so the toolbar and visible output stay aligned.
+            var service = new WorkbenchOutputService();
+
+            service.SetMinimumVisibleLevel(OutputLevel.Error);
+
+            service.PanelState.MinimumVisibleLevel.ShouldBe(OutputLevel.Error);
+        }
+
+        /// <summary>
+        /// Confirms hidden output below the current visible threshold does not contribute to the collapsed unseen indicator.
+        /// </summary>
+        [Fact]
+        public void IgnoreHiddenEntriesBelowTheCurrentMinimumVisibleLevelWhenTrackingTheCollapsedIndicator()
+        {
+            // Lower-level hidden entries should not light the collapsed indicator when the current session is intentionally filtered to higher-severity output.
+            var service = new WorkbenchOutputService();
+            service.SetMinimumVisibleLevel(OutputLevel.Error);
+
+            service.Write(OutputLevel.Warning, "Shell", "A warning was written while the panel was collapsed.");
+
+            service.PanelState.HiddenUnseenLevel.ShouldBeNull();
+
+            service.Write(OutputLevel.Error, "Shell", "An error was written while the panel was collapsed.");
+
+            service.PanelState.HiddenUnseenLevel.ShouldBe(OutputLevel.Error);
+        }
+
+        /// <summary>
         /// Confirms clearing the stream removes all retained entries, resets the hidden severity indicator, and avoids synthetic replacement output.
         /// </summary>
         [Fact]

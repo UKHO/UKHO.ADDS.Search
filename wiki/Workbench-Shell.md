@@ -5,7 +5,7 @@ The `083-workbench-model` bootstrap slice introduces the first runnable Workbenc
 ## What the bootstrap slice delivers
 
 - a desktop-like shell rendered by Blazor Server
-- a full-width menu bar, active-tool toolbar, activity rail, explorer, central tool surface, and status bar
+- a desktop-like shell whose menu-bar region still exists in the shell model but is currently marked not visible, so the active-tool toolbar, activity rail, explorer, central tool surface, and status bar remain as the visible chrome
 - a host-owned exemplar tool (`Workbench overview`) that opens in the center region
 - singleton tool activation, so reopening the same tool focuses the existing instance instead of duplicating it
 - shell layout built with `UKHO.Workbench.Layout` grid and splitter primitives
@@ -58,6 +58,10 @@ The `083-workbench-model` bootstrap slice introduces the first runnable Workbenc
 - the working area now keeps the activity rail fixed at `64px` with no splitter between that rail and the explorer, leaving only the explorer-to-centre boundary resizeable
 - the centre tab host now removes its extra top, bottom, and left shell padding so the tab strip sits flush with the content surface while the always-visible overflow affordance stays anchored to the right edge
 
+## Temporary menu-bar state
+
+- the shell still keeps `MenuBar` as a first-class shell region and continues to support menu contributions, but the bootstrap visible-region set currently marks that region as hidden so `MainLayout` omits the menu row entirely while toolbar and tool-page actions mature
+
 ## What the output foundation slice adds
 
 - the shell now owns a shared `IWorkbenchOutputService` and immutable output contracts in `UKHO.Workbench.Output`, giving host and shell code a single append-only session stream
@@ -88,6 +92,14 @@ The `083-workbench-model` bootstrap slice introduces the first runnable Workbenc
 - shell context snapshots and historical status-bar messages are now written into the output stream as `Shell context` and `Status` diagnostics, so the output panel becomes the historical trace for shell state changes
 - the status bar is now intentionally reduced to the far-left `Output` toggle and its hidden unseen-severity indicator instead of carrying persistent right-aligned context and readiness text
 - historical output remains shell-wide for the whole in-memory session, so messages written before navigation or tool switches remain visible after the user changes tabs or explorers
+
+## What the output-trimming polish slice adds
+
+- the output toolbar now keeps the minimum-level selector in a dedicated leading group and surfaces a shell-owned `Visible: ...` summary so users can immediately see which retained entries are currently shown
+- the toolbar layout now keeps the selector, visibility summary, and panel actions visually aligned with the existing Radzen Material shell styling without introducing module-specific CSS workarounds
+- panel-local interactions continue to behave predictably with filtered output: clearing the stream empties both retained and visible output, closing the panel dismisses the find strip, and reopening preserves the selected session filter
+- overlapping output-terminal synchronization requests are now serialized so first-render and post-render refresh paths do not duplicate retained output lines when the panel initializes
+- integrated host tests now cover the polished filter summary, filtered clear and auto-scroll behavior, and visibility-toggle compatibility with the panel-local find workflow
 
 ## Project responsibilities
 
@@ -132,4 +144,4 @@ Use the targeted commands from `docs/086-workbench-output/implementation-plan.md
 
 When the host starts, browse to `/` and confirm the shell loads with the enabled module map visible in the explorer, that `Search ingestion`, `Search query`, `Ingestion rule editor`, `PKS operations`, `File Share workspace`, and `Administration` open in the center region, and that reopening them re-focuses the existing singleton tool instance. Disable one or more modules in `modules.json` and restart to confirm the disabled tools disappear from the explorer.
 
-For the current output slice, also open the `Output` panel, resize it, close and reopen it, confirm the previous height is restored for the session, collapse it again to watch the hidden severity indicator accumulate unseen output, scroll upward to disable `Auto-scroll`, and use `Scroll to end` to jump back to the newest entry and re-enable automatic scrolling.
+For the current output slice, also open the `Output` panel, confirm the toolbar reads `Visible: Info and above`, switch between `Error`, `Warning and above`, `Info and above`, and `Debug`, use `Find`, `Clear`, `Auto-scroll`, and `Scroll to end`, then close and reopen the panel to confirm the selected session filter is preserved while the panel-local find strip is dismissed.

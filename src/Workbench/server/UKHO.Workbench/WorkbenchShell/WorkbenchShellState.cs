@@ -9,7 +9,6 @@ namespace UKHO.Workbench.WorkbenchShell
     {
         private static readonly IReadOnlyList<WorkbenchShellRegion> BootstrapVisibleRegions =
         [
-            WorkbenchShellRegion.MenuBar,
             WorkbenchShellRegion.ActivityRail,
             WorkbenchShellRegion.Explorer,
             WorkbenchShellRegion.ToolSurface,
@@ -26,7 +25,7 @@ namespace UKHO.Workbench.WorkbenchShell
         /// </summary>
         public WorkbenchShellState()
         {
-            // The bootstrap shell starts with no open tabs so explorer interaction can drive the first tab activation explicitly.
+            // The bootstrap shell starts with no open tabs and with the menu bar hidden, so explorer interaction can drive the first tab activation explicitly.
             TabStrip = new WorkbenchTabStripState();
             VisibleRegions = BootstrapVisibleRegions;
             IsExplorerFocused = true;

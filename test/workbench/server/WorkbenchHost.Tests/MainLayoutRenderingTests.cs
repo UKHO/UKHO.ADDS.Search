@@ -51,7 +51,9 @@ namespace WorkbenchHost.Tests
             var renderer = new HtmlRenderer(serviceProvider, serviceProvider.GetRequiredService<ILoggerFactory>());
             var html = await RenderLayoutAsync(renderer);
 
-            html.ShouldContain("data-region=\"menu-bar\"");
+            shellManager.State.IsRegionVisible(WorkbenchShellRegion.MenuBar).ShouldBeFalse();
+            html.ShouldNotContain("data-region=\"menu-bar\"");
+            html.ShouldContain("data-region=\"toolbar\"");
             html.ShouldContain("data-region=\"activity-rail\"");
             html.ShouldContain("data-region=\"explorer\"");
             html.ShouldContain("data-region=\"tool-surface\"");
@@ -206,6 +208,103 @@ namespace WorkbenchHost.Tests
         }
 
         /// <summary>
+        /// Confirms the opened output panel renders the session-scoped minimum visible level selector with the default Info threshold selected.
+        /// </summary>
+        [Fact]
+        public async Task RenderTheOutputLevelFilterWithInfoAndAboveSelectedByDefault()
+        {
+            // The trimmed output experience defaults to Info and above, so the toolbar should surface that choice as the initial visible filter.
+            await using var serviceProvider = CreateServiceProvider();
+            var shellManager = serviceProvider.GetRequiredService<WorkbenchShellManager>();
+            var outputService = serviceProvider.GetRequiredService<IWorkbenchOutputService>();
+            SeedHostShell(shellManager);
+            shellManager.ActivateTool(ActivationTarget.CreateToolSurfaceTarget(OverviewToolId));
+            outputService.SetPanelVisibility(true);
+
+            var renderer = new HtmlRenderer(serviceProvider, serviceProvider.GetRequiredService<ILoggerFactory>());
+            var html = await RenderLayoutAsync(renderer);
+
+            html.ShouldContain("data-role=\"output-level-filter\"");
+            html.ShouldContain("data-role=\"output-visibility-summary\"");
+            html.ShouldContain("Minimum visible output level");
+            html.ShouldContain("Info and above");
+            html.ShouldContain("Visible: Info and above");
+        }
+
+        /// <summary>
+        /// Confirms the toolbar summary updates to match the active visible-output filter before the panel renders.
+        /// </summary>
+        [Fact]
+        public async Task RenderTheCurrentVisibleOutputSummaryForTheSelectedFilter()
+        {
+            // The integrated output slice should keep the visible-filter summary explicit so users can tell which retained entries are currently shown.
+            await using var serviceProvider = CreateServiceProvider();
+            var shellManager = serviceProvider.GetRequiredService<WorkbenchShellManager>();
+            var outputService = serviceProvider.GetRequiredService<IWorkbenchOutputService>();
+            SeedHostShell(shellManager);
+            shellManager.ActivateTool(ActivationTarget.CreateToolSurfaceTarget(OverviewToolId));
+            outputService.SetMinimumVisibleLevel(OutputLevel.Warning);
+            outputService.SetPanelVisibility(true);
+
+            var renderer = new HtmlRenderer(serviceProvider, serviceProvider.GetRequiredService<ILoggerFactory>());
+            var html = await RenderLayoutAsync(renderer);
+
+            html.ShouldContain("data-role=\"output-visibility-summary\"");
+            html.ShouldContain("Visible: Warning and above");
+        }
+
+        /// <summary>
+        /// Confirms the output-level selector exposes the expected options in the required toolbar order.
+        /// </summary>
+        [Fact]
+        public void ExposeTheExpectedOutputLevelFilterOptionsInToolbarOrder()
+        {
+            // The selector should list the quietest views first so users can add context progressively until they reach the amount of detail they need.
+            var filterOptions = InvokeStaticPrivateMethod(
+                typeof(MainLayout),
+                "GetOutputLevelFilterOptions",
+                []) as IReadOnlyList<OutputLevel>;
+
+            filterOptions.ShouldNotBeNull();
+            filterOptions.ShouldBe([
+                OutputLevel.Error,
+                OutputLevel.Warning,
+                OutputLevel.Info,
+                OutputLevel.Debug
+            ]);
+        }
+
+        /// <summary>
+        /// Confirms the visible output projection excludes debug entries until the session filter is explicitly lowered to Debug.
+        /// </summary>
+        [Fact]
+        public async Task FilterTheVisibleOutputProjectionByTheCurrentMinimumVisibleLevel()
+        {
+            // The retained stream should stay intact while the visible output view becomes quieter by hiding lower-level entries below the active threshold.
+            using var serviceProvider = CreateServiceProvider();
+            var shellManager = serviceProvider.GetRequiredService<WorkbenchShellManager>();
+            var outputService = serviceProvider.GetRequiredService<IWorkbenchOutputService>();
+            SeedHostShell(shellManager);
+            var layout = CreateLayoutInstance(serviceProvider, shellManager);
+
+            outputService.Write(OutputLevel.Debug, "Shell", "Debug output");
+            outputService.Write(OutputLevel.Info, "Shell", "Informational output");
+
+            GetPrivatePropertyValue<IReadOnlyList<OutputEntry>>(layout, "VisibleOutputEntries")
+                .Select(outputEntry => outputEntry.Summary)
+                .ShouldBe(["Informational output"]);
+
+            await InvokePrivateMethodAsync(layout, "HandleOutputLevelFilterChangedAsync", OutputLevel.Debug);
+
+            GetPrivatePropertyValue<IReadOnlyList<OutputEntry>>(layout, "VisibleOutputEntries")
+                .Select(outputEntry => outputEntry.Summary)
+                .ShouldBe([
+                    "Debug output",
+                    "Informational output"
+                ]);
+        }
+
+        /// <summary>
         /// Confirms terminal selection notifications drive the enabled state for the copy-selected toolbar action.
         /// </summary>
         [Fact]
@@ -249,6 +348,112 @@ namespace WorkbenchHost.Tests
             await InvokePrivateMethodAsync(layout, "CloseOutputFindAsync");
 
             GetPrivatePropertyValue<bool>(layout, "IsOutputFindVisible").ShouldBeFalse();
+        }
+
+        /// <summary>
+        /// Confirms closing the panel dismisses the find workflow while the selected output filter survives the session visibility transition.
+        /// </summary>
+        [Fact]
+        public async Task PreserveTheSelectedOutputFilterAndDismissFindWhenThePanelVisibilityChanges()
+        {
+            // Panel visibility changes should not reset the session filter, but they should close the panel-local find chrome so reopening starts from a predictable shell-owned state.
+            using var serviceProvider = CreateServiceProvider();
+            var shellManager = serviceProvider.GetRequiredService<WorkbenchShellManager>();
+            SeedHostShell(shellManager);
+            var layout = CreateLayoutInstance(serviceProvider, shellManager);
+
+            await InvokePrivateMethodAsync(layout, "ToggleOutputPanelAsync");
+            await InvokePrivateMethodAsync(layout, "HandleOutputLevelFilterChangedAsync", OutputLevel.Warning);
+            await InvokePrivateMethodAsync(layout, "OpenOutputFindAsync");
+
+            GetPrivatePropertyValue<bool>(layout, "IsOutputFindVisible").ShouldBeTrue();
+            GetPrivatePropertyValue<OutputPanelState>(layout, "OutputPanelState").MinimumVisibleLevel.ShouldBe(OutputLevel.Warning);
+
+            await InvokePrivateMethodAsync(layout, "ToggleOutputPanelAsync");
+
+            GetPrivatePropertyValue<OutputPanelState>(layout, "OutputPanelState").IsVisible.ShouldBeFalse();
+            GetPrivatePropertyValue<bool>(layout, "IsOutputFindVisible").ShouldBeFalse();
+
+            await InvokePrivateMethodAsync(layout, "ToggleOutputPanelAsync");
+
+            GetPrivatePropertyValue<OutputPanelState>(layout, "OutputPanelState").IsVisible.ShouldBeTrue();
+            GetPrivatePropertyValue<OutputPanelState>(layout, "OutputPanelState").MinimumVisibleLevel.ShouldBe(OutputLevel.Warning);
+            GetPrivatePropertyValue<bool>(layout, "IsOutputFindVisible").ShouldBeFalse();
+        }
+
+        /// <summary>
+        /// Confirms clear and scroll-to-end interactions continue to work when the panel is rendering only the filtered visible subset of retained output.
+        /// </summary>
+        [Fact]
+        public async Task ClearFilteredOutputAndRestoreAutoScrollThroughTheIntegratedToolbarHandlers()
+        {
+            // The filtered panel should still clear the retained stream, empty the visible subset, and let scroll-to-end restore auto-scroll after the user scrolls away.
+            using var serviceProvider = CreateServiceProvider();
+            var shellManager = serviceProvider.GetRequiredService<WorkbenchShellManager>();
+            var outputService = serviceProvider.GetRequiredService<IWorkbenchOutputService>();
+            SeedHostShell(shellManager);
+            var layout = CreateLayoutInstance(serviceProvider, shellManager);
+
+            outputService.SetPanelVisibility(true);
+            outputService.Write(OutputLevel.Debug, "Shell", "Hidden debug output");
+            outputService.Write(OutputLevel.Info, "Shell", "Visible informational output");
+
+            GetPrivatePropertyValue<IReadOnlyList<OutputEntry>>(layout, "VisibleOutputEntries")
+                .Select(outputEntry => outputEntry.Summary)
+                .ShouldBe(["Visible informational output"]);
+
+            await InvokePrivateMethodAsync(layout, "NotifyOutputViewportStateAsync", false);
+
+            outputService.PanelState.IsAutoScrollEnabled.ShouldBeFalse();
+
+            await InvokePrivateMethodAsync(layout, "ClearOutputAsync");
+
+            outputService.Entries.ShouldBeEmpty();
+            outputService.PanelState.HiddenUnseenLevel.ShouldBeNull();
+            GetPrivatePropertyValue<IReadOnlyList<OutputEntry>>(layout, "VisibleOutputEntries").ShouldBeEmpty();
+
+            await InvokePrivateMethodAsync(layout, "ScrollOutputToEndAsync");
+
+            outputService.PanelState.IsAutoScrollEnabled.ShouldBeTrue();
+        }
+
+        /// <summary>
+        /// Confirms overlapping output-terminal synchronization requests are coalesced into one immediate follow-up pass instead of running concurrently.
+        /// </summary>
+        [Fact]
+        public void CoalesceOverlappingOutputTerminalSynchronizationRequestsIntoOneQueuedFollowUpPass()
+        {
+            // The output panel can request synchronization from both first-render and post-render callbacks, so the layout must queue a single follow-up pass rather than allowing duplicate terminal rebuilds.
+            using var serviceProvider = CreateServiceProvider();
+            var shellManager = serviceProvider.GetRequiredService<WorkbenchShellManager>();
+            SeedHostShell(shellManager);
+            var layout = CreateLayoutInstance(serviceProvider, shellManager);
+
+            ((bool)InvokePrivateMethod(layout, "TryBeginOutputTerminalSynchronization", [])!).ShouldBeTrue();
+            ((bool)InvokePrivateMethod(layout, "TryBeginOutputTerminalSynchronization", [])!).ShouldBeFalse();
+            ((bool)InvokePrivateMethod(layout, "CompleteOutputTerminalSynchronizationPass", [])!).ShouldBeTrue();
+            ((bool)InvokePrivateMethod(layout, "CompleteOutputTerminalSynchronizationPass", [])!).ShouldBeFalse();
+            ((bool)InvokePrivateMethod(layout, "TryBeginOutputTerminalSynchronization", [])!).ShouldBeTrue();
+        }
+
+        /// <summary>
+        /// Confirms resetting the output-terminal projection state also clears any in-flight synchronization gate.
+        /// </summary>
+        [Fact]
+        public void ClearTheOutputTerminalSynchronizationGateWhenProjectionStateIsReset()
+        {
+            // Panel teardown should clear queued synchronization state so reopening the panel can rebuild cleanly without inheriting stale in-flight flags.
+            using var serviceProvider = CreateServiceProvider();
+            var shellManager = serviceProvider.GetRequiredService<WorkbenchShellManager>();
+            SeedHostShell(shellManager);
+            var layout = CreateLayoutInstance(serviceProvider, shellManager);
+
+            ((bool)InvokePrivateMethod(layout, "TryBeginOutputTerminalSynchronization", [])!).ShouldBeTrue();
+            ((bool)InvokePrivateMethod(layout, "TryBeginOutputTerminalSynchronization", [])!).ShouldBeFalse();
+
+            InvokePrivateMethod(layout, "ResetOutputTerminalProjectionState", []);
+
+            ((bool)InvokePrivateMethod(layout, "TryBeginOutputTerminalSynchronization", [])!).ShouldBeTrue();
         }
 
         /// <summary>
@@ -474,6 +679,83 @@ namespace WorkbenchHost.Tests
             activeOverviewHtml.ShouldContain("data-role=\"output-terminal-host\"");
             activeOverviewHtml.ShouldNotContain("Workbench shell ready");
             activeOverviewHtml.ShouldNotContain("workbench.activeTool:");
+        }
+
+        /// <summary>
+        /// Confirms the projected shell context details omit high-churn shell-state values that are not useful in the historical output stream.
+        /// </summary>
+        [Fact]
+        public void OmitHighChurnShellStateValuesFromProjectedContextDetails()
+        {
+            // Historical context output should preserve user-meaningful shell context without surfacing repeated active-region and tool-surface readiness noise.
+            var projectedContextValues = InvokeStaticPrivateMethod(
+                typeof(MainLayout),
+                "BuildProjectedContextValues",
+                [new Dictionary<string, string>(StringComparer.Ordinal)
+                {
+                    [WorkbenchContextKeys.ActiveExplorer] = "explorer.host.overview",
+                    [WorkbenchContextKeys.ActiveTool] = "tool.bootstrap.overview",
+                    [WorkbenchContextKeys.ActiveRegion] = "ToolSurface",
+                    [WorkbenchContextKeys.SelectionType] = "Document",
+                    [WorkbenchContextKeys.SelectionCount] = "1",
+                    [WorkbenchContextKeys.ToolSurfaceReady] = bool.TrueString
+                }]) as IReadOnlyDictionary<string, string>;
+
+            projectedContextValues.ShouldNotBeNull();
+
+            var contextDetails = InvokeStaticPrivateMethod(
+                typeof(MainLayout),
+                "BuildContextDetails",
+                [projectedContextValues]) as string;
+
+            contextDetails.ShouldNotBeNull();
+            contextDetails.ShouldContain("Active explorer: explorer.host.overview");
+            contextDetails.ShouldContain("Active tool: tool.bootstrap.overview");
+            contextDetails.ShouldContain("Selection type: Document");
+            contextDetails.ShouldContain("Selection count: 1");
+            contextDetails.ShouldNotContain("Active region:");
+            contextDetails.ShouldNotContain("Tool surface ready:");
+        }
+
+        /// <summary>
+        /// Confirms shell context changes that affect only omitted high-churn values do not produce a new projected context snapshot.
+        /// </summary>
+        [Fact]
+        public void TreatChangesInOmittedShellStateValuesAsEquivalentProjectedContext()
+        {
+            // Active-region and tool-surface readiness churn should not create additional historical context entries once those values are removed from the projected snapshot.
+            var firstProjectedContextValues = InvokeStaticPrivateMethod(
+                typeof(MainLayout),
+                "BuildProjectedContextValues",
+                [new Dictionary<string, string>(StringComparer.Ordinal)
+                {
+                    [WorkbenchContextKeys.ActiveExplorer] = "explorer.host.overview",
+                    [WorkbenchContextKeys.ActiveTool] = "tool.bootstrap.overview",
+                    [WorkbenchContextKeys.ActiveRegion] = "ToolSurface",
+                    [WorkbenchContextKeys.SelectionType] = string.Empty,
+                    [WorkbenchContextKeys.SelectionCount] = "0",
+                    [WorkbenchContextKeys.ToolSurfaceReady] = bool.TrueString
+                }]) as IReadOnlyDictionary<string, string>;
+            var secondProjectedContextValues = InvokeStaticPrivateMethod(
+                typeof(MainLayout),
+                "BuildProjectedContextValues",
+                [new Dictionary<string, string>(StringComparer.Ordinal)
+                {
+                    [WorkbenchContextKeys.ActiveExplorer] = "explorer.host.overview",
+                    [WorkbenchContextKeys.ActiveTool] = "tool.bootstrap.overview",
+                    [WorkbenchContextKeys.ActiveRegion] = string.Empty,
+                    [WorkbenchContextKeys.SelectionType] = string.Empty,
+                    [WorkbenchContextKeys.SelectionCount] = "0",
+                    [WorkbenchContextKeys.ToolSurfaceReady] = bool.FalseString
+                }]) as IReadOnlyDictionary<string, string>;
+
+            firstProjectedContextValues.ShouldNotBeNull();
+            secondProjectedContextValues.ShouldNotBeNull();
+
+            ((bool)InvokeStaticPrivateMethod(
+                typeof(MainLayout),
+                "HaveEquivalentContextValues",
+                [firstProjectedContextValues, secondProjectedContextValues])!).ShouldBeTrue();
         }
 
         /// <summary>

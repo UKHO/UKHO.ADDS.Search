@@ -25,10 +25,12 @@ namespace WorkbenchHost.Components.Layout
         private const string OutputTerminalFitAddonId = "addon-fit";
         private const string OutputTerminalSearchAddonId = "addon-search";
         private const string OutputTerminalSeverityReset = "\u001b[0m";
+        private static readonly IReadOnlyList<OutputLevel> _outputLevelFilterOptions = [OutputLevel.Error, OutputLevel.Warning, OutputLevel.Info, OutputLevel.Debug];
         private static readonly string[] OutputDetailLineSeparators = ["\r\n", "\n", "\r"];
         private readonly Dictionary<string, string> _projectedStatusContributionTexts = new(StringComparer.Ordinal);
         private readonly HashSet<string> _outputTerminalAddons = [OutputTerminalFitAddonId, OutputTerminalSearchAddonId];
         private readonly List<OutputEntry> _pendingOutputTerminalEntries = [];
+        private readonly object _outputTerminalSynchronizationStateLock = new();
         private readonly TerminalOptions _outputTerminalOptions = CreateOutputTerminalOptions();
         private IReadOnlyDictionary<string, string> _lastProjectedContextValues = new Dictionary<string, string>(StringComparer.Ordinal);
         private IReadOnlyList<string> _projectedOutputEntryIds = [];
@@ -46,6 +48,9 @@ namespace WorkbenchHost.Components.Layout
         private bool _outputTerminalNeedsRebuild = true;
         private int _outputTerminalRenderKey;
         private bool _pendingScrollToEnd;
+        private OutputLevel _lastObservedMinimumVisibleLevel = OutputLevel.Info;
+        private bool _isOutputTerminalSynchronizationInProgress;
+        private bool _hasPendingOutputTerminalSynchronizationRequest;
 
         [Inject]
         private WorkbenchShellManager ShellManager { get; set; } = null!;
@@ -130,24 +135,34 @@ namespace WorkbenchHost.Components.Layout
         private IReadOnlyList<OutputEntry> OutputEntries => WorkbenchOutputService.Entries;
 
         /// <summary>
+        /// Gets the output entries that remain visible after applying the current minimum visible output level.
+        /// </summary>
+        private IReadOnlyList<OutputEntry> VisibleOutputEntries => FilterOutputEntries(OutputEntries, OutputPanelState.MinimumVisibleLevel);
+
+        /// <summary>
         /// Gets the current output-panel session state used by the shell layout.
         /// </summary>
         private OutputPanelState OutputPanelState => WorkbenchOutputService.PanelState;
 
         /// <summary>
+        /// Gets the row index used by the active-tool toolbar.
+        /// </summary>
+        private int ToolbarRow => IsRegionVisible(WorkbenchShellRegion.MenuBar) ? 2 : 1;
+
+        /// <summary>
         /// Gets the row index used by the centre working surface.
         /// </summary>
-        private int WorkingAreaRow => 3;
+        private int WorkingAreaRow => ToolbarRow + 1;
 
         /// <summary>
         /// Gets the row index used by the output panel when it is visible.
         /// </summary>
-        private int OutputPanelRow => 5;
+        private int OutputPanelRow => WorkingAreaRow + 2;
 
         /// <summary>
         /// Gets the row index used by the status bar for the current shell layout shape.
         /// </summary>
-        private int StatusBarRow => OutputPanelState.IsVisible ? 6 : 4;
+        private int StatusBarRow => OutputPanelState.IsVisible ? OutputPanelRow + 1 : WorkingAreaRow + 1;
 
         /// <summary>
         /// Gets the grid-track height used by the centre working area for the current panel state.
@@ -330,6 +345,9 @@ namespace WorkbenchHost.Components.Layout
             {
                 if (OutputPanelState.IsVisible)
                 {
+                    // Closing the panel should also dismiss any panel-local find chrome immediately so reopening starts from a predictable shell-owned state.
+                    _isOutputFindSurfaceVisible = false;
+                    _outputFindInputShouldReceiveFocus = false;
                     ResetOutputTerminalProjectionState();
                     await DisposeOutputPanelInteropAsync();
                     WorkbenchOutputService.SetPanelVisibility(false);
@@ -399,6 +417,22 @@ namespace WorkbenchHost.Components.Layout
             _isOutputFindSurfaceVisible = true;
             _outputFindInputShouldReceiveFocus = true;
             return RequestLayoutRefreshAsync();
+        }
+
+        /// <summary>
+        /// Updates the minimum visible output level from the output-pane toolbar selector.
+        /// </summary>
+        /// <param name="selectedValue">The selected minimum visible output level coming from the toolbar selector.</param>
+        /// <returns>A completed task because the shared panel state update is handled synchronously.</returns>
+        private Task HandleOutputLevelFilterChangedAsync(object? selectedValue)
+        {
+            // The selector updates one session-scoped threshold so the terminal projection and hidden-indicator rules can respond from the same shared state.
+            if (selectedValue is OutputLevel minimumVisibleLevel)
+            {
+                WorkbenchOutputService.SetMinimumVisibleLevel(minimumVisibleLevel);
+            }
+
+            return Task.CompletedTask;
         }
 
         /// <summary>
@@ -1162,7 +1196,7 @@ namespace WorkbenchHost.Components.Layout
         private void ProjectContextValuesToOutput()
         {
             // Context values used to live permanently in the status bar, but the output-first shell now records them as historical context snapshots instead.
-            var currentContextValues = new Dictionary<string, string>(ContextValues, StringComparer.Ordinal);
+            var currentContextValues = BuildProjectedContextValues(ContextValues);
             if (HaveEquivalentContextValues(_lastProjectedContextValues, currentContextValues))
             {
                 return;
@@ -1181,6 +1215,32 @@ namespace WorkbenchHost.Components.Layout
                 "Shell context",
                 "Workbench context updated.",
                 contextDetails);
+        }
+
+        /// <summary>
+        /// Builds the subset of shell context values that remain useful enough to project into the historical output stream.
+        /// </summary>
+        /// <param name="contextValues">The full shell context snapshot currently exposed by the shell manager.</param>
+        /// <returns>The filtered context snapshot that should be projected into the output stream.</returns>
+        private static IReadOnlyDictionary<string, string> BuildProjectedContextValues(IReadOnlyDictionary<string, string> contextValues)
+        {
+            // The output pane should keep user-meaningful historical context while dropping high-churn shell-state noise such as active region and tool-surface readiness.
+            ArgumentNullException.ThrowIfNull(contextValues);
+
+            var projectedContextValues = new Dictionary<string, string>(StringComparer.Ordinal);
+
+            AddProjectedContextValue(projectedContextValues, contextValues, WorkbenchContextKeys.ActiveExplorer);
+            AddProjectedContextValue(projectedContextValues, contextValues, WorkbenchContextKeys.ActiveTool);
+            AddProjectedContextValue(projectedContextValues, contextValues, WorkbenchContextKeys.SelectionType);
+
+            var selectionCount = GetContextValue(contextValues, WorkbenchContextKeys.SelectionCount);
+            if (!string.IsNullOrWhiteSpace(selectionCount)
+                && !string.Equals(selectionCount, "0", StringComparison.Ordinal))
+            {
+                projectedContextValues[WorkbenchContextKeys.SelectionCount] = selectionCount;
+            }
+
+            return projectedContextValues;
         }
 
         /// <summary>
@@ -1228,7 +1288,6 @@ namespace WorkbenchHost.Components.Layout
 
             AddContextLine(contextLines, "Active explorer", GetContextValue(contextValues, WorkbenchContextKeys.ActiveExplorer));
             AddContextLine(contextLines, "Active tool", GetContextValue(contextValues, WorkbenchContextKeys.ActiveTool));
-            AddContextLine(contextLines, "Active region", GetContextValue(contextValues, WorkbenchContextKeys.ActiveRegion));
             AddContextLine(contextLines, "Selection type", GetContextValue(contextValues, WorkbenchContextKeys.SelectionType));
 
             var selectionCount = GetContextValue(contextValues, WorkbenchContextKeys.SelectionCount);
@@ -1236,14 +1295,6 @@ namespace WorkbenchHost.Components.Layout
                 && !string.Equals(selectionCount, "0", StringComparison.Ordinal))
             {
                 AddContextLine(contextLines, "Selection count", selectionCount);
-            }
-
-            var toolSurfaceReady = GetContextValue(contextValues, WorkbenchContextKeys.ToolSurfaceReady);
-            if (!string.IsNullOrWhiteSpace(toolSurfaceReady)
-                && bool.TryParse(toolSurfaceReady, out var isToolSurfaceReady)
-                && isToolSurfaceReady)
-            {
-                AddContextLine(contextLines, "Tool surface ready", toolSurfaceReady);
             }
 
             return string.Join(Environment.NewLine, contextLines);
@@ -1287,6 +1338,31 @@ namespace WorkbenchHost.Components.Layout
         }
 
         /// <summary>
+        /// Adds one shell context value to the projected output snapshot when the source snapshot contains a meaningful value for that key.
+        /// </summary>
+        /// <param name="projectedContextValues">The filtered context snapshot currently being accumulated.</param>
+        /// <param name="contextValues">The full shell context snapshot being filtered.</param>
+        /// <param name="key">The context key whose value should be projected when meaningful.</param>
+        private static void AddProjectedContextValue(
+            Dictionary<string, string> projectedContextValues,
+            IReadOnlyDictionary<string, string> contextValues,
+            string key)
+        {
+            // Projected context snapshots intentionally keep only meaningful values so invisible shell churn does not create noisy historical output entries.
+            ArgumentNullException.ThrowIfNull(projectedContextValues);
+            ArgumentNullException.ThrowIfNull(contextValues);
+            ArgumentException.ThrowIfNullOrWhiteSpace(key);
+
+            var value = GetContextValue(contextValues, key);
+            if (string.IsNullOrWhiteSpace(value))
+            {
+                return;
+            }
+
+            projectedContextValues[key] = value;
+        }
+
+        /// <summary>
         /// Maps a simple Workbench notification severity string to the corresponding Radzen severity.
         /// </summary>
         /// <param name="severity">The shell notification severity expressed as a simple string value.</param>
@@ -1301,6 +1377,61 @@ namespace WorkbenchHost.Components.Layout
                 "error" => NotificationSeverity.Error,
                 _ => NotificationSeverity.Info
             };
+        }
+
+        /// <summary>
+        /// Returns the supported output-level selector options in the order that should be shown in the output-pane toolbar.
+        /// </summary>
+        /// <returns>The ordered output-level selector options.</returns>
+        private static IReadOnlyList<OutputLevel> GetOutputLevelFilterOptions()
+        {
+            // The selector lists the quietest view first so users can move from Error-only upward until they reach the amount of context they need.
+            return _outputLevelFilterOptions;
+        }
+
+        /// <summary>
+        /// Returns the user-facing label for one output-level selector option.
+        /// </summary>
+        /// <param name="outputLevel">The output level whose toolbar label should be returned.</param>
+        /// <returns>The user-facing toolbar label for the supplied output level.</returns>
+        private static string GetOutputLevelFilterLabel(OutputLevel outputLevel)
+        {
+            // The toolbar uses explicit labels so the severity selector reads like an operator-facing filter rather than exposing enum names directly.
+            return outputLevel switch
+            {
+                OutputLevel.Error => "Error",
+                OutputLevel.Warning => "Warning and above",
+                OutputLevel.Info => "Info and above",
+                OutputLevel.Debug => "Debug",
+                _ => throw new ArgumentOutOfRangeException(nameof(outputLevel), outputLevel, "The output level is not supported.")
+            };
+        }
+
+        /// <summary>
+        /// Returns the concise toolbar text that explains which retained entries are currently visible in the output panel.
+        /// </summary>
+        /// <param name="outputLevel">The current minimum visible output level.</param>
+        /// <returns>The user-facing summary text describing the visible output range.</returns>
+        private static string GetOutputVisibilitySummary(OutputLevel outputLevel)
+        {
+            // The toolbar summary keeps filtered output explicit so users can distinguish the retained history from the currently visible subset at a glance.
+            return $"Visible: {GetOutputLevelFilterLabel(outputLevel)}";
+        }
+
+        /// <summary>
+        /// Returns the retained output entries that remain visible at or above the supplied minimum output level.
+        /// </summary>
+        /// <param name="outputEntries">The retained output entries that should be filtered for visibility.</param>
+        /// <param name="minimumVisibleLevel">The minimum output level that should remain visible.</param>
+        /// <returns>The retained output entries that remain visible at or above the supplied minimum level.</returns>
+        private static IReadOnlyList<OutputEntry> FilterOutputEntries(IReadOnlyList<OutputEntry> outputEntries, OutputLevel minimumVisibleLevel)
+        {
+            // Visibility filtering trims the terminal projection for the current session view without mutating the retained output history behind it.
+            ArgumentNullException.ThrowIfNull(outputEntries);
+
+            return outputEntries
+                .Where(outputEntry => outputEntry.Level.IsVisibleAtOrAbove(minimumVisibleLevel))
+                .ToArray();
         }
 
         /// <summary>
@@ -1614,10 +1745,22 @@ namespace WorkbenchHost.Components.Layout
             _isOutputSelectionAvailable = false;
             _isOutputTerminalReady = false;
             _outputFindInputShouldReceiveFocus = false;
+            ResetOutputTerminalSynchronizationState();
             _pendingOutputTerminalEntries.Clear();
             _projectedOutputEntryIds = [];
             _outputTerminalNeedsRebuild = true;
             _outputTerminalNeedsPresentationRefresh = true;
+        }
+
+        /// <summary>
+        /// Invalidates the currently projected terminal content while keeping the live terminal component instance available for a later rebuild.
+        /// </summary>
+        private void InvalidateVisibleOutputProjection()
+        {
+            // Filter changes should rebuild the visible terminal buffer from retained entries without tearing down the current terminal component instance.
+            _pendingOutputTerminalEntries.Clear();
+            _projectedOutputEntryIds = [];
+            _outputTerminalNeedsRebuild = true;
         }
 
         /// <summary>
@@ -1640,7 +1783,37 @@ namespace WorkbenchHost.Components.Layout
         /// <returns>A task that completes when any pending rebuild, append, theme, fit, and deferred scroll work has finished.</returns>
         private async Task SynchronizeOutputTerminalAsync()
         {
-            // Synchronization runs after render so the layout can choose the lightest safe path: append when history only grows at the tail, otherwise rebuild from retained state.
+            // First-render and post-render callbacks can both request synchronization for the same panel state, so overlapping requests are coalesced into one serialized pass.
+            if (!TryBeginOutputTerminalSynchronization())
+            {
+                return;
+            }
+
+            try
+            {
+                var shouldRunAnotherPass = false;
+                do
+                {
+                    await SynchronizeOutputTerminalCoreAsync();
+                    shouldRunAnotherPass = CompleteOutputTerminalSynchronizationPass();
+                }
+                while (shouldRunAnotherPass);
+            }
+            catch
+            {
+                // Exceptions should not leave the synchronization gate stuck because later output changes still need a path to refresh the terminal safely.
+                ResetOutputTerminalSynchronizationState();
+                throw;
+            }
+        }
+
+        /// <summary>
+        /// Synchronizes the hosted terminal with the retained output stream, current shell theme, and panel fit requirements for one serialized pass.
+        /// </summary>
+        /// <returns>A task that completes when one synchronization pass has finished.</returns>
+        private async Task SynchronizeOutputTerminalCoreAsync()
+        {
+            // Each pass chooses the lightest safe path: append when history only grows at the tail, otherwise rebuild from retained state.
             var outputTerminal = _outputTerminal;
             if (!IsCurrentOutputTerminal(outputTerminal))
             {
@@ -1686,6 +1859,60 @@ namespace WorkbenchHost.Components.Layout
         }
 
         /// <summary>
+        /// Attempts to start one exclusive output-terminal synchronization pass.
+        /// </summary>
+        /// <returns><see langword="true"/> when the caller now owns synchronization; otherwise, <see langword="false"/> when a later pass has been queued behind an in-flight synchronization.</returns>
+        private bool TryBeginOutputTerminalSynchronization()
+        {
+            // The output terminal should never rebuild concurrently because overlapping first-render and post-render paths would duplicate retained history inside the same browser buffer.
+            lock (_outputTerminalSynchronizationStateLock)
+            {
+                if (_isOutputTerminalSynchronizationInProgress)
+                {
+                    _hasPendingOutputTerminalSynchronizationRequest = true;
+                    return false;
+                }
+
+                _isOutputTerminalSynchronizationInProgress = true;
+                _hasPendingOutputTerminalSynchronizationRequest = false;
+                return true;
+            }
+        }
+
+        /// <summary>
+        /// Completes one synchronization pass and reports whether another queued pass should run immediately.
+        /// </summary>
+        /// <returns><see langword="true"/> when a queued follow-up pass should run immediately; otherwise, <see langword="false"/>.</returns>
+        private bool CompleteOutputTerminalSynchronizationPass()
+        {
+            // A queued follow-up pass means output, theme, or fit state changed while awaited browser work was in flight, so the terminal should refresh again immediately without duplicating the current pass.
+            lock (_outputTerminalSynchronizationStateLock)
+            {
+                if (_hasPendingOutputTerminalSynchronizationRequest)
+                {
+                    _hasPendingOutputTerminalSynchronizationRequest = false;
+                    return true;
+                }
+
+                _isOutputTerminalSynchronizationInProgress = false;
+                return false;
+            }
+        }
+
+        /// <summary>
+        /// Clears the synchronization gate used to serialize output-terminal refresh work.
+        /// </summary>
+        private void ResetOutputTerminalSynchronizationState()
+        {
+            // Panel teardown and exceptional paths both need a hard reset so stale in-flight state never blocks later terminal refresh requests.
+            lock (_outputTerminalSynchronizationStateLock)
+            {
+                _isOutputTerminalSynchronizationInProgress = false;
+                _hasPendingOutputTerminalSynchronizationRequest = false;
+            }
+        }
+
+        /// <summary>
         /// Rebuilds the hosted terminal buffer from the retained shared output state.
         /// </summary>
         /// <returns>A task that completes when the full retained history has been written to the terminal.</returns>
@@ -1699,7 +1926,7 @@ namespace WorkbenchHost.Components.Layout
                 return;
             }
 
-            var currentEntries = OutputEntries;
+            var currentEntries = VisibleOutputEntries;
             await outputTerminal.Reset();
 
             if (!IsCurrentOutputTerminal(outputTerminal))
@@ -1988,7 +2215,7 @@ namespace WorkbenchHost.Components.Layout
                 _pendingScrollToEnd = true;
             }
 
-            QueueOutputTerminalProjectionUpdate(OutputEntries);
+            QueueOutputTerminalProjectionUpdate(VisibleOutputEntries);
 
             _ = InvokeAsync(StateHasChanged);
         }
@@ -2001,6 +2228,14 @@ namespace WorkbenchHost.Components.Layout
         private void HandleOutputPanelStateChanged(object? sender, EventArgs e)
         {
             // Panel-state changes can affect layout rows, toolbar pressed states, and hidden severity indicators, so the shell re-renders from one place.
+            if (_lastObservedMinimumVisibleLevel != OutputPanelState.MinimumVisibleLevel)
+            {
+                // Minimum-level changes alter the visible terminal buffer, so the next render must rebuild from the retained entries that now pass the filter.
+                _lastObservedMinimumVisibleLevel = OutputPanelState.MinimumVisibleLevel;
+                InvalidateVisibleOutputProjection();
+                _pendingScrollToEnd = OutputPanelState.IsVisible && OutputPanelState.IsAutoScrollEnabled;
+            }
+
             if (!OutputPanelState.IsVisible)
             {
                 // Closing the panel removes the terminal from the render tree, so the cached component reference is cleared immediately.

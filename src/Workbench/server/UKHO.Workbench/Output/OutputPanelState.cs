@@ -13,6 +13,7 @@ namespace UKHO.Workbench.Output
         /// <param name="outputPaneHeight">The authored grid-track height used for the output panel while it is visible.</param>
         /// <param name="isAutoScrollEnabled">A value indicating whether new output should automatically scroll the viewport to the newest entry.</param>
         /// <param name="isWordWrapEnabled">A value indicating whether output rows should wrap long content instead of relying on horizontal scrolling.</param>
+        /// <param name="minimumVisibleLevel">The minimum output level that the current session should render in the output pane.</param>
         /// <param name="hiddenUnseenLevel">The most severe unseen level accumulated while the panel was hidden, if any.</param>
         /// <param name="expandedEntryIds">The identifiers of output rows whose details are currently expanded for the active session view.</param>
         public OutputPanelState(
@@ -21,6 +22,7 @@ namespace UKHO.Workbench.Output
             string outputPaneHeight,
             bool isAutoScrollEnabled = true,
             bool isWordWrapEnabled = false,
+            OutputLevel minimumVisibleLevel = OutputLevel.Info,
             OutputLevel? hiddenUnseenLevel = null,
             IReadOnlyList<string>? expandedEntryIds = null)
         {
@@ -39,6 +41,7 @@ namespace UKHO.Workbench.Output
             OutputPaneHeight = outputPaneHeight;
             IsAutoScrollEnabled = isAutoScrollEnabled;
             IsWordWrapEnabled = isWordWrapEnabled;
+            MinimumVisibleLevel = minimumVisibleLevel;
             HiddenUnseenLevel = hiddenUnseenLevel;
             ExpandedEntryIds = expandedEntryIdentifiers;
         }
@@ -67,6 +70,11 @@ namespace UKHO.Workbench.Output
         /// Gets a value indicating whether long output lines should wrap instead of requiring horizontal scrolling.
         /// </summary>
         public bool IsWordWrapEnabled { get; init; }
+
+        /// <summary>
+        /// Gets the minimum output level that the current session should render in the output pane.
+        /// </summary>
+        public OutputLevel MinimumVisibleLevel { get; init; }
 
         /// <summary>
         /// Gets the most severe unseen output level accumulated while the panel remained hidden.

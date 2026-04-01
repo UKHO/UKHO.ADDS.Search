@@ -28,7 +28,7 @@ Each work item leaves the Workbench in a runnable, demonstrable state.
 
 ## Output pane filtering and trimming
 
-- [ ] Work Item 1: Deliver end-to-end output-level filtering with `Info and above` as the default visible mode
+- [x] Work Item 1: Deliver end-to-end output-level filtering with `Info and above` as the default visible mode - Completed
   - **Purpose**: Introduce the core user-facing capability that immediately reduces output-pane noise in normal operation while preserving access to `Debug` output when explicitly requested.
   - **Acceptance Criteria**:
     - The output pane defaults to showing `Info`, `Warning`, and `Error` entries only.
@@ -44,29 +44,34 @@ Each work item leaves the Workbench in a runnable, demonstrable state.
     - Code comments and developer documentation added in full compliance with `./.github/instructions/documentation-pass.instructions.md`
     - Documentation updated where needed inside this work package
     - Can execute end-to-end via: run `WorkbenchHost`, open the output pane, switch filter levels, and observe the visible output change live
-  - [ ] Task 1: Add session-scoped output-level filter state to the existing Workbench output-panel model
-    - [ ] Step 1: Review the existing output-panel state model and identify the smallest extension point for session-only minimum severity selection.
-    - [ ] Step 2: Add or update the output-panel state/service contract so the current visible minimum level is tracked in-memory only for the active session.
-    - [ ] Step 3: Ensure the default state initializes to `Info and above` whenever a new session starts.
-    - [ ] Step 4: Add developer-level comments and XML documentation as required by `./.github/instructions/documentation-pass.instructions.md`.
-  - [ ] Task 2: Add the output-level selector to the output-pane toolbar in `WorkbenchHost`
-    - [ ] Step 1: Update the output-pane toolbar markup in the Workbench layout to include a selector that fits the current Radzen Material styling approach.
-    - [ ] Step 2: Wire the selector to the new session-scoped minimum-level state.
-    - [ ] Step 3: Keep the toolbar desktop-like and aligned with the existing output-pane interaction model.
-    - [ ] Step 4: Ensure the selector alone is the only debug exposure control; do not add a separate debug toggle or reset-to-default affordance.
-    - [ ] Step 5: Add developer-level comments and XML documentation as required by `./.github/instructions/documentation-pass.instructions.md`.
-  - [ ] Task 3: Apply the filter to the visible output rendering path without changing retained-entry semantics
-    - [ ] Step 1: Update the output projection/rendering logic so the visible entry set is filtered by the current minimum level before rendering.
-    - [ ] Step 2: Preserve retained output entries internally so filter changes can reveal previously hidden entries in-session.
-    - [ ] Step 3: Keep detail lines visible for all entries that remain visible after filtering.
-    - [ ] Step 4: Ensure hidden lower-level entries do not affect unseen indicators or badges.
-    - [ ] Step 5: Add developer-level comments and XML documentation as required by `./.github/instructions/documentation-pass.instructions.md`.
-  - [ ] Task 4: Add targeted verification for the end-to-end filter slice
-    - [ ] Step 1: Add or update Workbench host rendering tests covering the default `Info and above` view.
-    - [ ] Step 2: Add tests verifying that `Debug` entries are hidden by default and revealed when the selector is set to `Debug`.
-    - [ ] Step 3: Add tests verifying the selector options and immediate visible output refresh behavior.
-    - [ ] Step 4: Add tests confirming detail lines remain visible for all visible severities.
-    - [ ] Step 5: Add developer-level comments and XML documentation as required by `./.github/instructions/documentation-pass.instructions.md`.
+  - [x] Task 1: Add session-scoped output-level filter state to the existing Workbench output-panel model - Completed
+    - [x] Step 1: Review the existing output-panel state model and identify the smallest extension point for session-only minimum severity selection.
+    - [x] Step 2: Add or update the output-panel state/service contract so the current visible minimum level is tracked in-memory only for the active session.
+    - [x] Step 3: Ensure the default state initializes to `Info and above` whenever a new session starts.
+    - [x] Step 4: Add developer-level comments and XML documentation as required by `./.github/instructions/documentation-pass.instructions.md`.
+  - [x] Task 2: Add the output-level selector to the output-pane toolbar in `WorkbenchHost` - Completed
+    - [x] Step 1: Update the output-pane toolbar markup in the Workbench layout to include a selector that fits the current Radzen Material styling approach.
+    - [x] Step 2: Wire the selector to the new session-scoped minimum-level state.
+    - [x] Step 3: Keep the toolbar desktop-like and aligned with the existing output-pane interaction model.
+    - [x] Step 4: Ensure the selector alone is the only debug exposure control; do not add a separate debug toggle or reset-to-default affordance.
+    - [x] Step 5: Add developer-level comments and XML documentation as required by `./.github/instructions/documentation-pass.instructions.md`.
+  - [x] Task 3: Apply the filter to the visible output rendering path without changing retained-entry semantics - Completed
+    - [x] Step 1: Update the output projection/rendering logic so the visible entry set is filtered by the current minimum level before rendering.
+    - [x] Step 2: Preserve retained output entries internally so filter changes can reveal previously hidden entries in-session.
+    - [x] Step 3: Keep detail lines visible for all entries that remain visible after filtering.
+    - [x] Step 4: Ensure hidden lower-level entries do not affect unseen indicators or badges.
+    - [x] Step 5: Add developer-level comments and XML documentation as required by `./.github/instructions/documentation-pass.instructions.md`.
+  - [x] Task 4: Add targeted verification for the end-to-end filter slice - Completed
+    - [x] Step 1: Add or update Workbench host rendering tests covering the default `Info and above` view.
+    - [x] Step 2: Add tests verifying that `Debug` entries are hidden by default and revealed when the selector is set to `Debug`.
+    - [x] Step 3: Add tests verifying the selector options and immediate visible output refresh behavior.
+    - [x] Step 4: Add tests confirming detail lines remain visible for all visible severities.
+    - [x] Step 5: Add developer-level comments and XML documentation as required by `./.github/instructions/documentation-pass.instructions.md`.
+  - **Completion Summary**:
+    - Added session-scoped minimum visible output level state with `Info and above` as the default.
+    - Added an output-level selector to the Workbench output toolbar and wired it to the shared output service.
+    - Filtered the visible output projection without changing retained-entry semantics and ensured hidden lower-level entries do not affect unseen indicators.
+    - Added targeted tests in `WorkbenchHost.Tests` and `UKHO.Workbench.Services.Tests` covering default filter behavior, selector options, visible-output filtering, and hidden indicator rules.
   - **Files**:
     - `src/workbench/server/UKHO.Workbench/Output/OutputPanelState.cs`: extend session output-pane state with the minimum visible level if needed
     - `src/workbench/server/UKHO.Workbench/Output/IWorkbenchOutputService.cs`: expose filter-related state or update operations if needed
@@ -84,7 +89,7 @@ Each work item leaves the Workbench in a runnable, demonstrable state.
     - Confirm the visible output updates immediately without pane reopen
   - **User Instructions**: No manual setup beyond running the existing Workbench host
 
-- [ ] Work Item 2: Reduce useless shell debug output at source while preserving meaningful retained entries
+- [x] Work Item 2: Reduce useless shell debug output at source while preserving meaningful retained entries - Completed
   - **Purpose**: Make the output pane materially quieter in normal operation by preventing low-value shell-state messages from being emitted repeatedly, instead of deduplicating entries after they have been written.
   - **Acceptance Criteria**:
     - Known non-useful shell-state messages such as repeated `Tool surface ready: True` and `Active region: ToolSurface` no longer flood the output pane.
@@ -97,22 +102,27 @@ Each work item leaves the Workbench in a runnable, demonstrable state.
     - Targeted tests passing for context/status projection behavior
     - Code comments and developer documentation added in full compliance with `./.github/instructions/documentation-pass.instructions.md`
     - Can execute end-to-end via: run `WorkbenchHost`, navigate through normal shell activity, and observe a much quieter output pane without any retained-entry deduplication behavior
-  - [ ] Task 1: Audit current shell-emitted output sources that create high-volume low-value debug noise
-    - [ ] Step 1: Review context projection and status projection paths in the Workbench layout and related shell services.
-    - [ ] Step 2: Identify which messages are genuinely useful diagnostics versus which are low-value state chatter.
-    - [ ] Step 3: Use the specification examples as minimum mandatory targets, especially repeated `Tool surface ready` and `Active region` messages.
-    - [ ] Step 4: Add developer-level comments and XML documentation as required by `./.github/instructions/documentation-pass.instructions.md`.
-  - [ ] Task 2: Reduce useless repeated debug output at source
-    - [ ] Step 1: Adjust shell context/status projection rules so unchanged low-value state is not repeatedly written into the output stream.
-    - [ ] Step 2: Preserve meaningful informational, warning, and error events so output still reflects real operational activity.
-    - [ ] Step 3: Ensure the implementation does not deduplicate retained output entries after write; the reduction must happen before or at emission.
-    - [ ] Step 4: Keep the current chronological retained-entry model intact for messages that are still emitted.
-    - [ ] Step 5: Add developer-level comments and XML documentation as required by `./.github/instructions/documentation-pass.instructions.md`.
-  - [ ] Task 3: Add focused regression coverage for shell output-noise reduction
-    - [ ] Step 1: Add or update tests around shell context and status projection to verify low-value unchanged state is no longer emitted repeatedly.
-    - [ ] Step 2: Add tests confirming meaningful emitted entries remain visible and unmodified.
-    - [ ] Step 3: Add tests confirming no UI-side deduplication/coalescing behavior is introduced.
-    - [ ] Step 4: Add developer-level comments and XML documentation as required by `./.github/instructions/documentation-pass.instructions.md`.
+  - [x] Task 1: Audit current shell-emitted output sources that create high-volume low-value debug noise - Completed
+    - [x] Step 1: Review context projection and status projection paths in the Workbench layout and related shell services.
+    - [x] Step 2: Identify which messages are genuinely useful diagnostics versus which are low-value state chatter.
+    - [x] Step 3: Use the specification examples as minimum mandatory targets, especially repeated `Tool surface ready` and `Active region` messages.
+    - [x] Step 4: Add developer-level comments and XML documentation as required by `./.github/instructions/documentation-pass.instructions.md`.
+  - [x] Task 2: Reduce useless repeated debug output at source - Completed
+    - [x] Step 1: Adjust shell context/status projection rules so unchanged low-value state is not repeatedly written into the output stream.
+    - [x] Step 2: Preserve meaningful informational, warning, and error events so output still reflects real operational activity.
+    - [x] Step 3: Ensure the implementation does not deduplicate retained output entries after write; the reduction must happen before or at emission.
+    - [x] Step 4: Keep the current chronological retained-entry model intact for messages that are still emitted.
+    - [x] Step 5: Add developer-level comments and XML documentation as required by `./.github/instructions/documentation-pass.instructions.md`.
+  - [x] Task 3: Add focused regression coverage for shell output-noise reduction - Completed
+    - [x] Step 1: Add or update tests around shell context and status projection to verify low-value unchanged state is no longer emitted repeatedly.
+    - [x] Step 2: Add tests confirming meaningful emitted entries remain visible and unmodified.
+    - [x] Step 3: Add tests confirming no UI-side deduplication/coalescing behavior is introduced.
+    - [x] Step 4: Add developer-level comments and XML documentation as required by `./.github/instructions/documentation-pass.instructions.md`.
+  - **Completion Summary**:
+    - Audited shell-emitted output and confirmed the highest-value reduction point was shell context projection rather than retained-entry rendering.
+    - Reduced noisy debug output at source by projecting only user-meaningful shell context values into historical output and omitting high-churn values such as `Active region` and `Tool surface ready`.
+    - Preserved meaningful retained output behavior without introducing any output-entry deduplication or coalescing.
+    - Added targeted regression tests proving omitted high-churn context values no longer appear in projected shell-context details and no longer produce new projected snapshots when they change alone.
   - **Files**:
     - `src/workbench/server/WorkbenchHost/Components/Layout/MainLayout.razor.cs`: refine shell output emission and projection rules
     - `src/workbench/server/UKHO.Workbench/WorkbenchShell/*.cs`: update related shell state/contribution behavior only if required by the proven root cause
@@ -127,7 +137,7 @@ Each work item leaves the Workbench in a runnable, demonstrable state.
     - Switch to `Debug` and confirm that meaningful debug output remains available when intentionally enabled
   - **User Instructions**: No manual setup beyond normal Workbench navigation
 
-- [ ] Work Item 3: Polish the filtered output experience and close verification gaps for a stable demonstrable slice
+- [x] Work Item 3: Polish the filtered output experience and close verification gaps for a stable demonstrable slice - Completed
   - **Purpose**: Finalize the user experience and regression protection so the trimmed output pane remains understandable, responsive, and aligned with the specification as the feature evolves.
   - **Acceptance Criteria**:
     - The output-pane toolbar remains visually coherent after adding the selector.
@@ -140,21 +150,38 @@ Each work item leaves the Workbench in a runnable, demonstrable state.
     - Logging/error-handling behavior remains appropriate
     - Code comments and developer documentation added in full compliance with `./.github/instructions/documentation-pass.instructions.md`
     - Can execute end-to-end via: run `WorkbenchHost`, use the output pane under normal and debug modes, and verify the trimmed experience remains stable
-  - [ ] Task 1: Validate interaction compatibility with existing output-pane features
-    - [ ] Step 1: Review how filtering interacts with clear, find, auto-scroll, scroll-to-end, and visibility toggle behavior.
-    - [ ] Step 2: Make only the minimal adjustments needed so these behaviors continue to work predictably with filtered visible output.
-    - [ ] Step 3: Ensure no new ambiguity is introduced between retained entries and currently visible entries.
-    - [ ] Step 4: Add developer-level comments and XML documentation as required by `./.github/instructions/documentation-pass.instructions.md`.
-  - [ ] Task 2: Refine toolbar and output-pane presentation details
-    - [ ] Step 1: Adjust styling only where needed to keep the new selector aligned with the current Radzen Material toolbar presentation.
-    - [ ] Step 2: Verify the output pane still feels desktop-like rather than web-form-like.
-    - [ ] Step 3: Keep the solution shell-owned; do not introduce module-specific styling workarounds.
-    - [ ] Step 4: Add developer-level comments and XML documentation as required by `./.github/instructions/documentation-pass.instructions.md`.
-  - [ ] Task 3: Add integrated verification and documentation completion
-    - [ ] Step 1: Add final targeted tests covering the integrated behavior of filtering, visible details, and reduced source-level shell noise.
-    - [ ] Step 2: Verify the implementation against the work package spec line by line.
-    - [ ] Step 3: Confirm all code-writing tasks in this work item satisfy `./.github/instructions/documentation-pass.instructions.md` as a hard Definition of Done requirement.
-    - [ ] Step 4: Update this work package documentation if implementation details require clarifying notes.
+  - [x] Task 1: Validate interaction compatibility with existing output-pane features - Completed
+    - [x] Step 1: Review how filtering interacts with clear, find, auto-scroll, scroll-to-end, and visibility toggle behavior.
+    - [x] Step 2: Make only the minimal adjustments needed so these behaviors continue to work predictably with filtered visible output.
+    - [x] Step 3: Ensure no new ambiguity is introduced between retained entries and currently visible entries.
+    - [x] Step 4: Add developer-level comments and XML documentation as required by `./.github/instructions/documentation-pass.instructions.md`.
+    - **Completion Summary**:
+      - Reviewed the existing filtered terminal path against clear, find, auto-scroll, scroll-to-end, and panel visibility toggling.
+      - Added integrated coverage proving the selected minimum visible level survives panel close/reopen while panel-local find state is dismissed predictably.
+      - Added a shell-owned visible-output summary in the toolbar so users can distinguish retained session history from the currently visible filtered subset.
+  - [x] Task 2: Refine toolbar and output-pane presentation details - Completed
+    - [x] Step 1: Adjust styling only where needed to keep the new selector aligned with the current Radzen Material toolbar presentation.
+    - [x] Step 2: Verify the output pane still feels desktop-like rather than web-form-like.
+    - [x] Step 3: Keep the solution shell-owned; do not introduce module-specific styling workarounds.
+    - [x] Step 4: Add developer-level comments and XML documentation as required by `./.github/instructions/documentation-pass.instructions.md`.
+    - **Completion Summary**:
+      - Grouped the output toolbar into shell-owned leading and action sections so the level selector and actions remain visually coherent.
+      - Added a compact visible-output summary chip and aligned the Radzen dropdown height with the surrounding toolbar controls.
+      - Kept all styling in `MainLayout.razor.css` so the presentation refinement remains owned by the Workbench shell.
+  - [x] Task 3: Add integrated verification and documentation completion - Completed
+    - [x] Step 1: Add final targeted tests covering the integrated behavior of filtering, visible details, and reduced source-level shell noise.
+    - [x] Step 2: Verify the implementation against the work package spec line by line.
+    - [x] Step 3: Confirm all code-writing tasks in this work item satisfy `./.github/instructions/documentation-pass.instructions.md` as a hard Definition of Done requirement.
+    - [x] Step 4: Update this work package documentation if implementation details require clarifying notes.
+    - **Completion Summary**:
+      - Added targeted `MainLayout` tests covering toolbar summary rendering, filtered clear/auto-scroll behavior, and panel visibility interactions with the find surface.
+      - Verified the integrated output-pane behavior against the work package specification without requiring further spec changes.
+      - Updated the Workbench shell wiki to describe the polished filtered-output experience and current verification guidance.
+  - **Completion Summary**:
+    - Added a shell-owned visible-output summary and grouped toolbar layout so the output filter remains explicit and visually aligned.
+    - Added integrated `WorkbenchHost.Tests` coverage for filter summary rendering, filtered clear/auto-scroll behavior, visibility-toggle/find compatibility, and duplicate terminal-synchronization prevention.
+    - Serialized overlapping output-terminal synchronization requests so first-render and post-render refreshes do not duplicate retained output lines in the visible terminal.
+    - Updated `wiki/Workbench-Shell.md` with the polished output-trimming slice and refreshed verification guidance.
   - **Files**:
     - `src/workbench/server/WorkbenchHost/Components/Layout/MainLayout.razor`
     - `src/workbench/server/WorkbenchHost/Components/Layout/MainLayout.razor.cs`
