@@ -3,6 +3,7 @@ using Microsoft.AspNetCore.Components.Web;
 using Microsoft.Extensions.Logging;
 using Microsoft.JSInterop;
 using Radzen;
+using Radzen.Blazor;
 using UKHO.Workbench.Explorers;
 using UKHO.Workbench.Layout;
 using UKHO.Workbench.Output;
@@ -893,6 +894,122 @@ namespace WorkbenchHost.Components.Layout
         }
 
         /// <summary>
+        /// Returns the accessible label used by icon-only shell actions.
+        /// </summary>
+        /// <param name="displayName">The human-readable action name that should remain available to assistive technologies and tooltips.</param>
+        /// <returns>The accessible label rendered for the icon-only shell action.</returns>
+        private static string GetIconOnlyActionLabel(string displayName)
+        {
+            // Icon-only chrome removes visible text, so the shell centralizes one explicit label path for both tooltips and accessibility metadata.
+            ArgumentException.ThrowIfNullOrWhiteSpace(displayName);
+
+            return displayName;
+        }
+
+        /// <summary>
+        /// Returns the icon that should be rendered for a shell contribution.
+        /// </summary>
+        /// <param name="icon">The contribution-provided icon, when one exists.</param>
+        /// <param name="displayName">The contribution display name used to determine a shell-owned fallback icon when necessary.</param>
+        /// <returns>The icon key that should be rendered for the contribution.</returns>
+        private static string GetContributionIcon(string? icon, string displayName)
+        {
+            // The shell prefers contribution-provided icons, but it also supplies deterministic fallbacks so menu actions can adopt icon-only chrome without rewriting every contribution source.
+            return string.IsNullOrWhiteSpace(icon)
+                ? GetFallbackContributionIcon(displayName)
+                : icon;
+        }
+
+        /// <summary>
+        /// Returns the fallback icon used when a contribution does not provide its own icon.
+        /// </summary>
+        /// <param name="displayName">The contribution display name used to infer a stable shell-owned fallback icon.</param>
+        /// <returns>The fallback icon key used by the shell.</returns>
+        private static string GetFallbackContributionIcon(string displayName)
+        {
+            // The icon-only shell needs predictable fallback glyphs for older text-only menu contributions, so the mapping intentionally covers the host-owned baseline commands first.
+            ArgumentException.ThrowIfNullOrWhiteSpace(displayName);
+
+            return displayName.Trim() switch
+            {
+                "Edit" => "edit",
+                "View" => "visibility",
+                "Help" => "help_outline",
+                "Home" => "home",
+                "Refresh overview" => "refresh",
+                "Run query" => "play_arrow",
+                _ => "more_horiz"
+            };
+        }
+
+        /// <summary>
+        /// Returns the accessible label used by the output-panel toggle button.
+        /// </summary>
+        /// <param name="isVisible"><see langword="true"/> when the output panel is currently visible; otherwise, <see langword="false"/>.</param>
+        /// <returns>The accessible label that explains whether the button will show or hide the output panel.</returns>
+        private static string GetOutputPanelToggleLabel(bool isVisible)
+        {
+            // The status-bar toggle stays icon-only, so the label describes the toggle action instead of relying on removed visible text.
+            return isVisible
+                ? "Hide output panel"
+                : "Show output panel";
+        }
+
+        /// <summary>
+        /// Returns the accessible label used by the output-panel auto-scroll button.
+        /// </summary>
+        /// <param name="isAutoScrollEnabled"><see langword="true"/> when auto-scroll is currently enabled; otherwise, <see langword="false"/>.</param>
+        /// <returns>The accessible label that explains whether the button will enable or disable auto-scroll.</returns>
+        private static string GetOutputAutoScrollLabel(bool isAutoScrollEnabled)
+        {
+            // The icon stays constant while the button meaning changes with state, so the shell computes the action-oriented label centrally.
+            return isAutoScrollEnabled
+                ? "Disable auto-scroll"
+                : "Enable auto-scroll";
+        }
+
+        /// <summary>
+        /// Returns the accessible label used by the compact overflow affordance.
+        /// </summary>
+        /// <returns>The accessible label used by the collapsed tab-overflow trigger.</returns>
+        private static string GetOverflowAffordanceLabel()
+        {
+            // The collapsed trigger now renders only an ellipsis, so the shell preserves discoverability through one explicit accessible label.
+            return "Show all open Workbench tabs";
+        }
+
+        /// <summary>
+        /// Returns the text rendered for one tab-overflow menu item.
+        /// </summary>
+        /// <param name="openTab">The open tab represented by the overflow menu item.</param>
+        /// <returns>The text shown for the overflow menu item.</returns>
+        private string GetOverflowItemText(WorkbenchTab openTab)
+        {
+            // The split-button menu keeps the active-state cue inside the menu text because the control no longer uses a custom dropdown template.
+            ArgumentNullException.ThrowIfNull(openTab);
+
+            var overflowItemText = IsTabActive(openTab)
+                ? $"✓ {openTab.Title} (Active)"
+                : openTab.Title;
+
+            // Non-breaking spaces make the split-button popup entries resilient against any downstream Radzen menu text wrapping that escapes the shell CSS overrides.
+            return ConvertToNonBreakingText(overflowItemText);
+        }
+
+        /// <summary>
+        /// Converts user-facing overflow text into a non-breaking string so popup entries stay on one visual line.
+        /// </summary>
+        /// <param name="text">The overflow text that should render without line breaks.</param>
+        /// <returns>The supplied text with regular spaces converted to non-breaking spaces.</returns>
+        private static string ConvertToNonBreakingText(string text)
+        {
+            // The shell uses a textual fallback in addition to CSS because Radzen menu content can still wrap when theme styles win in the popup layer.
+            ArgumentException.ThrowIfNullOrWhiteSpace(text);
+
+            return text.Replace(" ", "\u00A0", StringComparison.Ordinal);
+        }
+
+        /// <summary>
         /// Returns the CSS class used for an explorer tool button.
         /// </summary>
         /// <param name="explorerItem">The explorer item represented by the button.</param>
@@ -957,13 +1074,24 @@ namespace WorkbenchHost.Components.Layout
         }
 
         /// <summary>
-        /// Activates a tab selected from the overflow dropdown.
+        /// Activates a tab selected from the overflow split-button menu.
+        /// </summary>
+        /// <param name="overflowItem">The split-button menu item that was selected from the overflow affordance.</param>
+        /// <returns>A task that completes when the shell has processed the overflow activation request.</returns>
+        private Task HandleOverflowSplitButtonClickAsync(RadzenSplitButtonItem? overflowItem)
+        {
+            // The split button still routes through the existing overflow activation helper so shell-side visibility windowing remains unchanged.
+            return SelectOverflowTabAsync(overflowItem?.Value);
+        }
+
+        /// <summary>
+        /// Activates a tab selected from the overflow affordance.
         /// </summary>
         /// <param name="selectedValue">The selected overflow value, expected to be a stable tab identifier.</param>
         /// <returns>A task that completes when the shell has processed the overflow activation request.</returns>
         private Task SelectOverflowTabAsync(object? selectedValue)
         {
-            // The overflow dropdown shares the shell focus path with the visible strip so activation and minimal window shifting stay consistent.
+            // The overflow selector shares the shell focus path with the visible strip so activation and minimal window shifting stay consistent.
             if (selectedValue is string tabId && !string.IsNullOrWhiteSpace(tabId))
             {
                 ShellManager.ActivateTabFromOverflow(tabId);
@@ -1396,6 +1524,17 @@ namespace WorkbenchHost.Components.Layout
                 OutputLevel.Debug => "Debug",
                 _ => throw new ArgumentOutOfRangeException(nameof(outputLevel), outputLevel, "The output level is not supported.")
             };
+        }
+
+        /// <summary>
+        /// Returns the tooltip text shown for the output-level selector.
+        /// </summary>
+        /// <param name="outputLevel">The current minimum visible output level.</param>
+        /// <returns>The tooltip text that explains the active output-level threshold.</returns>
+        private static string GetOutputLevelFilterTooltip(OutputLevel outputLevel)
+        {
+            // The toolbar no longer renders a standalone summary label, so the selector tooltip now carries the same explanatory text in a more compact form.
+            return $"Minimum visible output level: {GetOutputLevelFilterLabel(outputLevel)}";
         }
 
         /// <summary>

@@ -224,6 +224,20 @@ namespace WorkbenchHost.Tests
         }
 
         /// <summary>
+        /// Confirms the browser-side output theme helper reads the centralized shell token and observes Radzen theme-link changes.
+        /// </summary>
+        [Fact]
+        public void ObserveTheRadzenThemeLinkAndReadTheShellViewBackgroundTokenInTheBrowserThemeHelper()
+        {
+            // The browser helper is responsible for turning shell token changes into terminal refresh notifications, so this test locks the script contract that supports theme toggling.
+            var script = ReadMainLayoutScript();
+
+            script.ShouldContain("--workbench-shell-center-view-background");
+            script.ShouldContain("document.getElementById(\"radzen-theme-link\")");
+            script.ShouldContain("attributeFilter: [\"href\"]");
+        }
+
+        /// <summary>
         /// Confirms terminal search options stay incremental and case-insensitive for the toolbar and keyboard find workflow.
         /// </summary>
         [Fact]
@@ -288,6 +302,33 @@ namespace WorkbenchHost.Tests
             }
 
             return methodInfo.Invoke(null, arguments);
+        }
+
+        /// <summary>
+        /// Reads the shell-owned browser helper so the test can verify the theme-refresh contract that cannot be exercised through the private C# helpers alone.
+        /// </summary>
+        /// <returns>The raw JavaScript source for the Workbench main layout.</returns>
+        private static string ReadMainLayoutScript()
+        {
+            // The output terminal relies on this script for live theme refreshes, so the regression test asserts the source-level contract directly.
+            var scriptPath = Path.GetFullPath(Path.Combine(
+                AppContext.BaseDirectory,
+                "..",
+                "..",
+                "..",
+                "..",
+                "..",
+                "..",
+                "..",
+                "src",
+                "workbench",
+                "server",
+                "WorkbenchHost",
+                "Components",
+                "Layout",
+                "MainLayout.razor.js"));
+
+            return File.ReadAllText(scriptPath);
         }
     }
 }

@@ -54,6 +54,13 @@ function getCssVariableValue(styleSource, variableName) {
     return styleSource.getPropertyValue(variableName).trim();
 }
 
+// Returns the closest shell element so token reads can stay aligned with the host-owned theme scope.
+function getShellStyleSource(outputElement) {
+    // The shell owns the theme tokens, so terminal extraction prefers the closest shell root before falling back to the document.
+    const shellElement = outputElement?.closest?.(".workbench-shell") ?? null;
+    return shellElement ? getComputedStyle(shellElement) : null;
+}
+
 // Converts the supplied CSS color into an rgba string with the requested alpha channel.
 function withAlpha(color, alpha) {
     // The terminal theme needs a few translucent values for selection and scrollbar states, so the helper normalizes the browser-derived base colors first.
@@ -103,8 +110,12 @@ export function readOutputTerminalTheme(outputElement) {
     }
 
     const outputStyles = getComputedStyle(outputElement);
+    const shellStyles = getShellStyleSource(outputElement);
     const documentStyles = getComputedStyle(document.documentElement);
-    const background = outputStyles.backgroundColor || getCssVariableValue(documentStyles, "--rz-base-background-color") || "rgb(17, 24, 39)";
+    const background = outputStyles.backgroundColor
+        || getCssVariableValue(shellStyles, "--workbench-shell-center-view-background")
+        || getCssVariableValue(documentStyles, "--rz-base-background-color")
+        || "rgb(17, 24, 39)";
     const foreground = outputStyles.color || getCssVariableValue(documentStyles, "--rz-text-color") || "rgb(248, 250, 252)";
     const isDark = isDarkColor(background);
     const info = getCssVariableValue(documentStyles, "--rz-info") || (isDark ? "#84caff" : "#1570ef");
@@ -196,6 +207,7 @@ export function initializeOutputPanel(outputElement, dotNetReference) {
         // Selection gestures can happen inside xterm's canvas-backed surface, so the shell asks .NET to query xterm directly instead of trusting DOM selection text alone.
         dotNetReference.invokeMethodAsync("ProbeOutputSelectionStateAsync");
     };
+    const themeLinkElement = document.getElementById("radzen-theme-link");
     const handleKeyDown = async event => {
         // Terminal keyboard shortcuts stay minimal: Ctrl+F opens the panel-local find strip and Ctrl+C copies selected text from the read-only surface.
         if (!(event.ctrlKey || event.metaKey)) {
@@ -230,6 +242,14 @@ export function initializeOutputPanel(outputElement, dotNetReference) {
         attributes: true,
         attributeFilter: ["class", "style", "data-theme"]
     });
+
+    if (themeLinkElement) {
+        // Radzen theme switching updates the theme stylesheet href, so the shell also observes that link to refresh terminal colors immediately.
+        themeObserver.observe(themeLinkElement, {
+            attributes: true,
+            attributeFilter: ["href"]
+        });
+    }
 
     if (document.body) {
         themeObserver.observe(document.body, {

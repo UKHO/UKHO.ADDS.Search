@@ -77,11 +77,103 @@ namespace WorkbenchHost.Tests
             html.ShouldNotContain("data-region=\"toolbar\"");
             CountOccurrences(html, $"data-command-id=\"{OverviewCommandId}\"").ShouldBe(1);
             html.ShouldContain("Workbench overview");
-            html.ShouldContain("Home");
+            html.ShouldContain("aria-label=\"Home\"");
             html.ShouldContain("aria-label=\"Workbench\"");
+            html.ShouldContain(">Edit<");
+            html.ShouldContain(">View<");
+            html.ShouldContain(">Help<");
+            html.ShouldNotContain("<span>Workbench</span>");
             html.ShouldNotContain("workbench-shell__toolbar-home");
             html.ShouldNotContain("Active tab");
             html.ShouldContain("BodyMarker");
+        }
+
+        /// <summary>
+        /// Confirms the layout renders the centralized shell-theme hooks and fixed sizing markers required by the initial theme baseline.
+        /// </summary>
+        [Fact]
+        public async Task RenderTheCentralizedShellThemeHooksAndFixedSizingMarkers()
+        {
+            // The shell markup exposes stable hooks so rendering tests can lock the host-owned sizing and theme regions without depending on browser-computed CSS values.
+            await using var serviceProvider = CreateServiceProvider();
+            var shellManager = serviceProvider.GetRequiredService<WorkbenchShellManager>();
+            var outputService = serviceProvider.GetRequiredService<IWorkbenchOutputService>();
+            SeedHostShell(shellManager);
+            _ = shellManager.ActivateTool(ActivationTarget.CreateToolSurfaceTarget(OverviewToolId));
+            outputService.SetPanelVisibility(true);
+
+            var renderer = new HtmlRenderer(serviceProvider, serviceProvider.GetRequiredService<ILoggerFactory>());
+            var html = await RenderLayoutAsync(renderer);
+
+            html.ShouldContain("data-shell-theme-scope=\"host\"");
+            html.ShouldContain("data-shell-row-height=\"36\"");
+            html.ShouldContain("data-shell-activity-width=\"50\"");
+            html.ShouldContain("data-shell-theme-region=\"menu\"");
+            html.ShouldContain("data-shell-theme-region=\"activity\"");
+            html.ShouldContain("data-shell-theme-region=\"explorer\"");
+            html.ShouldContain("data-shell-theme-region=\"center-view\"");
+            html.ShouldContain("data-shell-theme-region=\"center-toolbar\"");
+            html.ShouldContain("data-shell-theme-region=\"output-toolbar\"");
+            html.ShouldContain("data-shell-theme-region=\"status\"");
+        }
+
+        /// <summary>
+        /// Confirms the isolated layout stylesheet defines the centralized shell tokens and fixed dimensions required by the initial theme contract.
+        /// </summary>
+        [Fact]
+        public void DefineTheShellThemeTokensAndFixedSizingContractInTheLayoutStylesheet()
+        {
+            // Reading the isolated stylesheet keeps the regression focused on the host-owned shell tokens that the browser later resolves for both Radzen light and dark themes.
+            var css = ReadMainLayoutStylesheet();
+
+            css.ShouldContain("--workbench-shell-row-height: 36px;");
+            css.ShouldContain("--workbench-shell-activity-width: 50px;");
+            css.ShouldContain("--workbench-shell-menu-background: rgb(224, 225, 228);");
+            css.ShouldContain("--workbench-shell-activity-background: rgb(224, 225, 228);");
+            css.ShouldContain("--workbench-shell-center-view-background: rgb(255, 255, 254);");
+            css.ShouldContain("--workbench-shell-output-toolbar-background: rgb(224, 225, 228);");
+            css.ShouldContain("html:has(#radzen-theme-link[href*=\"-dark\"]) .workbench-shell");
+            css.ShouldContain("--workbench-shell-activity-background: rgb(14, 13, 18);");
+            css.ShouldContain("--workbench-shell-center-view-background: rgb(30, 30, 30);");
+            css.ShouldContain("--workbench-shell-center-toolbar-background: rgb(38, 38, 46);");
+            css.ShouldContain("height: var(--workbench-shell-row-height);");
+            css.ShouldContain("padding-left: 0.75rem;");
+        }
+
+        /// <summary>
+        /// Confirms the layout stylesheet removes shell border chrome and defines flat-tab state rules for the Workbench shell.
+        /// </summary>
+        [Fact]
+        public void DefineBorderlessChromeAndFlatTabRulesInTheLayoutStylesheet()
+        {
+            // The stylesheet is the shell-owned source of truth for the borderless contract, so the regression reads the isolated CSS rather than depending on browser-computed values.
+            var css = ReadMainLayoutStylesheet();
+
+            css.ShouldContain("border: 0;");
+            css.ShouldContain("outline: 2px solid color-mix(in srgb, var(--rz-primary) 55%, transparent);");
+            css.ShouldContain(".workbench-shell__icon-button {");
+            css.ShouldContain(".workbench-shell__tab-overflow-splitbutton::deep .rz-splitbutton {");
+            css.ShouldContain("grid-template-columns: auto auto;");
+            css.ShouldContain("width: 6rem;");
+            css.ShouldContain("max-width: 6rem;");
+            css.ShouldContain(".workbench-shell__tab-overflow-splitbutton::deep .rz-splitbutton .rz-button:focus-visible {");
+            css.ShouldContain("outline: none;");
+            css.ShouldContain("color: var(--rz-text-color);");
+            css.ShouldContain("width: 1.8rem;");
+            css.ShouldContain(".workbench-shell__tab-overflow-splitbutton::deep .rz-splitbutton-menu {");
+            css.ShouldContain("min-width: 22rem !important;");
+            css.ShouldContain("width: max-content !important;");
+            css.ShouldContain("max-width: none !important;");
+            css.ShouldContain(".workbench-shell__tab-overflow-splitbutton::deep .rz-splitbutton-menu .rz-menuitem-text {");
+            css.ShouldContain("white-space: nowrap !important;");
+            css.ShouldContain("display: inline-flex !important;");
+            css.ShouldContain(".workbench-shell__tab-entry {");
+            css.ShouldContain("background: var(--workbench-shell-tab-inactive-background);");
+            css.ShouldContain(".workbench-shell__tab-entry:has(.workbench-shell__tab-button--active) {");
+            css.ShouldContain("background: var(--workbench-shell-tab-active-background);");
+            css.ShouldContain(".workbench-shell__tab-button--active {");
+            css.ShouldContain("font-weight: 600;");
+            css.ShouldNotContain("border-left: 1px solid var(--rz-base-300);");
         }
 
         /// <summary>
@@ -181,6 +273,34 @@ namespace WorkbenchHost.Tests
         }
 
         /// <summary>
+        /// Confirms the rendered shell exposes the borderless and flat-tab hooks required by the shell-owned Workbench chrome contract.
+        /// </summary>
+        [Fact]
+        public async Task RenderTheBorderlessChromeAndFlatTabStateHooks()
+        {
+            // Two open tabs let the rendering test verify both active and inactive flat-tab state hooks while the shell stays responsible for the borderless chrome contract.
+            await using var serviceProvider = CreateServiceProvider();
+            var shellManager = serviceProvider.GetRequiredService<WorkbenchShellManager>();
+            SeedHostShell(shellManager);
+            SeedSearchShell(shellManager);
+            _ = shellManager.ActivateTool(ActivationTarget.CreateToolSurfaceTarget(OverviewToolId));
+            _ = shellManager.ActivateTool(ActivationTarget.CreateToolSurfaceTarget("tool.module.search.query"));
+
+            var renderer = new HtmlRenderer(serviceProvider, serviceProvider.GetRequiredService<ILoggerFactory>());
+            var html = await RenderLayoutAsync(renderer);
+
+            html.ShouldContain("data-shell-chrome=\"borderless\"");
+            html.ShouldContain("data-tab-strip-style=\"flat\"");
+            html.ShouldContain("data-tab-state=\"active\"");
+            html.ShouldContain("data-tab-state=\"inactive\"");
+            html.ShouldContain("data-tab-close-affordance=\"flat\"");
+            html.ShouldContain("data-overflow-affordance=\"ellipsis\"");
+            html.ShouldContain("aria-label=\"Show all open Workbench tabs\"");
+            html.ShouldNotContain(">All tabs<");
+            CountOccurrences(html, "data-role=\"tab-close\"").ShouldBe(1);
+        }
+
+        /// <summary>
         /// Confirms the output toggle renders at the far-left side of the status bar while the panel itself stays hidden by default.
         /// </summary>
         [Fact]
@@ -200,6 +320,7 @@ namespace WorkbenchHost.Tests
 
             html.ShouldContain("data-output-toggle-state=\"collapsed\"");
             html.ShouldContain("aria-expanded=\"false\"");
+            html.ShouldContain(">Output<");
             html.ShouldNotContain("data-region=\"output-panel\"");
             html.ShouldNotContain("Workbench shell ready");
             html.ShouldNotContain("workbench.activeTool:");
@@ -338,19 +459,20 @@ namespace WorkbenchHost.Tests
             var html = await RenderLayoutAsync(renderer);
 
             html.ShouldContain("data-role=\"output-level-filter\"");
-            html.ShouldContain("data-role=\"output-visibility-summary\"");
             html.ShouldContain("Minimum visible output level");
             html.ShouldContain("Info and above");
-            html.ShouldContain("Visible: Info and above");
+            html.ShouldContain("title=\"Minimum visible output level: Info and above\"");
+            html.ShouldNotContain("data-role=\"output-visibility-summary\"");
+            html.ShouldNotContain("workbench-shell__output-level-filter-label");
         }
 
         /// <summary>
         /// Confirms the toolbar summary updates to match the active visible-output filter before the panel renders.
         /// </summary>
         [Fact]
-        public async Task RenderTheCurrentVisibleOutputSummaryForTheSelectedFilter()
+        public async Task RenderTheCurrentOutputLevelTooltipForTheSelectedFilter()
         {
-            // The integrated output slice should keep the visible-filter summary explicit so users can tell which retained entries are currently shown.
+            // The icon-only toolbar still needs to explain the active filter, so the dropdown tooltip should mirror the selected threshold without reintroducing a standalone text summary.
             await using var serviceProvider = CreateServiceProvider();
             var shellManager = serviceProvider.GetRequiredService<WorkbenchShellManager>();
             var outputService = serviceProvider.GetRequiredService<IWorkbenchOutputService>();
@@ -362,8 +484,69 @@ namespace WorkbenchHost.Tests
             var renderer = new HtmlRenderer(serviceProvider, serviceProvider.GetRequiredService<ILoggerFactory>());
             var html = await RenderLayoutAsync(renderer);
 
-            html.ShouldContain("data-role=\"output-visibility-summary\"");
-            html.ShouldContain("Visible: Warning and above");
+            html.ShouldContain("title=\"Minimum visible output level: Warning and above\"");
+            html.ShouldNotContain("data-role=\"output-visibility-summary\"");
+        }
+
+        /// <summary>
+        /// Confirms the shell toolbars expose icon-only command chrome while the overflow affordance uses a split button and the status-bar output toggle keeps its visible text label.
+        /// </summary>
+        [Fact]
+        public async Task RenderIconOnlyToolbarButtonsWithAccessibleLabelsAndTheEllipsisOverflowAffordance()
+        {
+            // The Workbench shell should keep icon-only chrome for toolbars, but the overflow control should move to a split button and the status-bar output toggle should remain a labelled special case.
+            await using var serviceProvider = CreateServiceProvider();
+            var shellManager = serviceProvider.GetRequiredService<WorkbenchShellManager>();
+            var outputService = serviceProvider.GetRequiredService<IWorkbenchOutputService>();
+            SeedHostShell(shellManager);
+            SeedSearchShell(shellManager);
+            var overviewTool = shellManager.ActivateTool(ActivationTarget.CreateToolSurfaceTarget(OverviewToolId));
+            overviewTool.Context.SetRuntimeToolbarContributions([
+                new ToolbarContribution("toolbar.host.overview.refresh", "Refresh overview", OverviewRefreshCommandId, icon: "refresh", order: 100)
+            ]);
+            var searchTool = shellManager.ActivateTool(ActivationTarget.CreateToolSurfaceTarget("tool.module.search.query"));
+            searchTool.Context.SetRuntimeToolbarContributions([
+                new ToolbarContribution("toolbar.module.search.run", "Run query", SearchRunCommandId, icon: "play_arrow", order: 100)
+            ]);
+            outputService.SetPanelVisibility(true);
+
+            var renderer = new HtmlRenderer(serviceProvider, serviceProvider.GetRequiredService<ILoggerFactory>());
+            var html = await RenderLayoutAsync(renderer);
+
+            html.ShouldContain("data-command-presentation=\"icon-only\"");
+            html.ShouldContain("aria-label=\"Home\"");
+            html.ShouldContain("aria-label=\"Run query\"");
+            html.ShouldContain("aria-label=\"Copy selected output\"");
+            html.ShouldContain("aria-label=\"Hide output panel\"");
+            html.ShouldContain("data-overflow-affordance=\"ellipsis\"");
+            html.ShouldContain("workbench-shell__tab-overflow-splitbutton");
+            html.ShouldContain("rz-splitbutton");
+            html.ShouldContain("class=\"workbench-shell__tab-overflow-trigger\"");
+            html.ShouldContain(">Output<");
+        }
+
+        /// <summary>
+        /// Confirms overflow popup item text is converted to non-breaking text so Radzen menu entries cannot wrap across multiple lines.
+        /// </summary>
+        [Fact]
+        public void BuildOverflowPopupLabelsUsingNonBreakingSpaces()
+        {
+            // The shell uses non-breaking text as a defensive fallback because popup-layer theme styles can still defeat local no-wrap CSS overrides.
+            using var serviceProvider = CreateServiceProvider();
+            var shellManager = serviceProvider.GetRequiredService<WorkbenchShellManager>();
+            SeedHostShell(shellManager);
+            SeedSearchShell(shellManager);
+            var overviewTool = shellManager.ActivateTool(ActivationTarget.CreateToolSurfaceTarget(OverviewToolId));
+            var searchTool = shellManager.ActivateTool(ActivationTarget.CreateToolSurfaceTarget("tool.module.search.query"));
+            var layout = CreateLayoutInstance(serviceProvider, shellManager);
+            var activeTab = shellManager.OpenTabs.Single(openTab => openTab.Id == searchTool.InstanceId);
+            var inactiveTab = shellManager.OpenTabs.Single(openTab => openTab.Id == overviewTool.InstanceId);
+            var activeOverflowText = (string)InvokePrivateMethod(layout, "GetOverflowItemText", [activeTab])!;
+            var inactiveOverflowText = (string)InvokePrivateMethod(layout, "GetOverflowItemText", [inactiveTab])!;
+
+            activeOverflowText.ShouldContain("✓\u00A0Search\u00A0query\u00A0(Active)");
+            activeOverflowText.ShouldNotContain("✓ Search query (Active)");
+            inactiveOverflowText.ShouldContain("Workbench\u00A0overview");
         }
 
         /// <summary>
@@ -1039,12 +1222,12 @@ namespace WorkbenchHost.Tests
         }
 
         /// <summary>
-        /// Confirms the tab strip always renders the overflow dropdown and keeps the overflow list text-only with no filter UI.
+        /// Confirms the tab strip always renders the overflow split button and keeps the overflow list free of filter or close chrome.
         /// </summary>
         [Fact]
         public async Task RenderAnAlwaysVisibleOverflowDropdownWithoutFilterOrCloseActions()
         {
-            // The first overflow slice should keep the control permanently available while deliberately omitting filtering, searching, and overflow close affordances.
+            // The overflow affordance should stay permanently available while deliberately omitting filtering, searching, and overflow close affordances.
             await using var serviceProvider = CreateServiceProvider();
             var shellManager = serviceProvider.GetRequiredService<WorkbenchShellManager>();
             SeedHostShell(shellManager);
@@ -1062,8 +1245,8 @@ namespace WorkbenchHost.Tests
             html.ShouldContain("data-region=\"tab-strip-overflow\"");
             html.ShouldContain("data-overflow-tab-id");
             html.ShouldContain("data-overflow-active=\"true\"");
+            html.ShouldContain("rz-splitbutton");
             html.ShouldContain("workbench-shell__tab-title");
-            html.ShouldContain("workbench-shell__overflow-entry-title");
             html.ShouldNotContain("rz-dropdown-filter-container");
             html.ShouldNotContain("data-overflow-close");
         }
@@ -1294,6 +1477,33 @@ namespace WorkbenchHost.Tests
             services.AddSingleton<IJSRuntime, TestJsRuntime>();
             services.AddSingleton<NavigationManager, TestNavigationManager>();
             return services.BuildServiceProvider();
+        }
+
+        /// <summary>
+        /// Reads the isolated <c>MainLayout.razor.css</c> file from the repository so stylesheet contracts can be asserted directly.
+        /// </summary>
+        /// <returns>The raw stylesheet content for the Workbench main layout.</returns>
+        private static string ReadMainLayoutStylesheet()
+        {
+            // The targeted shell-theme tests validate the host-owned tokens in source because CSS isolation keeps those declarations out of the rendered HTML markup.
+            var stylesheetPath = Path.GetFullPath(Path.Combine(
+                AppContext.BaseDirectory,
+                "..",
+                "..",
+                "..",
+                "..",
+                "..",
+                "..",
+                "..",
+                "src",
+                "workbench",
+                "server",
+                "WorkbenchHost",
+                "Components",
+                "Layout",
+                "MainLayout.razor.css"));
+
+            return File.ReadAllText(stylesheetPath);
         }
 
         /// <summary>

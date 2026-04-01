@@ -1,9 +1,35 @@
 .workbench-shell {
+    /* The shell owns one centralized token set so every host-controlled region can stay aligned to the active Radzen light or dark theme. */
+    --workbench-shell-row-height: 36px;
+    --workbench-shell-activity-width: 50px;
+    --workbench-shell-menu-background: rgb(224, 225, 228);
+    --workbench-shell-activity-background: rgb(224, 225, 228);
+    --workbench-shell-explorer-background: rgb(239, 239, 241);
+    --workbench-shell-center-view-background: rgb(255, 255, 254);
+    --workbench-shell-center-toolbar-background: rgb(239, 239, 241);
+    --workbench-shell-tab-active-background: rgb(239, 239, 241);
+    --workbench-shell-tab-inactive-background: rgb(224, 225, 228);
+    --workbench-shell-output-toolbar-background: rgb(224, 225, 228);
+    --workbench-shell-status-background: rgb(224, 225, 228);
     width: 100vw;
     height: 100vh;
     padding: 0;
     box-sizing: border-box;
     overflow: hidden;
+    background: var(--workbench-shell-center-view-background);
+}
+
+html:has(#radzen-theme-link[href*="-dark"]) .workbench-shell {
+    /* Dark themes swap the shell tokens to the specification values while the rest of the Radzen theme continues to supply typography and control chrome. */
+    --workbench-shell-menu-background: rgb(38, 38, 46);
+    --workbench-shell-activity-background: rgb(14, 13, 18);
+    --workbench-shell-explorer-background: rgb(38, 38, 46);
+    --workbench-shell-center-view-background: rgb(30, 30, 30);
+    --workbench-shell-center-toolbar-background: rgb(38, 38, 46);
+    --workbench-shell-tab-active-background: rgb(38, 38, 46);
+    --workbench-shell-tab-inactive-background: rgb(30, 30, 30);
+    --workbench-shell-output-toolbar-background: rgb(38, 38, 46);
+    --workbench-shell-status-background: rgb(38, 38, 46);
 }
 
 .workbench-shell__menu-bar,
@@ -21,8 +47,8 @@
 .workbench-shell__explorer,
 .workbench-shell__tool-surface,
 .workbench-shell__output-panel {
-    background: var(--rz-base-background-color);
-    border: 1px solid var(--rz-base-300);
+    background: var(--workbench-shell-center-view-background);
+    border: 0;
     border-radius: 0;
 }
 
@@ -37,22 +63,29 @@
 }
 
 .workbench-shell__menu-bar {
+    min-height: var(--workbench-shell-row-height);
+    height: var(--workbench-shell-row-height);
     padding: 0 1rem 0 0;
+    background: var(--workbench-shell-menu-background);
 }
 
 .workbench-shell__active-tool-toolbar {
     min-width: 0;
-    padding: 0.375rem 0.75rem;
-    border-top: 0;
-    border-right: 0;
-    border-bottom: 1px solid var(--rz-base-300);
-    border-left: 0;
-    background: var(--rz-base-050, var(--rz-base-100));
+    min-height: var(--workbench-shell-row-height);
+    height: var(--workbench-shell-row-height);
+    padding: 0 0.75rem;
+    border: 0;
+    background: var(--workbench-shell-center-toolbar-background);
     color: var(--rz-text-color);
+    overflow-x: auto;
+    overflow-y: hidden;
 }
 
 .workbench-shell__status-bar {
+    min-height: var(--workbench-shell-row-height);
+    height: var(--workbench-shell-row-height);
     padding: 0 1rem 0 0;
+    background: var(--workbench-shell-status-background);
 }
 
 .workbench-shell__status-bar-items {
@@ -71,6 +104,7 @@
     display: flex;
     align-items: center;
     gap: 0.5rem;
+    padding-left: 0.75rem;
     font-weight: 600;
 }
 
@@ -116,18 +150,37 @@
     border-radius: var(--rz-border-radius);
 }
 
+.workbench-shell__icon-button {
+    /* Icon-only shell actions use one compact square footprint so the toolbar chrome stays close to the desktop-inspired visual reference. */
+    justify-content: center;
+    width: 2.25rem;
+    min-width: 2.25rem;
+    min-height: 2.25rem;
+    padding: 0;
+    gap: 0;
+    flex: 0 0 auto;
+}
+
+.workbench-shell__icon-button .rzi {
+    font-size: 1.1rem;
+}
+
 .workbench-shell__menu-button:hover,
 .workbench-shell__activity-button:hover,
 .workbench-shell__tool-button:hover,
 .workbench-shell__tab-button:hover,
-.workbench-shell__tab-close:hover,
+ .workbench-shell__tab-close:hover {
+    background: var(--rz-base-200);
+ }
+
 .workbench-shell__menu-button:focus-visible,
 .workbench-shell__activity-button:focus-visible,
 .workbench-shell__tool-button:focus-visible,
 .workbench-shell__tab-button:focus-visible,
 .workbench-shell__tab-close:focus-visible {
     background: var(--rz-base-200);
-    outline: none;
+    outline: 2px solid color-mix(in srgb, var(--rz-primary) 55%, transparent);
+    outline-offset: -2px;
 }
 
 .workbench-shell__active-tool-toolbar-meta {
@@ -153,10 +206,12 @@
 
 .workbench-shell__activity-rail {
     height: 100%;
+    width: var(--workbench-shell-activity-width);
     display: flex;
     flex-direction: column;
     gap: 0.125rem;
     padding: 0.5rem 0;
+    background: var(--workbench-shell-activity-background);
 }
 
 .workbench-shell__activity-button {
@@ -221,6 +276,7 @@
     height: 100%;
     padding: 0.75rem;
     overflow: auto;
+    background: var(--workbench-shell-explorer-background);
 }
 
 .workbench-shell__explorer-header {
@@ -228,11 +284,16 @@
 }
 
 .workbench-shell__explorer-toolbar {
-    flex-wrap: wrap;
+    min-height: var(--workbench-shell-row-height);
+    height: var(--workbench-shell-row-height);
+    flex-wrap: nowrap;
     gap: 0.5rem;
     margin-bottom: 0.75rem;
-    padding: 0 0 0.75rem;
-    border-bottom: 1px solid var(--rz-base-300);
+    padding: 0;
+    border: 0;
+    background: var(--workbench-shell-explorer-background);
+    overflow-x: auto;
+    overflow-y: hidden;
 }
 
 .workbench-shell__explorer-header p,
@@ -307,6 +368,7 @@
     flex-direction: column;
     height: 100%;
     overflow: hidden;
+    background: var(--workbench-shell-center-view-background);
 }
 
 .workbench-shell__output-panel {
@@ -315,16 +377,21 @@
     height: 100%;
     min-height: 0;
     overflow: hidden;
+    background: var(--workbench-shell-center-view-background);
 }
 
 .workbench-shell__output-toolbar {
     display: flex;
     align-items: center;
     gap: 0.75rem;
+    min-height: var(--workbench-shell-row-height);
+    height: var(--workbench-shell-row-height);
     min-width: 0;
-    padding: 0.375rem 0.5rem;
-    border-bottom: 1px solid var(--rz-base-300);
-    background: var(--rz-base-100);
+    padding: 0 0.5rem;
+    border: 0;
+    background: var(--workbench-shell-output-toolbar-background);
+    overflow-x: auto;
+    overflow-y: hidden;
 }
 
 .workbench-shell__output-toolbar-group {
@@ -341,19 +408,13 @@
 .workbench-shell__output-toolbar-group--actions {
     flex: 1 1 auto;
     justify-content: flex-end;
-    flex-wrap: wrap;
+    flex-wrap: nowrap;
 }
 
 .workbench-shell__output-level-filter {
     display: inline-flex;
     align-items: center;
-    gap: 0.4rem;
     flex: 0 0 auto;
-}
-
-.workbench-shell__output-level-filter-label {
-    font-size: 0.8125rem;
-    font-weight: 600;
 }
 
 .workbench-shell__output-level-filter-dropdown {
@@ -362,19 +423,6 @@
 
 .workbench-shell__output-level-filter-dropdown::deep .rz-dropdown {
     min-height: 2rem;
-}
-
-.workbench-shell__output-visibility-summary {
-    display: inline-flex;
-    align-items: center;
-    min-height: 2rem;
-    padding: 0.2rem 0.55rem;
-    border: 1px solid var(--rz-base-300);
-    border-radius: var(--rz-border-radius);
-    background: var(--rz-base-background-color);
-    color: var(--rz-text-secondary-color);
-    font-size: 0.8125rem;
-    white-space: nowrap;
 }
 
 .workbench-shell__menu-button:disabled {
@@ -387,8 +435,8 @@
     align-items: center;
     gap: 0.25rem;
     padding: 0.375rem 0.5rem;
-    border-bottom: 1px solid var(--rz-base-300);
-    background: var(--rz-base-050, var(--rz-base-100));
+    border: 0;
+    background: var(--workbench-shell-output-toolbar-background);
 }
 
 .workbench-shell__output-find-label {
@@ -418,7 +466,7 @@
     min-height: 0;
     min-width: 0;
     padding: 0.2rem 0.375rem;
-    background: var(--rz-base-background-color);
+    background: var(--workbench-shell-center-view-background);
 }
 
 .workbench-shell__output-terminal-host {
@@ -428,7 +476,7 @@
     min-width: 0;
     position: relative;
     overflow: hidden;
-    background: var(--rz-base-background-color);
+    background: var(--workbench-shell-center-view-background);
     color: var(--rz-text-color);
     font-family: Consolas, "Courier New", monospace;
     scrollbar-gutter: stable both-edges;
@@ -510,11 +558,12 @@
     align-items: stretch;
     justify-content: space-between;
     gap: 0;
-    min-height: 2.75rem;
+    min-height: var(--workbench-shell-row-height);
+    height: var(--workbench-shell-row-height);
     min-width: 0;
     padding: 0 0.5rem 0 0;
-    border-bottom: 1px solid var(--rz-base-300);
-    background: var(--rz-base-100);
+    border: 0;
+    background: var(--workbench-shell-center-toolbar-background);
 }
 
 .workbench-shell__tab-strip-content {
@@ -554,9 +603,22 @@
 .workbench-shell__tab-entry {
     display: flex;
     align-items: stretch;
-    border: 1px solid var(--rz-base-300);
-    border-radius: var(--rz-border-radius);
-    background: var(--rz-base-background-color);
+    min-height: 100%;
+    border: 0;
+    border-radius: 0;
+    background: var(--workbench-shell-tab-inactive-background);
+    color: var(--rz-text-secondary-color);
+}
+
+.workbench-shell__tab-entry:has(.workbench-shell__tab-button--active) {
+    background: var(--workbench-shell-tab-active-background);
+    color: var(--rz-text-color);
+}
+
+.workbench-shell__tab-entry:has(.workbench-shell__tab-button:focus-visible),
+.workbench-shell__tab-entry:has(.workbench-shell__tab-close:focus-visible) {
+    outline: 2px solid color-mix(in srgb, var(--rz-primary) 55%, transparent);
+    outline-offset: -2px;
 }
 
 .workbench-shell__tab-button {
@@ -565,9 +627,10 @@
     gap: 0.5rem;
     min-width: 0;
     max-width: 14rem;
-    padding: 0.5rem 0.75rem;
-    border-radius: var(--rz-border-radius);
+    padding: 0 0.75rem;
+    border-radius: 0;
     white-space: nowrap;
+    background: transparent;
 }
 
 .workbench-shell__tab-title {
@@ -580,7 +643,7 @@
 }
 
 .workbench-shell__tab-button--active {
-    background: var(--rz-base-200);
+    background: transparent;
     font-weight: 600;
 }
 
@@ -589,7 +652,9 @@
     align-items: center;
     justify-content: center;
     width: 2.25rem;
-    border-left: 1px solid var(--rz-base-300);
+    border: 0;
+    border-radius: 0;
+    color: inherit;
 }
 
 .workbench-shell__tab-overflow {
@@ -598,17 +663,123 @@
     align-self: stretch;
     flex: 0 0 auto;
     justify-content: flex-end;
-    margin-left: 0.75rem;
+    margin-left: 0.35rem;
+    position: relative;
+    z-index: 1;
 }
 
-.workbench-shell__tab-overflow-dropdown {
-    width: 12rem;
-}
-
-.workbench-shell__tab-overflow-label {
+.workbench-shell__tab-overflow-trigger {
+    /* The collapsed overflow trigger renders as a compact ellipsis affordance instead of a combo-box label. */
     display: inline-flex;
     align-items: center;
-    gap: 0.4rem;
+    justify-content: center;
+    width: auto;
+    min-width: 1.2rem;
+    color: var(--rz-text-color);
+    font-weight: 700;
+    letter-spacing: 0.08em;
+}
+
+.workbench-shell__tab-overflow-splitbutton::deep .rz-splitbutton {
+    display: inline-grid;
+    grid-template-columns: auto auto;
+    align-items: center;
+    column-gap: 0.1rem;
+    width: 6rem;
+    min-width: 6rem;
+    max-width: 6rem;
+    min-height: 2rem;
+    padding: 0 0.15rem 0 0.3rem;
+    border: 0;
+    border-radius: 0;
+    background: transparent;
+    box-shadow: none;
+}
+
+.workbench-shell__tab-overflow-splitbutton::deep .rz-splitbutton:focus-visible {
+    outline: none;
+}
+
+.workbench-shell__tab-overflow-splitbutton::deep .rz-splitbutton .rz-button {
+    min-width: 0;
+    min-height: 2rem;
+    padding: 0;
+    border: 0;
+    border-radius: 0;
+    background: transparent;
+    color: var(--rz-text-color);
+    box-shadow: none;
+}
+
+.workbench-shell__tab-overflow-splitbutton::deep .rz-splitbutton > .rz-button:not(.rz-splitbutton-menubutton) {
+    width: 100%;
+}
+
+.workbench-shell__tab-overflow-splitbutton::deep .rz-splitbutton .rz-button:hover,
+.workbench-shell__tab-overflow-splitbutton::deep .rz-splitbutton .rz-button:focus-visible {
+    background: transparent;
+}
+
+.workbench-shell__tab-overflow-splitbutton::deep .rz-splitbutton .rz-button:focus-visible {
+    outline: none;
+}
+
+.workbench-shell__tab-overflow-splitbutton::deep .rz-splitbutton .rz-button .rz-button-box {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: auto;
+    min-width: 0;
+    min-height: 100%;
+    padding: 0;
+}
+
+.workbench-shell__tab-overflow-splitbutton::deep .rz-splitbutton .rz-splitbutton-menubutton {
+    width: 1.8rem;
+    min-width: 1.8rem;
+    padding: 0;
+}
+
+.workbench-shell__tab-overflow-splitbutton::deep .rz-splitbutton .rz-splitbutton-menubutton .rzi {
+    font-size: 0.8rem;
+}
+
+.workbench-shell__tab-overflow-splitbutton::deep .rz-splitbutton-menu {
+    min-width: 22rem !important;
+    width: max-content !important;
+    max-width: none !important;
+}
+
+.workbench-shell__tab-overflow-splitbutton::deep .rz-splitbutton-menu .rz-menu-list,
+.workbench-shell__tab-overflow-splitbutton::deep .rz-splitbutton-menu .rz-menuitem,
+.workbench-shell__tab-overflow-splitbutton::deep .rz-splitbutton-menu .rz-menuitem-link,
+.workbench-shell__tab-overflow-splitbutton::deep .rz-splitbutton-menu .rz-menuitem-text {
+    white-space: nowrap !important;
+}
+
+.workbench-shell__tab-overflow-splitbutton::deep .rz-splitbutton-menu .rz-menuitem-link {
+    display: inline-flex !important;
+    flex-direction: row !important;
+    align-items: center !important;
+    gap: 0.5rem !important;
+    width: max-content !important;
+}
+
+.workbench-shell__tab-overflow-splitbutton::deep .rz-splitbutton-menu .rz-menuitem-icon,
+.workbench-shell__tab-overflow-splitbutton::deep .rz-splitbutton-menu .rz-menuitem-text {
+    flex: 0 0 auto !important;
+}
+
+.workbench-shell__tab-overflow-splitbutton::deep .rz-splitbutton-menu .rz-menuitem-text {
+    display: inline-block !important;
+    overflow: visible !important;
+    text-overflow: clip !important;
+}
+
+.workbench-shell__tab-overflow-splitbutton::deep .rz-splitbutton-menu .rz-menuitem-icon {
+    display: inline-flex !important;
+    align-items: center !important;
+    justify-content: center !important;
 }
 
 .workbench-shell__overflow-item {
@@ -656,6 +827,13 @@
     font-size: 0.85rem;
     white-space: nowrap;
     overflow: hidden;
+}
+
+.workbench-shell__output-toggle {
+    width: auto;
+    min-width: 2.25rem;
+    padding: 0 0.45rem;
+    gap: 0.35rem;
 }
 
 .workbench-shell__status-bar span {

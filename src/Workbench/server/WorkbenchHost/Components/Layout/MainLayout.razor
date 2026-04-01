@@ -4,7 +4,11 @@
 <RadzenComponents />
 
 @* The Workbench shell now renders explorers, commands, and runtime shell surfaces from contributed models rather than hard-coded navigation markup. *@
-<div class="workbench-shell">
+<div class="workbench-shell"
+     data-shell-theme-scope="host"
+     data-shell-chrome="borderless"
+     data-shell-row-height="36"
+     data-shell-activity-width="50">
     <Grid @key="OutputPanelState.IsVisible" OnResize="HandleOutputPanelResizeAsync">
         <ColumnDefinitions>
             <ColumnDefinition Width="*" />
@@ -12,7 +16,7 @@
         <RowDefinitions>
             @if (IsRegionVisible(WorkbenchShellRegion.MenuBar))
             {
-                <RowDefinition Height="48" />
+                <RowDefinition Height="36" />
             }
             <RowDefinition Height="@WorkingAreaHeight" />
             @if (OutputPanelState.IsVisible)
@@ -20,16 +24,18 @@
                 <SplitterRowDefinition Height="4" />
                 <RowDefinition Height="@OutputPaneHeight" />
             }
-            <RowDefinition Height="30" />
+            <RowDefinition Height="36" />
         </RowDefinitions>
         <Content>
             @if (IsRegionVisible(WorkbenchShellRegion.MenuBar))
             {
                 <GridElement Row="1" Column="1">
-                    <header class="workbench-shell__menu-bar" data-region="menu-bar">
-                        <div class="workbench-shell__brand">
+                    <header class="workbench-shell__menu-bar"
+                            data-region="menu-bar"
+                            data-shell-theme-region="menu"
+                            data-shell-row-height="36">
+                        <div class="workbench-shell__brand" aria-label="Workbench" title="Workbench">
                             <RadzenIcon Icon="dashboard_customize" />
-                            <span>Workbench</span>
                         </div>
 
                         <nav class="workbench-shell__menu-bar-nav" aria-label="Workbench menu">
@@ -38,14 +44,9 @@
                                 {
                                     <li>
                                         <button type="button"
-                                                class="workbench-shell__menu-button"
+                                                 class="workbench-shell__menu-button"
                                                 data-command-id="@menuContribution.CommandId"
                                                 @onclick="() => ExecuteCommandAsync(menuContribution.CommandId)">
-                                            @if (!string.IsNullOrWhiteSpace(menuContribution.Icon))
-                                            {
-                                                <RadzenIcon Icon="@menuContribution.Icon" />
-                                            }
-
                                             <span>@menuContribution.DisplayName</span>
                                         </button>
                                     </li>
@@ -68,10 +69,13 @@
             {
                 <GridElement Row="@OutputPanelRow" Column="1">
                     <section class="workbench-shell__output-panel" data-region="output-panel" aria-label="Workbench output">
-                        <div class="workbench-shell__output-toolbar" role="toolbar" aria-label="Output panel actions">
+                        <div class="workbench-shell__output-toolbar"
+                             role="toolbar"
+                             aria-label="Output panel actions"
+                             data-shell-theme-region="output-toolbar"
+                             data-shell-row-height="36">
                             <div class="workbench-shell__output-toolbar-group workbench-shell__output-toolbar-group--leading">
                                 <div class="workbench-shell__output-level-filter" data-role="output-level-filter">
-                                    <label class="workbench-shell__output-level-filter-label" for="workbench-output-level-filter">Level</label>
                                     <RadzenDropDown TValue="OutputLevel"
                                                     Name="workbench-output-level-filter"
                                                     Data="@GetOutputLevelFilterOptions()"
@@ -79,7 +83,8 @@
                                                     AllowClear="false"
                                                     Change="HandleOutputLevelFilterChangedAsync"
                                                     class="workbench-shell__output-level-filter-dropdown"
-                                                    aria-label="Minimum visible output level">
+                                                    aria-label="Minimum visible output level"
+                                                    title="@GetOutputLevelFilterTooltip(OutputPanelState.MinimumVisibleLevel)">
                                         <ValueTemplate Context="selectedLevel">
                                             <span>@GetOutputLevelFilterLabel((OutputLevel)selectedLevel)</span>
                                         </ValueTemplate>
@@ -89,54 +94,60 @@
                                         </Template>
                                     </RadzenDropDown>
                                 </div>
-
-                                <span class="workbench-shell__output-visibility-summary" data-role="output-visibility-summary">
-                                    @GetOutputVisibilitySummary(OutputPanelState.MinimumVisibleLevel)
-                                </span>
                             </div>
 
                             <div class="workbench-shell__output-toolbar-group workbench-shell__output-toolbar-group--actions">
                                 <button type="button"
-                                        class="workbench-shell__menu-button"
+                                        class="workbench-shell__menu-button workbench-shell__icon-button"
                                         data-role="output-copy-selected"
+                                        data-command-presentation="icon-only"
+                                        aria-label="@(GetIconOnlyActionLabel("Copy selected output"))"
+                                        title="@(GetIconOnlyActionLabel("Copy selected output"))"
                                         disabled="@(!IsOutputSelectionAvailable)"
                                         @onclick="CopySelectedOutputAsync">
                                     <RadzenIcon Icon="content_copy" />
-                                    <span>Copy selected</span>
                                 </button>
 
                                 <button type="button"
-                                        class="workbench-shell__menu-button"
+                                        class="workbench-shell__menu-button workbench-shell__icon-button"
                                         data-role="output-find"
+                                        data-command-presentation="icon-only"
+                                        aria-label="@(GetIconOnlyActionLabel("Find output"))"
+                                        title="@(GetIconOnlyActionLabel("Find output"))"
                                         aria-pressed="@IsOutputFindVisible"
                                         @onclick="OpenOutputFindAsync">
                                     <RadzenIcon Icon="search" />
-                                    <span>Find</span>
                                 </button>
 
                                 <button type="button"
-                                        class="workbench-shell__menu-button"
+                                        class="workbench-shell__menu-button workbench-shell__icon-button"
                                         data-role="output-clear"
+                                        data-command-presentation="icon-only"
+                                        aria-label="@(GetIconOnlyActionLabel("Clear output"))"
+                                        title="@(GetIconOnlyActionLabel("Clear output"))"
                                         @onclick="ClearOutputAsync">
                                     <RadzenIcon Icon="delete_sweep" />
-                                    <span>Clear</span>
                                 </button>
 
                                 <button type="button"
-                                        class="workbench-shell__menu-button"
+                                        class="workbench-shell__menu-button workbench-shell__icon-button"
                                         data-role="output-auto-scroll"
+                                        data-command-presentation="icon-only"
+                                        aria-label="@GetOutputAutoScrollLabel(OutputPanelState.IsAutoScrollEnabled)"
+                                        title="@GetOutputAutoScrollLabel(OutputPanelState.IsAutoScrollEnabled)"
                                         aria-pressed="@OutputPanelState.IsAutoScrollEnabled"
                                         @onclick="ToggleAutoScrollAsync">
                                     <RadzenIcon Icon="vertical_align_bottom" />
-                                    <span>Auto-scroll</span>
                                 </button>
 
                                 <button type="button"
-                                        class="workbench-shell__menu-button"
+                                        class="workbench-shell__menu-button workbench-shell__icon-button"
                                         data-role="output-scroll-to-end"
+                                        data-command-presentation="icon-only"
+                                        aria-label="@(GetIconOnlyActionLabel("Scroll output to end"))"
+                                        title="@(GetIconOnlyActionLabel("Scroll output to end"))"
                                         @onclick="ScrollOutputToEndAsync">
                                     <RadzenIcon Icon="arrow_downward" />
-                                    <span>Scroll to end</span>
                                 </button>
                             </div>
                         </div>
@@ -214,7 +225,7 @@
                 @* The nested grid keeps the working-area splitters isolated so full-width shell chrome does not occupy splitter tracks. *@
                 <Grid>
                     <ColumnDefinitions>
-                        <ColumnDefinition Width="64" />
+                        <ColumnDefinition Width="50" />
                         <ColumnDefinition Width="*" MinWidth="16" />
                         <SplitterColumnDefinition />
                         <ColumnDefinition Width="4*" />
@@ -226,7 +237,11 @@
                         @if (IsRegionVisible(WorkbenchShellRegion.ActivityRail))
                         {
                             <GridElement Row="1" Column="1">
-                                <aside class="workbench-shell__activity-rail" data-region="activity-rail" aria-label="Explorer selector">
+                                <aside class="workbench-shell__activity-rail"
+                                       data-region="activity-rail"
+                                       data-shell-theme-region="activity"
+                                       data-shell-activity-width="50"
+                                       aria-label="Explorer selector">
                                     @foreach (var explorer in Explorers)
                                     {
                                         <button type="button"
@@ -246,25 +261,31 @@
                         @if (IsRegionVisible(WorkbenchShellRegion.Explorer))
                         {
                             <GridElement Row="1" Column="2">
-                                <aside class="workbench-shell__explorer" data-region="explorer" aria-label="Workbench explorer">
+                                <aside class="workbench-shell__explorer"
+                                       data-region="explorer"
+                                       data-shell-theme-region="explorer"
+                                       aria-label="Workbench explorer">
                                     <header class="workbench-shell__explorer-header">
                                         <p>Explorer</p>
                                         <h2>@ActiveExplorerDisplayName</h2>
                                     </header>
 
-                                    <section class="workbench-shell__explorer-toolbar" data-region="explorer-toolbar" role="toolbar" aria-label="Explorer toolbar">
+                                    <section class="workbench-shell__explorer-toolbar"
+                                             data-region="explorer-toolbar"
+                                             data-shell-theme-region="explorer"
+                                             data-shell-row-height="36"
+                                             role="toolbar"
+                                             aria-label="Explorer toolbar">
                                         @foreach (var explorerToolbarContribution in ExplorerToolbarContributions)
                                         {
                                             <button type="button"
-                                                    class="workbench-shell__menu-button"
+                                                    class="workbench-shell__menu-button workbench-shell__icon-button"
                                                     data-command-id="@explorerToolbarContribution.CommandId"
+                                                    data-command-presentation="icon-only"
+                                                    aria-label="@GetIconOnlyActionLabel(explorerToolbarContribution.DisplayName)"
+                                                    title="@GetIconOnlyActionLabel(explorerToolbarContribution.DisplayName)"
                                                     @onclick="() => ExecuteCommandAsync(explorerToolbarContribution.CommandId)">
-                                                @if (!string.IsNullOrWhiteSpace(explorerToolbarContribution.Icon))
-                                                {
-                                                    <RadzenIcon Icon="@explorerToolbarContribution.Icon" />
-                                                }
-
-                                                <span>@explorerToolbarContribution.DisplayName</span>
+                                                <RadzenIcon Icon="@GetContributionIcon(explorerToolbarContribution.Icon, explorerToolbarContribution.DisplayName)" />
                                             </button>
                                         }
                                     </section>
@@ -305,9 +326,14 @@
                         @if (IsRegionVisible(WorkbenchShellRegion.ToolSurface))
                         {
                             <GridElement Row="1" Column="4">
-                                <main class="workbench-shell__tool-surface" data-region="tool-surface">
+                                <main class="workbench-shell__tool-surface"
+                                      data-region="tool-surface"
+                                      data-shell-theme-region="center-view">
                                     <section class="workbench-shell__tab-strip"
                                              data-region="tab-strip"
+                                             data-shell-theme-region="center-toolbar"
+                                              data-tab-strip-style="flat"
+                                             data-shell-row-height="36"
                                              data-tab-strip-spacing="flush-top-bottom-left"
                                              aria-label="Open Workbench tabs">
                                         <div class="workbench-shell__tab-strip-content">
@@ -320,8 +346,10 @@
                                                 <ul class="workbench-shell__tab-list">
                                                     @foreach (var openTab in VisibleTabs)
                                                     {
-                                                        <li class="workbench-shell__tab-list-item" data-tab-id="@openTab.Id">
-                                                            <div class="workbench-shell__tab-entry">
+                                                        <li class="workbench-shell__tab-list-item"
+                                                            data-tab-id="@openTab.Id"
+                                                            data-tab-state="@(IsTabActive(openTab) ? "active" : "inactive")">
+                                                            <div class="workbench-shell__tab-entry" data-tab-surface="flat">
                                                                 <button type="button"
                                                                         class="@GetTabButtonCss(openTab)"
                                                                         aria-pressed="@IsTabActive(openTab)"
@@ -344,6 +372,8 @@
                                                                 {
                                                                     <button type="button"
                                                                             class="workbench-shell__tab-close"
+                                                                            data-role="tab-close"
+                                                                            data-tab-close-affordance="flat"
                                                                             aria-label="Close @openTab.Title"
                                                                             @onclick="() => CloseTabAsync(openTab.Id)"
                                                                             @onclick:stopPropagation="true">
@@ -357,48 +387,36 @@
                                             }
                                         </div>
 
-                                        @* The overflow dropdown remains visible at all times so users always have a stable path to the full open-tab list. *@
+                                        @* The shell keeps the existing overflow-selection path but now uses a split button so the collapsed affordance can stay truly compact while still exposing the full menu of tabs. *@
                                         <div class="workbench-shell__tab-overflow"
                                              data-region="tab-strip-overflow"
-                                             data-tab-strip-overflow-anchor="right">
-                                            <RadzenDropDown TValue="string"
-                                                            Data="@OpenTabs"
-                                                            TextProperty="Title"
-                                                            ValueProperty="Id"
-                                                            Value="@(ShellManager.State.ActiveTab?.Id)"
-                                                            Placeholder="All tabs"
-                                                            Disabled="@(OpenTabs.Count == 0)"
-                                                            AllowClear="false"
-                                                            Change="SelectOverflowTabAsync"
-                                                            ItemRender="ConfigureOverflowItemAttributes"
-                                                            class="workbench-shell__tab-overflow-dropdown"
-                                                            aria-label="All open Workbench tabs">
-                                                <ValueTemplate Context="selectedOverflowTab">
-                                                    <span class="workbench-shell__tab-overflow-label">
-                                                        <RadzenIcon Icon="more_horiz" />
-                                                        <span>All tabs</span>
-                                                    </span>
-                                                </ValueTemplate>
-                                                <Template Context="overflowTabContext">
-                                                    @{ var overflowTab = (WorkbenchTab)overflowTabContext; }
-
-                                                    <div class="@GetOverflowEntryCss(overflowTab)"
-                                                         data-overflow-tab-id="@overflowTab.Id"
-                                                         data-overflow-active="@IsTabActive(overflowTab).ToString().ToLowerInvariant()">
-                                                        <RadzenText Text="@overflowTab.Title"
-                                                                    TagName="TagName.Span"
-                                                                    TextStyle="TextStyle.Body2"
-                                                                    class="workbench-shell__overflow-entry-title"
-                                                                    MouseEnter="element => ShowTitleTooltip(element, overflowTab.Title)"
-                                                                    MouseLeave="HideTitleTooltip" />
-
-                                                        @if (IsTabActive(overflowTab))
-                                                        {
-                                                            <span class="workbench-shell__overflow-entry-state">Active</span>
-                                                        }
-                                                    </div>
-                                                </Template>
-                                            </RadzenDropDown>
+                                             data-tab-strip-overflow-anchor="right"
+                                             data-overflow-affordance="ellipsis">
+                                            <RadzenSplitButton class="workbench-shell__tab-overflow-splitbutton"
+                                                               ButtonStyle="ButtonStyle.Secondary"
+                                                               Variant="Variant.Text"
+                                                               Shade="Shade.Default"
+                                                               Size="ButtonSize.Small"
+                                                               Disabled="@(OpenTabs.Count == 0)"
+                                                               AlwaysOpenPopup="true"
+                                                               Click="HandleOverflowSplitButtonClickAsync"
+                                                               ButtonAriaLabel="@GetOverflowAffordanceLabel()"
+                                                               OpenAriaLabel="@GetOverflowAffordanceLabel()"
+                                                               title="@GetOverflowAffordanceLabel()">
+                                                <ButtonContent>
+                                                    <span class="workbench-shell__tab-overflow-trigger" aria-hidden="true">...</span>
+                                                </ButtonContent>
+                                                <ChildContent>
+                                                    @foreach (var overflowTab in OpenTabs)
+                                                    {
+                                                        <RadzenSplitButtonItem Text="@GetOverflowItemText(overflowTab)"
+                                                                               Value="@overflowTab.Id"
+                                                                               title="@overflowTab.Title"
+                                                                               data-overflow-tab-id="@overflowTab.Id"
+                                                                               data-overflow-active="@IsTabActive(overflowTab).ToString().ToLowerInvariant()" />
+                                                    }
+                                                </ChildContent>
+                                            </RadzenSplitButton>
                                         </div>
                                     </section>
 
@@ -407,6 +425,8 @@
                                         @* Active-tool actions now live inside the active tab view so the toolbar follows the selected tab instead of occupying a shell-wide row. *@
                                         <section class="workbench-shell__active-tool-toolbar"
                                                  data-region="active-tool-toolbar"
+                                                  data-shell-theme-region="center-toolbar"
+                                                  data-shell-row-height="36"
                                                  data-toolbar-host="active-tab"
                                                  aria-label="Active tool toolbar">
                                             <div class="workbench-shell__active-tool-toolbar-meta">
@@ -418,15 +438,13 @@
                                                 @foreach (var toolbarContribution in ActiveToolToolbarContributions)
                                                 {
                                                     <button type="button"
-                                                            class="workbench-shell__menu-button"
+                                                            class="workbench-shell__menu-button workbench-shell__icon-button"
                                                             data-command-id="@toolbarContribution.CommandId"
+                                                            data-command-presentation="icon-only"
+                                                            aria-label="@GetIconOnlyActionLabel(toolbarContribution.DisplayName)"
+                                                            title="@GetIconOnlyActionLabel(toolbarContribution.DisplayName)"
                                                             @onclick="() => ExecuteCommandAsync(toolbarContribution.CommandId)">
-                                                        @if (!string.IsNullOrWhiteSpace(toolbarContribution.Icon))
-                                                        {
-                                                            <RadzenIcon Icon="@toolbarContribution.Icon" />
-                                                        }
-
-                                                        <span>@toolbarContribution.DisplayName</span>
+                                                        <RadzenIcon Icon="@GetContributionIcon(toolbarContribution.Icon, toolbarContribution.DisplayName)" />
                                                     </button>
                                                 }
                                             </div>
@@ -446,12 +464,20 @@
             @if (IsRegionVisible(WorkbenchShellRegion.StatusBar))
             {
                 <GridElement Row="@StatusBarRow" Column="1">
-                    <footer class="workbench-shell__status-bar" data-region="status-bar" role="status" aria-live="polite">
+                    <footer class="workbench-shell__status-bar"
+                            data-region="status-bar"
+                            data-shell-theme-region="status"
+                            data-shell-row-height="36"
+                            role="status"
+                            aria-live="polite">
                         <button type="button"
                                 class="workbench-shell__menu-button workbench-shell__output-toggle"
                                 data-role="output-toggle"
+                                data-command-presentation="labelled-toggle"
                                 data-output-toggle-state="@(OutputPanelState.IsVisible ? "expanded" : "collapsed")"
                                 data-output-unseen-level="@(HiddenUnseenLevel?.ToString().ToLowerInvariant())"
+                                aria-label="@GetOutputPanelToggleLabel(OutputPanelState.IsVisible)"
+                                title="@GetOutputPanelToggleLabel(OutputPanelState.IsVisible)"
                                 aria-expanded="@OutputPanelState.IsVisible"
                                 @onclick="ToggleOutputPanelAsync">
                             <RadzenIcon Icon="@OutputToggleIcon" />
