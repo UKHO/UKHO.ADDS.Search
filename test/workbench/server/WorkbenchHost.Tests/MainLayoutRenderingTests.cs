@@ -32,15 +32,23 @@ namespace WorkbenchHost.Tests
         private const string HostToolsSectionId = "explorer.section.host.tools";
         private const string OverviewToolId = "tool.bootstrap.overview";
         private const string OverviewCommandId = "command.host.open-overview";
-        private const string OverviewMenuId = "menu.host.overview";
-        private const string OverviewToolbarId = "toolbar.host.overview";
+        private const string OverviewExplorerToolbarId = "toolbar.explorer.host.overview";
+        private const string OverviewRefreshCommandId = "command.host.overview.refresh";
+        private const string HelpCommandId = "command.host.menu.help";
+        private const string EditCommandId = "command.host.menu.edit";
+        private const string ViewCommandId = "command.host.menu.view";
+        private const string HelpMenuId = "menu.host.help";
+        private const string EditMenuId = "menu.host.edit";
+        private const string ViewMenuId = "menu.host.view";
+        private const string SearchRunCommandId = "command.module.search.run";
+
         /// <summary>
-        /// Confirms the layout renders the full shell structure, including the visible tab strip above the center surface.
+        /// Confirms the layout renders the restored menu-bar baseline with the minimum host menus and the temporary theme-toggle action area.
         /// </summary>
         [Fact]
         public async Task RenderTheBootstrapWorkbenchShell()
         {
-            // The renderer uses the same shell manager and Radzen registrations as the host so the markup reflects the real shell composition.
+            // The renderer uses the same shell manager and Radzen registrations as the host so the markup reflects the restored shell chrome.
             await using var serviceProvider = CreateServiceProvider();
             var shellManager = serviceProvider.GetRequiredService<WorkbenchShellManager>();
             var outputService = serviceProvider.GetRequiredService<IWorkbenchOutputService>();
@@ -51,20 +59,125 @@ namespace WorkbenchHost.Tests
             var renderer = new HtmlRenderer(serviceProvider, serviceProvider.GetRequiredService<ILoggerFactory>());
             var html = await RenderLayoutAsync(renderer);
 
-            shellManager.State.IsRegionVisible(WorkbenchShellRegion.MenuBar).ShouldBeFalse();
-            html.ShouldNotContain("data-region=\"menu-bar\"");
-            html.ShouldContain("data-region=\"toolbar\"");
+            shellManager.State.IsRegionVisible(WorkbenchShellRegion.MenuBar).ShouldBeTrue();
+            html.ShouldContain("data-region=\"menu-bar\"");
+            html.ShouldContain($"data-command-id=\"{HelpCommandId}\"");
+            html.ShouldContain($"data-command-id=\"{EditCommandId}\"");
+            html.ShouldContain($"data-command-id=\"{ViewCommandId}\"");
+            html.ShouldContain("data-role=\"menu-bar-actions\"");
+            html.ShouldContain("data-role=\"appearance-toggle\"");
             html.ShouldContain("data-region=\"activity-rail\"");
             html.ShouldContain("data-region=\"explorer\"");
+            html.ShouldContain("data-region=\"explorer-toolbar\"");
             html.ShouldContain("data-region=\"tool-surface\"");
             html.ShouldContain("data-region=\"tab-strip\"");
+            html.ShouldContain("data-region=\"active-tool-toolbar\"");
             html.ShouldContain("data-region=\"status-bar\"");
             html.ShouldContain("data-role=\"output-toggle\"");
+            html.ShouldNotContain("data-region=\"toolbar\"");
+            CountOccurrences(html, $"data-command-id=\"{OverviewCommandId}\"").ShouldBe(1);
             html.ShouldContain("Workbench overview");
             html.ShouldContain("Home");
             html.ShouldContain("aria-label=\"Workbench\"");
+            html.ShouldNotContain("workbench-shell__toolbar-home");
             html.ShouldNotContain("Active tab");
             html.ShouldContain("BodyMarker");
+        }
+
+        /// <summary>
+        /// Confirms the host-owned Home action renders through the explorer toolbar rather than the shell-wide active-tool toolbar row.
+        /// </summary>
+        [Fact]
+        public async Task RenderHomeInTheExplorerToolbar()
+        {
+            // Home is now a left-pane action, so the explorer toolbar should host the only command-routed overview shortcut while the top toolbar stays free for active-tool actions.
+            await using var serviceProvider = CreateServiceProvider();
+            var shellManager = serviceProvider.GetRequiredService<WorkbenchShellManager>();
+            SeedHostShell(shellManager);
+
+            var renderer = new HtmlRenderer(serviceProvider, serviceProvider.GetRequiredService<ILoggerFactory>());
+            var html = await RenderLayoutAsync(renderer);
+            var explorerToolbarIndex = html.IndexOf("data-region=\"explorer-toolbar\"", StringComparison.Ordinal);
+            var explorerSectionIndex = html.IndexOf("explorer.section.host.tools", StringComparison.Ordinal);
+
+            explorerToolbarIndex.ShouldBeGreaterThanOrEqualTo(0);
+            explorerSectionIndex.ShouldBeGreaterThan(explorerToolbarIndex);
+            CountOccurrences(html, $"data-command-id=\"{OverviewCommandId}\"").ShouldBe(1);
+            html.ShouldContain($"data-command-id=\"{OverviewCommandId}\"");
+            html.ShouldNotContain("workbench-shell__toolbar-home");
+        }
+
+        /// <summary>
+        /// Confirms the menu bar stays visible with the host-provided baseline menus even when no active-tool menu contributions exist.
+        /// </summary>
+        [Fact]
+        public async Task KeepTheMenuBarVisibleWhenNoActiveToolMenuContributionsExist()
+        {
+            // Static host menus must keep the menu bar useful even before any tool opens or contributes runtime menu content.
+            await using var serviceProvider = CreateServiceProvider();
+            var shellManager = serviceProvider.GetRequiredService<WorkbenchShellManager>();
+            SeedHostShell(shellManager);
+
+            var renderer = new HtmlRenderer(serviceProvider, serviceProvider.GetRequiredService<ILoggerFactory>());
+            var html = await RenderLayoutAsync(renderer);
+
+            shellManager.State.ActiveTool.ShouldBeNull();
+            html.ShouldContain("data-region=\"menu-bar\"");
+            html.ShouldContain($"data-command-id=\"{HelpCommandId}\"");
+            html.ShouldContain($"data-command-id=\"{EditCommandId}\"");
+            html.ShouldContain($"data-command-id=\"{ViewCommandId}\"");
+            html.ShouldContain("data-role=\"menu-bar-actions\"");
+            html.ShouldContain("data-role=\"appearance-toggle\"");
+            html.ShouldNotContain("data-region=\"active-tool-toolbar\"");
+        }
+
+        /// <summary>
+        /// Confirms active-tool toolbar contributions render inside the active tab view and switch with the active tab.
+        /// </summary>
+        [Fact]
+        public async Task RenderTheActiveToolToolbarInsideTheActiveTabViewAndUpdateItWhenTabsSwitch()
+        {
+            // The final shell arrangement should host active-tool actions inside the tab view so the toolbar always appears for the active tab, even before that tab contributes actions.
+            await using var serviceProvider = CreateServiceProvider();
+            var shellManager = serviceProvider.GetRequiredService<WorkbenchShellManager>();
+            SeedHostShell(shellManager);
+            SeedSearchShell(shellManager);
+
+            var overviewTool = shellManager.ActivateTool(ActivationTarget.CreateToolSurfaceTarget(OverviewToolId));
+            var renderer = new HtmlRenderer(serviceProvider, serviceProvider.GetRequiredService<ILoggerFactory>());
+            var blankOverviewHtml = await RenderLayoutAsync(renderer);
+
+            blankOverviewHtml.ShouldContain("data-region=\"active-tool-toolbar\"");
+
+            overviewTool.Context.SetRuntimeToolbarContributions([
+                new ToolbarContribution("toolbar.host.overview.refresh", "Refresh overview", OverviewRefreshCommandId, icon: "refresh", order: 100)
+            ]);
+
+            var searchTool = shellManager.ActivateTool(ActivationTarget.CreateToolSurfaceTarget("tool.module.search.query"));
+            searchTool.Context.SetRuntimeToolbarContributions([
+                new ToolbarContribution("toolbar.module.search.run", "Run query", SearchRunCommandId, icon: "play_arrow", order: 100)
+            ]);
+
+            var searchHtml = await RenderLayoutAsync(renderer);
+            var tabStripIndex = searchHtml.IndexOf("data-region=\"tab-strip\"", StringComparison.Ordinal);
+            var activeToolToolbarIndex = searchHtml.IndexOf("data-region=\"active-tool-toolbar\"", StringComparison.Ordinal);
+            var bodyIndex = searchHtml.IndexOf("BodyMarker", StringComparison.Ordinal);
+
+            searchHtml.ShouldNotContain("data-region=\"toolbar\"");
+            searchHtml.ShouldContain("data-region=\"active-tool-toolbar\"");
+            searchHtml.ShouldContain("data-toolbar-host=\"active-tab\"");
+            searchHtml.ShouldContain($"data-command-id=\"{SearchRunCommandId}\"");
+            searchHtml.ShouldNotContain($"data-command-id=\"{OverviewRefreshCommandId}\"");
+            activeToolToolbarIndex.ShouldBeGreaterThan(tabStripIndex);
+            bodyIndex.ShouldBeGreaterThan(activeToolToolbarIndex);
+
+            shellManager.ActivateTab(overviewTool.InstanceId);
+
+            var overviewHtml = await RenderLayoutAsync(renderer);
+
+            overviewHtml.ShouldContain("data-region=\"active-tool-toolbar\"");
+            overviewHtml.ShouldContain($"data-command-id=\"{OverviewRefreshCommandId}\"");
+            overviewHtml.ShouldNotContain($"data-command-id=\"{SearchRunCommandId}\"");
         }
 
         /// <summary>
@@ -592,12 +705,12 @@ namespace WorkbenchHost.Tests
                 "HandleOutputPanelResizeAsync",
                 new GridResizeNotification(
                     GridResizeDirection.Row,
-                    4,
                     3,
-                    5,
+                    2,
+                    4,
                     640,
                     160,
-                    "48px 44px 640px 4px 160px 30px"));
+                    "48px 640px 4px 160px 30px"));
             await InvokePrivateMethodAsync(layout, "NotifyOutputViewportStateAsync", false);
 
             outputService.PanelState.CenterPaneHeight.ShouldBe("4*");
@@ -1221,8 +1334,28 @@ namespace WorkbenchHost.Tests
                     "dashboard",
                     "Shows the first host-owned tool.",
                     100));
-            shellManager.RegisterMenu(new MenuContribution(OverviewMenuId, "Home", OverviewCommandId, icon: "dashboard", order: 100));
-            shellManager.RegisterToolbar(new ToolbarContribution(OverviewToolbarId, "Home", OverviewCommandId, icon: "dashboard", order: 100));
+            shellManager.RegisterCommand(
+                new CommandContribution(
+                    HelpCommandId,
+                    "Help",
+                    CommandScope.Host,
+                    executionHandler: static (_, _) => Task.CompletedTask));
+            shellManager.RegisterCommand(
+                new CommandContribution(
+                    EditCommandId,
+                    "Edit",
+                    CommandScope.Host,
+                    executionHandler: static (_, _) => Task.CompletedTask));
+            shellManager.RegisterCommand(
+                new CommandContribution(
+                    ViewCommandId,
+                    "View",
+                    CommandScope.Host,
+                    executionHandler: static (_, _) => Task.CompletedTask));
+            shellManager.RegisterMenu(new MenuContribution(EditMenuId, "Edit", EditCommandId, order: 200));
+            shellManager.RegisterMenu(new MenuContribution(ViewMenuId, "View", ViewCommandId, order: 300));
+            shellManager.RegisterMenu(new MenuContribution(HelpMenuId, "Help", HelpCommandId, order: 400));
+            shellManager.RegisterExplorerToolbar(new ExplorerToolbarContribution(OverviewExplorerToolbarId, "Home", OverviewCommandId, icon: "dashboard", order: 100));
             shellManager.SetActiveExplorer(FallbackExplorerId);
         }
 

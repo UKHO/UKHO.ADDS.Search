@@ -15,6 +15,7 @@ namespace UKHO.Workbench.Modules
         private readonly Dictionary<string, ExplorerContribution> _explorerContributions = new(StringComparer.Ordinal);
         private readonly Dictionary<string, ExplorerSectionContribution> _explorerSectionContributions = new(StringComparer.Ordinal);
         private readonly Dictionary<string, ExplorerItem> _explorerItems = new(StringComparer.Ordinal);
+        private readonly Dictionary<string, ExplorerToolbarContribution> _explorerToolbarContributions = new(StringComparer.Ordinal);
         private readonly Dictionary<string, MenuContribution> _menuContributions = new(StringComparer.Ordinal);
         private readonly Dictionary<string, ToolbarContribution> _toolbarContributions = new(StringComparer.Ordinal);
         private readonly Dictionary<string, StatusBarContribution> _statusBarContributions = new(StringComparer.Ordinal);
@@ -55,6 +56,14 @@ namespace UKHO.Workbench.Modules
         public IReadOnlyList<ExplorerItem> ExplorerItems => _explorerItems.Values
             .OrderBy(explorerItem => explorerItem.Order)
             .ThenBy(explorerItem => explorerItem.DisplayName, StringComparer.Ordinal)
+            .ToArray();
+
+        /// <summary>
+        /// Gets the static explorer-toolbar contributions contributed through the current registration session.
+        /// </summary>
+        public IReadOnlyList<ExplorerToolbarContribution> ExplorerToolbarContributions => _explorerToolbarContributions.Values
+            .OrderBy(explorerToolbarContribution => explorerToolbarContribution.Order)
+            .ThenBy(explorerToolbarContribution => explorerToolbarContribution.DisplayName, StringComparer.Ordinal)
             .ToArray();
 
         /// <summary>
@@ -215,6 +224,32 @@ namespace UKHO.Workbench.Modules
             }
 
             _explorerItems.Add(explorerItem.Id, explorerItem);
+        }
+
+        /// <summary>
+        /// Adds a static explorer-toolbar contribution to the Workbench contribution catalog.
+        /// </summary>
+        /// <param name="explorerToolbarContribution">The explorer-toolbar contribution that should become available to the explorer pane toolbar.</param>
+        public void AddExplorerToolbar(ExplorerToolbarContribution explorerToolbarContribution)
+        {
+            // Explorer-toolbar contribution identifiers remain unique so the mixed left-pane surface stays deterministic across host and module registrations.
+            ArgumentNullException.ThrowIfNull(explorerToolbarContribution);
+
+            if (_explorerToolbarContributions.TryGetValue(explorerToolbarContribution.Id, out var existingContribution))
+            {
+                if (existingContribution.DisplayName == explorerToolbarContribution.DisplayName
+                    && existingContribution.CommandId == explorerToolbarContribution.CommandId
+                    && existingContribution.Icon == explorerToolbarContribution.Icon
+                    && existingContribution.OwnerExplorerId == explorerToolbarContribution.OwnerExplorerId
+                    && existingContribution.Order == explorerToolbarContribution.Order)
+                {
+                    return;
+                }
+
+                throw new InvalidOperationException($"A Workbench explorer-toolbar contribution with id '{explorerToolbarContribution.Id}' has already been contributed.");
+            }
+
+            _explorerToolbarContributions.Add(explorerToolbarContribution.Id, explorerToolbarContribution);
         }
 
         /// <summary>

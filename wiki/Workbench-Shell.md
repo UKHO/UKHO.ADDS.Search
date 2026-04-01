@@ -5,7 +5,7 @@ The `083-workbench-model` bootstrap slice introduces the first runnable Workbenc
 ## What the bootstrap slice delivers
 
 - a desktop-like shell rendered by Blazor Server
-- a desktop-like shell whose menu-bar region still exists in the shell model but is currently marked not visible, so the active-tool toolbar, activity rail, explorer, central tool surface, and status bar remain as the visible chrome
+- a desktop-like shell whose menu bar is now visible by default, with a minimum host-provided `Edit`, `View`, and `Help` baseline plus the temporary right-aligned theme toggle
 - a host-owned exemplar tool (`Workbench overview`) that opens in the center region
 - singleton tool activation, so reopening the same tool focuses the existing instance instead of duplicating it
 - shell layout built with `UKHO.Workbench.Layout` grid and splitter primitives
@@ -58,9 +58,20 @@ The `083-workbench-model` bootstrap slice introduces the first runnable Workbenc
 - the working area now keeps the activity rail fixed at `64px` with no splitter between that rail and the explorer, leaving only the explorer-to-centre boundary resizeable
 - the centre tab host now removes its extra top, bottom, and left shell padding so the tab strip sits flush with the content surface while the always-visible overflow affordance stays anchored to the right edge
 
-## Temporary menu-bar state
+## What the explorer-toolbar slice adds
 
-- the shell still keeps `MenuBar` as a first-class shell region and continues to support menu contributions, but the bootstrap visible-region set currently marks that region as hidden so `MainLayout` omits the menu row entirely while toolbar and tool-page actions mature
+- the shell now exposes a dedicated `ExplorerToolbarContribution` contract so host and module code can target the left-pane toolbar without depending on `MainLayout` structure
+- `MainLayout` now renders an explorer toolbar directly beneath the explorer header and composes one mixed surface from shell-global left-pane actions plus explorer-specific actions for the selected explorer
+- the host-owned `Home` action now renders in the explorer toolbar instead of being special-cased into the shell-wide active-tool toolbar row
+- the shell-wide active-tool toolbar remains available for active-tool actions only, which keeps the `Home` shortcut and any future explorer actions closer to the left-pane workflow they affect
+
+## What the in-tab active-toolbar slice adds
+
+- the shell no longer renders a dedicated full-width active-tool toolbar row above the working area, so the outer chrome now contains only the menu bar, working area, optional output pane, and status bar
+- `MainLayout` now renders active-tool toolbar contributions inside the active center tab view, directly beneath the tab strip and above the hosted tool body
+- active-tool toolbar content now follows the selected tab automatically, while tools with no active-toolbar actions render no empty toolbar surface at all
+- `WorkbenchShellRegion.ActiveToolToolbar` has been deleted from the shell-region model rather than being renamed or repurposed, which keeps the fixed shell-region model aligned with the final layout
+- the output-panel toolbar remains a separate shell-owned surface, so the bottom-pane commands and behaviors are unchanged by the in-tab toolbar move
 
 ## What the output foundation slice adds
 
@@ -130,7 +141,7 @@ The `083-workbench-model` bootstrap slice introduces the first runnable Workbenc
 2. The interaction resolves to a registered `CommandContribution`.
 3. Explorer single-click updates shell selection only, while a command-driven activation request opens a new tab or focuses the existing logical tab.
 4. The active tool instance can update its title, icon, badge, selection, notifications, and runtime shell contributions through `ToolContext`.
-5. The shell recomposes menu, toolbar, and status-bar surfaces so only the active tool contributes runtime items.
+5. The shell recomposes menu, explorer-toolbar, active-tool toolbar, and status-bar surfaces so each command surface stays aligned with the shell context that owns it.
 
 ## Verification
 

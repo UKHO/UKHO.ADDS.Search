@@ -9,7 +9,6 @@ using UKHO.Workbench.Output;
 using UKHO.Workbench.Services.Shell;
 using UKHO.Workbench.Tools;
 using UKHO.Workbench.WorkbenchShell;
-using WorkbenchHost.Components.WorkbenchShell;
 using WorkbenchHost.Services;
 using XtermBlazor;
 using XtermBlazorTheme = XtermBlazor.Theme;
@@ -97,27 +96,24 @@ namespace WorkbenchHost.Components.Layout
         private IReadOnlyList<ExplorerContribution> Explorers => ShellManager.Explorers;
 
         /// <summary>
+        /// Gets the current explorer-toolbar contributions visible for the active explorer.
+        /// </summary>
+        private IReadOnlyList<ExplorerToolbarContribution> ExplorerToolbarContributions => ShellManager.ExplorerToolbarContributions;
+
+        /// <summary>
         /// Gets the current menu contributions visible for the active tool.
         /// </summary>
         private IReadOnlyList<MenuContribution> MenuContributions => ShellManager.MenuContributions;
 
         /// <summary>
-        /// Gets the current toolbar contributions visible for the active tool.
+        /// Gets the current active-tool toolbar contributions visible for the active tab.
         /// </summary>
-        private IReadOnlyList<ToolbarContribution> ToolbarContributions => ShellManager.ToolbarContributions;
+        private IReadOnlyList<ToolbarContribution> ActiveToolToolbarContributions => ShellManager.ToolbarContributions;
 
         /// <summary>
-        /// Gets the host-owned toolbar contribution that should surface as the persistent Home action.
+        /// Gets a value indicating whether the active tab should render its in-tab toolbar surface.
         /// </summary>
-        private ToolbarContribution? HomeToolbarContribution => ToolbarContributions.FirstOrDefault(toolbarContribution =>
-            string.Equals(toolbarContribution.Id, WorkbenchHostShellDefaults.OverviewToolbarId, StringComparison.Ordinal));
-
-        /// <summary>
-        /// Gets the remaining toolbar contributions after the persistent Home action has been removed from the trailing toolbar collection.
-        /// </summary>
-        private IReadOnlyList<ToolbarContribution> VisibleToolbarContributions => ToolbarContributions
-            .Where(toolbarContribution => !string.Equals(toolbarContribution.Id, WorkbenchHostShellDefaults.OverviewToolbarId, StringComparison.Ordinal))
-            .ToArray();
+        private bool ShouldRenderActiveToolToolbar => ActiveTool is not null;
 
         /// <summary>
         /// Gets the current status-bar contributions visible for the active tool.
@@ -145,14 +141,9 @@ namespace WorkbenchHost.Components.Layout
         private OutputPanelState OutputPanelState => WorkbenchOutputService.PanelState;
 
         /// <summary>
-        /// Gets the row index used by the active-tool toolbar.
-        /// </summary>
-        private int ToolbarRow => IsRegionVisible(WorkbenchShellRegion.MenuBar) ? 2 : 1;
-
-        /// <summary>
         /// Gets the row index used by the centre working surface.
         /// </summary>
-        private int WorkingAreaRow => ToolbarRow + 1;
+        private int WorkingAreaRow => IsRegionVisible(WorkbenchShellRegion.MenuBar) ? 2 : 1;
 
         /// <summary>
         /// Gets the row index used by the output panel when it is visible.

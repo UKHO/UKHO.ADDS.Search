@@ -91,6 +91,16 @@ namespace UKHO.Workbench.Modules
         }
 
         /// <summary>
+        /// Adds a static explorer-toolbar contribution to the shared Workbench contribution registry.
+        /// </summary>
+        /// <param name="explorerToolbarContribution">The explorer-toolbar contribution that should become available to the explorer pane toolbar.</param>
+        public void AddExplorerToolbar(ExplorerToolbarContribution explorerToolbarContribution)
+        {
+            // Explorer-toolbar contributions stay on the bounded startup contract so modules can target the left pane without depending on layout markup.
+            ContributionRegistry.AddExplorerToolbar(explorerToolbarContribution);
+        }
+
+        /// <summary>
         /// Adds a static menu contribution to the shared Workbench contribution registry.
         /// </summary>
         /// <param name="menuContribution">The menu contribution that should become available to the shell menu bar.</param>

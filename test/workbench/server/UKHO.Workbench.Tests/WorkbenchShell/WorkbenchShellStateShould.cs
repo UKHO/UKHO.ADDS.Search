@@ -27,7 +27,6 @@ namespace UKHO.Workbench.Tests.WorkbenchShell
                 WorkbenchShellRegion.ActivityRail,
                 WorkbenchShellRegion.Explorer,
                 WorkbenchShellRegion.ToolSurface,
-                WorkbenchShellRegion.ActiveToolToolbar,
                 WorkbenchShellRegion.StatusBar
             ]);
         }

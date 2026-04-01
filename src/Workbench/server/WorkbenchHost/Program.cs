@@ -344,7 +344,11 @@ namespace WorkbenchHost
                             "Host-owned exemplar tool that explains the current Workbench slice.",
                             100));
                 }
-                shellManager.RegisterToolbar(new ToolbarContribution(WorkbenchHostShellDefaults.OverviewToolbarId, "Home", WorkbenchHostShellDefaults.OverviewCommandId, icon: "dashboard", order: 100));
+
+                // The baseline menu bar must remain useful even before any active tool contributes runtime menus.
+                RegisterMinimumShellMenus(shellManager);
+
+                shellManager.RegisterExplorerToolbar(new ExplorerToolbarContribution(WorkbenchHostShellDefaults.OverviewExplorerToolbarId, "Home", WorkbenchHostShellDefaults.OverviewCommandId, icon: "dashboard", order: 100));
 
                 // Module-contributed tools and shell surfaces use the same registration path as host-owned contributions.
                 foreach (var moduleToolDefinition in contributionRegistry.ToolDefinitions)
@@ -370,6 +374,11 @@ namespace WorkbenchHost
                 foreach (var explorerItem in contributionRegistry.ExplorerItems)
                 {
                     shellManager.RegisterExplorerItem(explorerItem);
+                }
+
+                foreach (var explorerToolbarContribution in contributionRegistry.ExplorerToolbarContributions)
+                {
+                    shellManager.RegisterExplorerToolbar(explorerToolbarContribution);
                 }
 
                 foreach (var menuContribution in contributionRegistry.MenuContributions)
@@ -450,6 +459,53 @@ namespace WorkbenchHost
                 // The preserved output entry timestamps maintain startup chronology when the buffered events are appended after DI is available.
                 outputService.Write(startupOutputEntry);
             }
+        }
+
+        /// <summary>
+        /// Registers the minimum host-provided shell menu presence required to keep the restored menu bar visible and meaningful.
+        /// </summary>
+        /// <param name="shellManager">The shell manager that owns command and menu registration for the bootstrap shell.</param>
+        private static void RegisterMinimumShellMenus(WorkbenchShellManager shellManager)
+        {
+            // The flat bootstrap menu model uses one placeholder command per minimum shell menu until richer grouped menu content is specified.
+            ArgumentNullException.ThrowIfNull(shellManager);
+
+            shellManager.RegisterCommand(
+                new CommandContribution(
+                    WorkbenchHostShellDefaults.EditCommandId,
+                    "Edit",
+                    CommandScope.Host,
+                    executionHandler: CompleteShellMenuPlaceholderCommandAsync));
+            shellManager.RegisterCommand(
+                new CommandContribution(
+                    WorkbenchHostShellDefaults.ViewCommandId,
+                    "View",
+                    CommandScope.Host,
+                    executionHandler: CompleteShellMenuPlaceholderCommandAsync));
+            shellManager.RegisterCommand(
+                new CommandContribution(
+                    WorkbenchHostShellDefaults.HelpCommandId,
+                    "Help",
+                    CommandScope.Host,
+                    executionHandler: CompleteShellMenuPlaceholderCommandAsync));
+
+            shellManager.RegisterMenu(new MenuContribution(WorkbenchHostShellDefaults.EditMenuId, "Edit", WorkbenchHostShellDefaults.EditCommandId, order: 200));
+            shellManager.RegisterMenu(new MenuContribution(WorkbenchHostShellDefaults.ViewMenuId, "View", WorkbenchHostShellDefaults.ViewCommandId, order: 300));
+            shellManager.RegisterMenu(new MenuContribution(WorkbenchHostShellDefaults.HelpMenuId, "Help", WorkbenchHostShellDefaults.HelpCommandId, order: 400));
+        }
+
+        /// <summary>
+        /// Completes a temporary shell-menu command without changing the current Workbench state.
+        /// </summary>
+        /// <param name="activeToolContext">The currently active tool context, which is unused while the minimum shell menus are placeholders.</param>
+        /// <param name="cancellationToken">The cancellation token supplied by the shared command pipeline.</param>
+        /// <returns>A completed task because the placeholder command intentionally performs no action yet.</returns>
+        private static Task CompleteShellMenuPlaceholderCommandAsync(ToolContext? activeToolContext, CancellationToken cancellationToken)
+        {
+            // The placeholder menus must still execute through the shared command path even though their detailed behavior is deferred by specification.
+            _ = activeToolContext;
+            _ = cancellationToken;
+            return Task.CompletedTask;
         }
     }
 }

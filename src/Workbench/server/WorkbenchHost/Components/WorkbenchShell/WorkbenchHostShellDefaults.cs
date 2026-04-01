@@ -36,9 +36,39 @@ namespace WorkbenchHost.Components.WorkbenchShell
         internal const string OverviewMenuId = "menu.host.overview";
 
         /// <summary>
-        /// Gets the identifier of the host-owned toolbar contribution that opens the overview tool.
+        /// Gets the identifier of the host-owned placeholder Help command that keeps the baseline menu bar populated.
         /// </summary>
-        internal const string OverviewToolbarId = "toolbar.host.overview";
+        internal const string HelpCommandId = "command.host.menu.help";
+
+        /// <summary>
+        /// Gets the identifier of the host-owned placeholder Edit command that keeps the baseline menu bar populated.
+        /// </summary>
+        internal const string EditCommandId = "command.host.menu.edit";
+
+        /// <summary>
+        /// Gets the identifier of the host-owned placeholder View command that keeps the baseline menu bar populated.
+        /// </summary>
+        internal const string ViewCommandId = "command.host.menu.view";
+
+        /// <summary>
+        /// Gets the identifier of the host-owned Help menu contribution.
+        /// </summary>
+        internal const string HelpMenuId = "menu.host.help";
+
+        /// <summary>
+        /// Gets the identifier of the host-owned Edit menu contribution.
+        /// </summary>
+        internal const string EditMenuId = "menu.host.edit";
+
+        /// <summary>
+        /// Gets the identifier of the host-owned View menu contribution.
+        /// </summary>
+        internal const string ViewMenuId = "menu.host.view";
+
+        /// <summary>
+        /// Gets the identifier of the host-owned explorer-toolbar contribution that opens the overview tool.
+        /// </summary>
+        internal const string OverviewExplorerToolbarId = "toolbar.explorer.host.overview";
 
         /// <summary>
         /// Gets the identifier of the host-owned static status-bar contribution.

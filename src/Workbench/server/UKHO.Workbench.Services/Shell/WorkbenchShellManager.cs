@@ -66,6 +66,11 @@ namespace UKHO.Workbench.Services.Shell
         public IReadOnlyList<ExplorerContribution> Explorers => _explorerManager.Explorers;
 
         /// <summary>
+        /// Gets the explorer-toolbar contributions visible for the current active explorer.
+        /// </summary>
+        public IReadOnlyList<ExplorerToolbarContribution> ExplorerToolbarContributions => _runtimeContributionManager.GetExplorerToolbarContributions(GetActiveExplorerContribution());
+
+        /// <summary>
         /// Gets the menu contributions visible for the current active tool.
         /// </summary>
         public IReadOnlyList<MenuContribution> MenuContributions => _runtimeContributionManager.GetMenuContributions(State.ActiveTool);
@@ -162,6 +167,17 @@ namespace UKHO.Workbench.Services.Shell
         }
 
         /// <summary>
+        /// Registers a static explorer-toolbar contribution.
+        /// </summary>
+        /// <param name="explorerToolbarContribution">The explorer-toolbar contribution that should become available to the explorer pane toolbar.</param>
+        public void RegisterExplorerToolbar(ExplorerToolbarContribution explorerToolbarContribution)
+        {
+            // Explorer-toolbar contributions compose centrally so host-global left-pane actions and explorer-specific actions stay on one shared shell-owned path.
+            _runtimeContributionManager.RegisterExplorerToolbar(explorerToolbarContribution);
+            NotifyStateChanged();
+        }
+
+        /// <summary>
         /// Registers a static toolbar contribution.
         /// </summary>
         /// <param name="toolbarContribution">The toolbar contribution that should become available to the active-view toolbar.</param>
@@ -205,6 +221,18 @@ namespace UKHO.Workbench.Services.Shell
         {
             // Lookup helpers keep layout code concise while preserving the explorer manager as the source of truth.
             return _explorerManager.GetExplorer(explorerId);
+        }
+
+        /// <summary>
+        /// Returns the currently active explorer contribution when one is selected.
+        /// </summary>
+        /// <returns>The active explorer contribution, or <see langword="null"/> when no explorer has been selected.</returns>
+        private ExplorerContribution? GetActiveExplorerContribution()
+        {
+            // Explorer-toolbar composition is driven by the selected explorer, so the shell resolves that contribution once through the explorer manager.
+            return string.IsNullOrWhiteSpace(State.ActiveExplorerId)
+                ? null
+                : _explorerManager.GetExplorer(State.ActiveExplorerId);
         }
 
         /// <summary>

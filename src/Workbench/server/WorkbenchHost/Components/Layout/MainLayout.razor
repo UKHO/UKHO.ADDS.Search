@@ -14,7 +14,6 @@
             {
                 <RowDefinition Height="48" />
             }
-            <RowDefinition Height="44" />
             <RowDefinition Height="@WorkingAreaHeight" />
             @if (OutputPanelState.IsVisible)
             {
@@ -33,12 +32,15 @@
                             <span>Workbench</span>
                         </div>
 
-                        <nav aria-label="Workbench menu">
+                        <nav class="workbench-shell__menu-bar-nav" aria-label="Workbench menu">
                             <ul class="workbench-shell__menu-items">
                                 @foreach (var menuContribution in MenuContributions)
                                 {
                                     <li>
-                                        <button type="button" class="workbench-shell__menu-button" @onclick="() => ExecuteCommandAsync(menuContribution.CommandId)">
+                                        <button type="button"
+                                                class="workbench-shell__menu-button"
+                                                data-command-id="@menuContribution.CommandId"
+                                                @onclick="() => ExecuteCommandAsync(menuContribution.CommandId)">
                                             @if (!string.IsNullOrWhiteSpace(menuContribution.Icon))
                                             {
                                                 <RadzenIcon Icon="@menuContribution.Icon" />
@@ -51,51 +53,14 @@
                             </ul>
                         </nav>
 
+                        @* The temporary theme toggle stays in the menu bar action slot until a later work package gives it a dedicated longer-term shell home. *@
+                        <div class="workbench-shell__menu-bar-actions" data-role="menu-bar-actions">
+                            <div data-role="appearance-toggle">
+                                <RadzenAppearanceToggle />
+                            </div>
+                        </div>
+
                     </header>
-                </GridElement>
-            }
-
-            @if (IsRegionVisible(WorkbenchShellRegion.ActiveToolToolbar))
-            {
-                <GridElement Row="@ToolbarRow" Column="1">
-                    <section class="workbench-shell__toolbar" data-region="toolbar" aria-label="Workbench toolbar">
-                        <div class="workbench-shell__toolbar-home">
-                            @if (HomeToolbarContribution is not null)
-                            {
-                                <button type="button" class="workbench-shell__menu-button workbench-shell__toolbar-home-button" @onclick="() => ExecuteCommandAsync(HomeToolbarContribution.CommandId)">
-                                    @if (!string.IsNullOrWhiteSpace(HomeToolbarContribution.Icon))
-                                    {
-                                        <RadzenIcon Icon="@HomeToolbarContribution.Icon" />
-                                    }
-
-                                    <span>@HomeToolbarContribution.DisplayName</span>
-                                </button>
-                            }
-                        </div>
-
-                        <div class="workbench-shell__toolbar-meta">
-                            @if (!string.IsNullOrWhiteSpace(ActiveTool?.Badge))
-                            {
-                                <span class="workbench-shell__badge">@ActiveTool.Badge</span>
-                            }
-
-                            @foreach (var toolbarContribution in VisibleToolbarContributions)
-                            {
-                                <button type="button" class="workbench-shell__menu-button" @onclick="() => ExecuteCommandAsync(toolbarContribution.CommandId)">
-                                    @if (!string.IsNullOrWhiteSpace(toolbarContribution.Icon))
-                                    {
-                                        <RadzenIcon Icon="@toolbarContribution.Icon" />
-                                    }
-
-                                    <span>@toolbarContribution.DisplayName</span>
-                                </button>
-                            }
-                        </div>
-
-                        <div class="workbench-shell__toolbar-actions" data-role="toolbar-actions">
-                            <RadzenAppearanceToggle />
-                        </div>
-                    </section>
                 </GridElement>
             }
 
@@ -287,6 +252,23 @@
                                         <h2>@ActiveExplorerDisplayName</h2>
                                     </header>
 
+                                    <section class="workbench-shell__explorer-toolbar" data-region="explorer-toolbar" role="toolbar" aria-label="Explorer toolbar">
+                                        @foreach (var explorerToolbarContribution in ExplorerToolbarContributions)
+                                        {
+                                            <button type="button"
+                                                    class="workbench-shell__menu-button"
+                                                    data-command-id="@explorerToolbarContribution.CommandId"
+                                                    @onclick="() => ExecuteCommandAsync(explorerToolbarContribution.CommandId)">
+                                                @if (!string.IsNullOrWhiteSpace(explorerToolbarContribution.Icon))
+                                                {
+                                                    <RadzenIcon Icon="@explorerToolbarContribution.Icon" />
+                                                }
+
+                                                <span>@explorerToolbarContribution.DisplayName</span>
+                                            </button>
+                                        }
+                                    </section>
+
                                     @foreach (var explorerSection in ActiveExplorerSections)
                                     {
                                         <section class="workbench-shell__explorer-section" aria-labelledby="@explorerSection.Id">
@@ -419,6 +401,37 @@
                                             </RadzenDropDown>
                                         </div>
                                     </section>
+
+                                    @if (ShouldRenderActiveToolToolbar)
+                                    {
+                                        @* Active-tool actions now live inside the active tab view so the toolbar follows the selected tab instead of occupying a shell-wide row. *@
+                                        <section class="workbench-shell__active-tool-toolbar"
+                                                 data-region="active-tool-toolbar"
+                                                 data-toolbar-host="active-tab"
+                                                 aria-label="Active tool toolbar">
+                                            <div class="workbench-shell__active-tool-toolbar-meta">
+                                                @if (!string.IsNullOrWhiteSpace(ActiveTool?.Badge))
+                                                {
+                                                    <span class="workbench-shell__badge">@ActiveTool.Badge</span>
+                                                }
+
+                                                @foreach (var toolbarContribution in ActiveToolToolbarContributions)
+                                                {
+                                                    <button type="button"
+                                                            class="workbench-shell__menu-button"
+                                                            data-command-id="@toolbarContribution.CommandId"
+                                                            @onclick="() => ExecuteCommandAsync(toolbarContribution.CommandId)">
+                                                        @if (!string.IsNullOrWhiteSpace(toolbarContribution.Icon))
+                                                        {
+                                                            <RadzenIcon Icon="@toolbarContribution.Icon" />
+                                                        }
+
+                                                        <span>@toolbarContribution.DisplayName</span>
+                                                    </button>
+                                                }
+                                            </div>
+                                        </section>
+                                    }
 
                                     <div class="workbench-shell__tool-body">
                                         @Body

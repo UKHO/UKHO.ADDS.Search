@@ -2,6 +2,7 @@ using Microsoft.Extensions.Logging.Abstractions;
 using Shouldly;
 using UKHO.Workbench.Services.Shell;
 using UKHO.Workbench.Tools;
+using UKHO.Workbench.WorkbenchShell;
 using WorkbenchHost.Components.Tools;
 using Xunit;
 
@@ -53,6 +54,49 @@ namespace WorkbenchHost.Tests
             var exception = Should.Throw<InvalidOperationException>(() => shellManager.ActivateTool(ActivationTarget.CreateToolSurfaceTarget("tool.unknown")));
 
             exception.Message.ShouldContain("tool.unknown");
+        }
+
+        /// <summary>
+        /// Confirms active-tool toolbar contributions follow the currently active tab instead of leaking across open tools.
+        /// </summary>
+        [Fact]
+        public void ExposeToolbarContributionsForTheActiveTabOnly()
+        {
+            // Tab switching should recompose toolbar contributions from the newly active tool so the layout can render one in-tab toolbar surface.
+            var shellManager = new WorkbenchShellManager(NullLogger<WorkbenchShellManager>.Instance);
+            var overviewDefinition = new ToolDefinition(
+                "tool.bootstrap.overview",
+                "Workbench overview",
+                typeof(WorkbenchOverviewTool),
+                "explorer.bootstrap",
+                "dashboard",
+                "Shows the first host-owned tool.");
+            var searchDefinition = new ToolDefinition(
+                "tool.search.query",
+                "Search query",
+                typeof(WorkbenchOverviewTool),
+                "explorer.search",
+                "manage_search",
+                "Shows a query-focused tool.");
+
+            shellManager.RegisterTool(overviewDefinition);
+            shellManager.RegisterTool(searchDefinition);
+
+            var overviewTool = shellManager.ActivateTool(ActivationTarget.CreateToolSurfaceTarget(overviewDefinition.Id));
+            overviewTool.Context.SetRuntimeToolbarContributions([
+                new ToolbarContribution("toolbar.overview.refresh", "Refresh overview", "command.overview.refresh", icon: "refresh", order: 100)
+            ]);
+
+            var searchTool = shellManager.ActivateTool(ActivationTarget.CreateToolSurfaceTarget(searchDefinition.Id));
+            searchTool.Context.SetRuntimeToolbarContributions([
+                new ToolbarContribution("toolbar.search.run", "Run query", "command.search.run", icon: "play_arrow", order: 100)
+            ]);
+
+            shellManager.ToolbarContributions.Select(contribution => contribution.DisplayName).ShouldBe(["Run query"]);
+
+            shellManager.ActivateTab(overviewTool.InstanceId);
+
+            shellManager.ToolbarContributions.Select(contribution => contribution.DisplayName).ShouldBe(["Refresh overview"]);
         }
     }
 }

@@ -26,11 +26,6 @@ namespace UKHO.Workbench.WorkbenchShell
         ToolSurface,
 
         /// <summary>
-        /// Represents the active-tool toolbar shown above the working surface.
-        /// </summary>
-        ActiveToolToolbar,
-
-        /// <summary>
         /// Represents the full-width status bar shown at the bottom of the shell.
         /// </summary>
         StatusBar

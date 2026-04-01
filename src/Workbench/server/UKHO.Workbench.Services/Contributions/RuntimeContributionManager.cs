@@ -1,4 +1,5 @@
 using UKHO.Workbench.Tools;
+using UKHO.Workbench.Explorers;
 using UKHO.Workbench.WorkbenchShell;
 
 namespace UKHO.Workbench.Services.Contributions
@@ -9,6 +10,7 @@ namespace UKHO.Workbench.Services.Contributions
     public class RuntimeContributionManager
     {
         private readonly Dictionary<string, MenuContribution> _menuContributions = new(StringComparer.Ordinal);
+        private readonly Dictionary<string, ExplorerToolbarContribution> _explorerToolbarContributions = new(StringComparer.Ordinal);
         private readonly Dictionary<string, ToolbarContribution> _toolbarContributions = new(StringComparer.Ordinal);
         private readonly Dictionary<string, StatusBarContribution> _statusBarContributions = new(StringComparer.Ordinal);
 
@@ -21,6 +23,17 @@ namespace UKHO.Workbench.Services.Contributions
             // Menu contributions remain unique so shell composition stays deterministic across host and module startup.
             ArgumentNullException.ThrowIfNull(menuContribution);
             _menuContributions[menuContribution.Id] = menuContribution;
+        }
+
+        /// <summary>
+        /// Registers a static explorer-toolbar contribution.
+        /// </summary>
+        /// <param name="explorerToolbarContribution">The explorer-toolbar contribution that should be available to the explorer pane toolbar.</param>
+        public void RegisterExplorerToolbar(ExplorerToolbarContribution explorerToolbarContribution)
+        {
+            // Explorer-toolbar contributions remain unique so repeated startup runs stay idempotent while the mixed left-pane surface remains deterministic.
+            ArgumentNullException.ThrowIfNull(explorerToolbarContribution);
+            _explorerToolbarContributions[explorerToolbarContribution.Id] = explorerToolbarContribution;
         }
 
         /// <summary>
@@ -57,6 +70,22 @@ namespace UKHO.Workbench.Services.Contributions
                 .Concat(activeTool?.RuntimeMenuContributions ?? Array.Empty<MenuContribution>())
                 .OrderBy(menuContribution => menuContribution.Order)
                 .ThenBy(menuContribution => menuContribution.DisplayName, StringComparer.Ordinal)
+                .ToArray();
+        }
+
+        /// <summary>
+        /// Returns the explorer-toolbar contributions visible for the supplied active explorer.
+        /// </summary>
+        /// <param name="activeExplorer">The currently active explorer contribution, or <see langword="null"/> when no explorer is active.</param>
+        /// <returns>The shell-global explorer-toolbar contributions plus any explorer-specific contributions for the active explorer.</returns>
+        public IReadOnlyList<ExplorerToolbarContribution> GetExplorerToolbarContributions(ExplorerContribution? activeExplorer)
+        {
+            // The explorer toolbar mixes shell-global left-pane actions with explorer-specific actions, but it must stay independent from active-tool toolbar composition.
+            return _explorerToolbarContributions.Values
+                .Where(explorerToolbarContribution => string.IsNullOrWhiteSpace(explorerToolbarContribution.OwnerExplorerId)
+                    || string.Equals(explorerToolbarContribution.OwnerExplorerId, activeExplorer?.Id, StringComparison.Ordinal))
+                .OrderBy(explorerToolbarContribution => explorerToolbarContribution.Order)
+                .ThenBy(explorerToolbarContribution => explorerToolbarContribution.DisplayName, StringComparer.Ordinal)
                 .ToArray();
         }
 

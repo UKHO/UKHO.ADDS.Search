@@ -36,6 +36,11 @@ namespace UKHO.Workbench.Modules
         IReadOnlyList<ExplorerItem> ExplorerItems { get; }
 
         /// <summary>
+        /// Gets the static explorer-toolbar contributions contributed through the current registration session.
+        /// </summary>
+        IReadOnlyList<ExplorerToolbarContribution> ExplorerToolbarContributions { get; }
+
+        /// <summary>
         /// Gets the static menu contributions contributed through the current registration session.
         /// </summary>
         IReadOnlyList<MenuContribution> MenuContributions { get; }
@@ -79,6 +84,12 @@ namespace UKHO.Workbench.Modules
         /// </summary>
         /// <param name="explorerItem">The explorer item that should become available to the explorer pane.</param>
         void AddExplorerItem(ExplorerItem explorerItem);
+
+        /// <summary>
+        /// Adds a static explorer-toolbar contribution to the Workbench contribution catalog.
+        /// </summary>
+        /// <param name="explorerToolbarContribution">The explorer-toolbar contribution that should become available to the explorer pane toolbar.</param>
+        void AddExplorerToolbar(ExplorerToolbarContribution explorerToolbarContribution);
 
         /// <summary>
         /// Adds a static menu contribution to the Workbench contribution catalog.
