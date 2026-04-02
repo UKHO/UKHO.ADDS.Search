@@ -204,7 +204,7 @@ This class is particularly important because it shows that the runtime is not ju
 
 This is what allows merge-style nodes to be built without each implementation inventing its own concurrency and fairness rules.
 
-The fairness point is worth slowing down for. A naÃ¯ve two-input merge often ends up preferring whichever input is already busy, which can starve the quieter side. `MultiInputNodeBase<T1, T2, TOut>` deliberately alternates preference and waits on both readers when needed. In other words, fairness is not accidental here. It is designed into the base class.
+The fairness point is worth slowing down for. A naïve two-input merge often ends up preferring whichever input is already busy, which can starve the quieter side. `MultiInputNodeBase<T1, T2, TOut>` deliberately alternates preference and waits on both readers when needed. In other words, fairness is not accidental here. It is designed into the base class.
 
 ## The node taxonomy the runtime provides
 

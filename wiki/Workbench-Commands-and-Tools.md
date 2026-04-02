@@ -132,7 +132,7 @@ If a tool button directly reaches into host services to do shell work, the actio
 
 ### Do not make every command tool-scoped
 
-If the action is really just â€œopen this tool,â€ keep it host-scoped. Tool scope should describe ownership, not merely proximity.
+If the action is really just “open this tool,” keep it host-scoped. Tool scope should describe ownership, not merely proximity.
 
 ### Do not use unstable identifiers
 

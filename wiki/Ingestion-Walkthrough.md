@@ -143,7 +143,7 @@ If no title survives:
 - the message goes to the index-operation dead-letter flow
 - the document is not indexed
 
-This is one of the most important runtime behaviors to remember while authoring rules. A ruleset that adds keywords but never produces a retained title is not â€œpartially successfulâ€; it is a failed ingestion outcome.
+This is one of the most important runtime behaviors to remember while authoring rules. A ruleset that adds keywords but never produces a retained title is not “partially successful”; it is a failed ingestion outcome.
 
 ## 9. Microbatching and bulk indexing keep ordering intact
 

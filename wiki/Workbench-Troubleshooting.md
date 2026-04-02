@@ -168,7 +168,7 @@ The output service retains entries, but the panel can show a filtered subset. Th
 ### What to check
 
 1. Confirm the component uses the injected `ToolContext` for title, badge, status, selection, or notifications.
-2. Check logs for â€œtool instance was not tracked by the shell.â€
+2. Check logs for “tool instance was not tracked by the shell.”
 3. Verify the update happens while the tab is still open.
 
 ### Why this works

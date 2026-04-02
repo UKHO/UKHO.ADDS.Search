@@ -47,7 +47,7 @@ Startup output is buffered before the interactive shell is ready. `Program.cs` w
 
 Runtime output is simpler. Once the shell is interactive, notifications, context updates, status updates, and later diagnostics write directly into the shared output service.
 
-The result is one continuous session story instead of a split between â€œmessages from startupâ€ and â€œmessages from later.â€
+The result is one continuous session story instead of a split between “messages from startup” and “messages from later.”
 
 ```mermaid
 flowchart TD
@@ -108,15 +108,15 @@ That sequence shows the full handoff from host startup into shell-owned session 
 
 ## Common misunderstandings
 
-### â€œThe output panel is empty, so nothing happened.â€
+### “The output panel is empty, so nothing happened.”
 
 The panel may be collapsed, filtered above the entry level you expect, or simply showing retained output after the first interactive render. Check visibility and the minimum visible level first.
 
-### â€œIf I saw the toast, I do not need to check output.â€
+### “If I saw the toast, I do not need to check output.”
 
 Toasts are the transient surface. Output is the historical surface. If you need to understand the session later, the panel is the authoritative record.
 
-### â€œThe status bar should show all of this directly.â€
+### “The status bar should show all of this directly.”
 
 The current design intentionally moved durable shell history out of the status bar and into the output panel. The lighter status bar is part of the model, not a missing implementation step.
 

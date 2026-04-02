@@ -108,7 +108,7 @@ The important thing to notice is that the shell manager is not the discovery mec
 
 Once the host finishes startup, responsibility shifts from infrastructure loading to service-layer orchestration.
 
-- `WorkbenchShellManager` becomes the host-facing faÃ§ade for shell state and activation.
+- `WorkbenchShellManager` becomes the host-facing façade for shell state and activation.
 - `CommandManager` owns command registration and execution routing.
 - `ExplorerManager` owns explorer, section, and item composition.
 - `RuntimeContributionManager` merges static and active-tool contributions for menus, toolbars, explorer toolbar content, and status surfaces.

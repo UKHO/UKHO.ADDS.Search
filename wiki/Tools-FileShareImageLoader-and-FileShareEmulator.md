@@ -80,13 +80,13 @@ The indexing page is the main operational UI for driving the ingestion host.
 
 Available actions include:
 
-- **Index next pending batches** â€” submit the next `N` pending batches
-- **Index all pending batches** â€” submit everything currently pending
-- **Index batch by id** â€” queue a single batch for debugging
-- **Index batch by business unit** â€” queue all pending batches for a selected business unit
-- **Reset all batches to pending** â€” make all batches re-indexable
-- **Clear ingestion queue** â€” drain the main queue and poison queue
-- **Delete Elasticsearch indexes** â€” delete all indexes in the connected Elasticsearch instance
+- **Index next pending batches** — submit the next `N` pending batches
+- **Index all pending batches** — submit everything currently pending
+- **Index batch by id** — queue a single batch for debugging
+- **Index batch by business unit** — queue all pending batches for a selected business unit
+- **Reset all batches to pending** — make all batches re-indexable
+- **Clear ingestion queue** — drain the main queue and poison queue
+- **Delete Elasticsearch indexes** — delete all indexes in the connected Elasticsearch instance
 
 These capabilities are backed by services in `tools/FileShareEmulator/Services`.
 

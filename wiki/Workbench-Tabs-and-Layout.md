@@ -6,7 +6,7 @@ This chapter sits at the point where Workbench stops being an abstract compositi
 
 ## Tabs are logical identities, not just visible labels
 
-The current shell does not treat a tab as â€œwhatever is currently rendered.â€ It treats a tab as the visible representation of a stable logical target.
+The current shell does not treat a tab as “whatever is currently rendered.” It treats a tab as the visible representation of a stable logical target.
 
 That logical identity comes from `ActivationTarget.CreateTabIdentity()` in `src/workbench/server/UKHO.Workbench/Tools/ActivationTarget.cs`. The identity combines:
 
@@ -108,7 +108,7 @@ For the component-level layout API, continue to [Workbench layout](Workbench-Lay
 
 Today most exemplar tools use one obvious logical identity, so reopening them focuses the same tab. The `ActivationTarget` model already supports a richer pattern when a tool should open separate tabs for different logical records or contexts.
 
-If you pass a `parameterIdentity`, the default logical key becomes `toolId::parameterIdentity`. That means the shell can treat â€œsame tool, different targetâ€ as several valid open tabs without weakening the reuse rules for the ordinary same-target case.
+If you pass a `parameterIdentity`, the default logical key becomes `toolId::parameterIdentity`. That means the shell can treat “same tool, different target” as several valid open tabs without weakening the reuse rules for the ordinary same-target case.
 
 This is a useful design detail for contributors because it shows the intended extension path. Workbench does not need ad hoc tab rules for each future module. It already has a bounded identity model.
 
