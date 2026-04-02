@@ -8,10 +8,18 @@ using UKHO.Search.Configuration;
 
 namespace AppHost
 {
+    /// <summary>
+    /// Orchestrates the local Aspire developer environment for UKHO Search.
+    /// </summary>
     public class AppHost
     {
+        /// <summary>
+        /// Builds and runs the distributed application that hosts the local developer stack.
+        /// </summary>
+        /// <param name="args">The command-line arguments supplied to the AppHost process.</param>
         public static async Task Main(string[] args)
         {
+            // Create the Aspire application model that coordinates the retained developer services.
             var builder = DistributedApplication.CreateBuilder(args);
 
             var environmentParameter = builder.AddParameter("environment");
@@ -57,10 +65,10 @@ namespace AppHost
                     var keyCloakUsernameParameter = builder.AddParameter("keycloak-username");
                     var keyCloakPasswordParameter = builder.AddParameter("keycloak-password");
 
-
                     var keycloak = builder.AddKeycloak(ServiceNames.KeyCloak, 8080, keyCloakUsernameParameter, keyCloakPasswordParameter)
                                           .WithDataVolume()
                                           .WithRealmImport("./Realms")
+                                          .WithOtlpExporter()
                                           .WithLifetime(ContainerLifetime.Persistent);
 
                     var elasticsearch = builder.AddElasticsearchWithKibana(ServiceNames.ElasticSearch, elasticPasswordParameter)
@@ -68,7 +76,7 @@ namespace AppHost
 
                     var ingestionService = builder.AddProject<IngestionServiceHost>(ServiceNames.Ingestion)
                                                   .WithExternalHttpEndpoints()
-                                                   .WithEnvironment("ingestionmode", ingestionModeParameter)
+                                                  .WithEnvironment("ingestionmode", ingestionModeParameter)
                                                   .WithReference(storageQueue)
                                                   .WithReference(storageTable)
                                                   .WithReference(storageBlob)
@@ -106,14 +114,20 @@ namespace AppHost
                                                 .WaitFor(sqlServer)
                                                 .WaitFor(storageBlob);
 
-                    // Configuration
+                     // Start the hosted Workbench shell directly from AppHost so the Aspire endpoint opens the Blazor client at '/'.
+                     builder.AddProject<WorkbenchHost>(ServiceNames.Workbench)
+                            .WithReference(keycloak)
+                            .WaitFor(keycloak)
+                            .WithExternalHttpEndpoints();
+
+                    // Load the shared configuration for the retained service set only.
                     if (builder.ExecutionContext.IsRunMode)
                     {
                         var rulesPath = Path.GetFullPath(Path.Combine(builder.Environment.ContentRootPath, "..", "..", "..", "rules"));
 
                         builder.AddConfigurationEmulator(
                             ServiceConfiguration.ServiceGroupName,
-                            [ingestionService, queryService, rulesWorkbench!],
+                            [ingestionService, queryService, rulesWorkbench],
                             [fileShareEmulator],
                             @"../../../configuration/configuration.json",
                             @"../../../configuration/external-services.json",
@@ -184,8 +198,14 @@ namespace AppHost
                          .RunAsync();
         }
 
+        /// <summary>
+        /// Reads Docker image metadata used by the import workflow so the loader can surface traceability details.
+        /// </summary>
+        /// <param name="imageReference">The Docker image reference to inspect.</param>
+        /// <returns>The discovered Docker image metadata, or an empty metadata object when inspection fails.</returns>
         private static async Task<DockerImageMetadata> GetDockerImageMetadataAsync(string imageReference)
         {
+            // Inspect the Docker image metadata so the import workflow can expose the resolved tags, digests, and creation details.
             try
             {
                 using var client = new DockerClientConfiguration().CreateClient();
@@ -212,6 +232,9 @@ namespace AppHost
             }
         }
 
+        /// <summary>
+        /// Carries the Docker image metadata needed by the import workflow annotations.
+        /// </summary>
         private sealed record DockerImageMetadata(string Tags, string Digest, long SizeBytes, string CreatedUtc);
     }
 }

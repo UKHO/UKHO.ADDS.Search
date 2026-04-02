@@ -112,6 +112,7 @@ namespace UKHO.ADDS.Aspire.Configuration.Emulator
             app.UseAuthentication();
             app.UseAuthorization();
 
+            app.MapGet("/health", () => Results.Ok());
             app.MapGet("/kv/{**key}", ConfigurationSettingHandler.Get).RequireAuthorization();
             app.MapGet("/kv", ConfigurationSettingHandler.List).RequireAuthorization();
             app.MapPut("/kv/{**key}", ConfigurationSettingHandler.Set).RequireAuthorization();

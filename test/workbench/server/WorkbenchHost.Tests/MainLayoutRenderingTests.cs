@@ -1,0 +1,1948 @@
+using Microsoft.AspNetCore.Components;
+using Microsoft.AspNetCore.Components.Web;
+using Microsoft.Extensions.DependencyInjection;
+using Microsoft.Extensions.Logging;
+using Microsoft.JSInterop;
+using Radzen;
+using System.Reflection;
+using Shouldly;
+using UKHO.Workbench.Layout;
+using UKHO.Workbench.Commands;
+using UKHO.Workbench.Explorers;
+using UKHO.Workbench.Output;
+using UKHO.Workbench.Services;
+using UKHO.Workbench.Services.Shell;
+using UKHO.Workbench.Tools;
+using UKHO.Workbench.WorkbenchShell;
+using WorkbenchHost.Components.Layout;
+using WorkbenchHost.Components.Tools;
+using WorkbenchHost.Services;
+using XtermBlazor;
+using Xunit;
+
+namespace WorkbenchHost.Tests
+{
+    /// <summary>
+    /// Verifies the Workbench host layout introduced for the first tabbed Workbench slice.
+    /// </summary>
+    public class MainLayoutRenderingTests
+    {
+        private const string FallbackExplorerId = "explorer.host.overview";
+        private const string FallbackExplorerDisplayName = "Workbench";
+        private const string HostToolsSectionId = "explorer.section.host.tools";
+        private const string OverviewToolId = "tool.bootstrap.overview";
+        private const string OverviewCommandId = "command.host.open-overview";
+        private const string OverviewExplorerToolbarId = "toolbar.explorer.host.overview";
+        private const string OverviewRefreshCommandId = "command.host.overview.refresh";
+        private const string HelpCommandId = "command.host.menu.help";
+        private const string EditCommandId = "command.host.menu.edit";
+        private const string ViewCommandId = "command.host.menu.view";
+        private const string HelpMenuId = "menu.host.help";
+        private const string EditMenuId = "menu.host.edit";
+        private const string ViewMenuId = "menu.host.view";
+        private const string SearchRunCommandId = "command.module.search.run";
+
+        /// <summary>
+        /// Confirms the layout renders the restored menu-bar baseline with the minimum host menus and the temporary theme-toggle action area.
+        /// </summary>
+        [Fact]
+        public async Task RenderTheBootstrapWorkbenchShell()
+        {
+            // The renderer uses the same shell manager and Radzen registrations as the host so the markup reflects the restored shell chrome.
+            await using var serviceProvider = CreateServiceProvider();
+            var shellManager = serviceProvider.GetRequiredService<WorkbenchShellManager>();
+            var outputService = serviceProvider.GetRequiredService<IWorkbenchOutputService>();
+            SeedHostShell(shellManager);
+            shellManager.ActivateTool(ActivationTarget.CreateToolSurfaceTarget(OverviewToolId));
+            outputService.Write(OutputLevel.Info, "Shell", "Workbench shell bootstrap completed.");
+
+            var renderer = new HtmlRenderer(serviceProvider, serviceProvider.GetRequiredService<ILoggerFactory>());
+            var html = await RenderLayoutAsync(renderer);
+
+            shellManager.State.IsRegionVisible(WorkbenchShellRegion.MenuBar).ShouldBeTrue();
+            html.ShouldContain("data-region=\"menu-bar\"");
+            html.ShouldContain($"data-command-id=\"{HelpCommandId}\"");
+            html.ShouldContain($"data-command-id=\"{EditCommandId}\"");
+            html.ShouldContain($"data-command-id=\"{ViewCommandId}\"");
+            html.ShouldContain("data-role=\"menu-bar-actions\"");
+            html.ShouldContain("data-role=\"appearance-toggle\"");
+            html.ShouldContain("data-region=\"activity-rail\"");
+            html.ShouldContain("data-region=\"explorer\"");
+            html.ShouldContain("data-region=\"explorer-toolbar\"");
+            html.ShouldContain("data-region=\"tool-surface\"");
+            html.ShouldContain("data-region=\"tab-strip\"");
+            html.ShouldContain("data-region=\"active-tool-toolbar\"");
+            html.ShouldContain("data-region=\"status-bar\"");
+            html.ShouldContain("data-role=\"output-toggle\"");
+            html.ShouldNotContain("data-region=\"toolbar\"");
+            CountOccurrences(html, $"data-command-id=\"{OverviewCommandId}\"").ShouldBe(1);
+            html.ShouldContain("Workbench overview");
+            html.ShouldContain("aria-label=\"Home\"");
+            html.ShouldContain("aria-label=\"Workbench\"");
+            html.ShouldContain(">Edit<");
+            html.ShouldContain(">View<");
+            html.ShouldContain(">Help<");
+            html.ShouldNotContain("<span>Workbench</span>");
+            html.ShouldNotContain("workbench-shell__toolbar-home");
+            html.ShouldNotContain("Active tab");
+            html.ShouldContain("BodyMarker");
+        }
+
+        /// <summary>
+        /// Confirms the layout renders the centralized shell-theme hooks and fixed sizing markers required by the initial theme baseline.
+        /// </summary>
+        [Fact]
+        public async Task RenderTheCentralizedShellThemeHooksAndFixedSizingMarkers()
+        {
+            // The shell markup exposes stable hooks so rendering tests can lock the host-owned sizing and theme regions without depending on browser-computed CSS values.
+            await using var serviceProvider = CreateServiceProvider();
+            var shellManager = serviceProvider.GetRequiredService<WorkbenchShellManager>();
+            var outputService = serviceProvider.GetRequiredService<IWorkbenchOutputService>();
+            SeedHostShell(shellManager);
+            _ = shellManager.ActivateTool(ActivationTarget.CreateToolSurfaceTarget(OverviewToolId));
+            outputService.SetPanelVisibility(true);
+
+            var renderer = new HtmlRenderer(serviceProvider, serviceProvider.GetRequiredService<ILoggerFactory>());
+            var html = await RenderLayoutAsync(renderer);
+
+            html.ShouldContain("data-shell-theme-scope=\"host\"");
+            html.ShouldContain("data-shell-row-height=\"36\"");
+            html.ShouldContain("data-shell-activity-width=\"50\"");
+            html.ShouldContain("data-shell-theme-region=\"menu\"");
+            html.ShouldContain("data-shell-theme-region=\"activity\"");
+            html.ShouldContain("data-shell-theme-region=\"explorer\"");
+            html.ShouldContain("data-shell-theme-region=\"center-view\"");
+            html.ShouldContain("data-shell-theme-region=\"center-toolbar\"");
+            html.ShouldContain("data-shell-theme-region=\"output-toolbar\"");
+            html.ShouldContain("data-shell-theme-region=\"status\"");
+        }
+
+        /// <summary>
+        /// Confirms the isolated layout stylesheet defines the centralized shell tokens and fixed dimensions required by the initial theme contract.
+        /// </summary>
+        [Fact]
+        public void DefineTheShellThemeTokensAndFixedSizingContractInTheLayoutStylesheet()
+        {
+            // Reading the isolated stylesheet keeps the regression focused on the host-owned shell tokens that the browser later resolves for both Radzen light and dark themes.
+            var css = ReadMainLayoutStylesheet();
+
+            css.ShouldContain("--workbench-shell-row-height: 36px;");
+            css.ShouldContain("--workbench-shell-activity-width: 50px;");
+            css.ShouldContain("--workbench-shell-menu-background: rgb(224, 225, 228);");
+            css.ShouldContain("--workbench-shell-activity-background: rgb(224, 225, 228);");
+            css.ShouldContain("--workbench-shell-center-view-background: rgb(255, 255, 254);");
+            css.ShouldContain("--workbench-shell-output-toolbar-background: rgb(224, 225, 228);");
+            css.ShouldContain("html:has(#radzen-theme-link[href*=\"-dark\"]) .workbench-shell");
+            css.ShouldContain("--workbench-shell-activity-background: rgb(14, 13, 18);");
+            css.ShouldContain("--workbench-shell-center-view-background: rgb(30, 30, 30);");
+            css.ShouldContain("--workbench-shell-center-toolbar-background: rgb(38, 38, 46);");
+            css.ShouldContain("height: var(--workbench-shell-row-height);");
+            css.ShouldContain("padding-left: 0.75rem;");
+        }
+
+        /// <summary>
+        /// Confirms the layout stylesheet removes shell border chrome and defines flat-tab state rules for the Workbench shell.
+        /// </summary>
+        [Fact]
+        public void DefineBorderlessChromeAndFlatTabRulesInTheLayoutStylesheet()
+        {
+            // The stylesheet is the shell-owned source of truth for the borderless contract, so the regression reads the isolated CSS rather than depending on browser-computed values.
+            var css = ReadMainLayoutStylesheet();
+
+            css.ShouldContain("border: 0;");
+            css.ShouldContain("outline: 2px solid color-mix(in srgb, var(--rz-primary) 55%, transparent);");
+            css.ShouldContain(".workbench-shell__icon-button {");
+            css.ShouldContain(".workbench-shell__tab-overflow-splitbutton::deep .rz-splitbutton {");
+            css.ShouldContain("grid-template-columns: auto auto;");
+            css.ShouldContain("width: 6rem;");
+            css.ShouldContain("max-width: 6rem;");
+            css.ShouldContain(".workbench-shell__tab-overflow-splitbutton::deep .rz-splitbutton .rz-button:focus-visible {");
+            css.ShouldContain("outline: none;");
+            css.ShouldContain("color: var(--rz-text-color);");
+            css.ShouldContain("width: 1.8rem;");
+            css.ShouldContain(".workbench-shell__tab-overflow-splitbutton::deep .rz-splitbutton-menu {");
+            css.ShouldContain("min-width: 22rem !important;");
+            css.ShouldContain("width: max-content !important;");
+            css.ShouldContain("max-width: none !important;");
+            css.ShouldContain(".workbench-shell__tab-overflow-splitbutton::deep .rz-splitbutton-menu .rz-menuitem-text {");
+            css.ShouldContain("white-space: nowrap !important;");
+            css.ShouldContain("display: inline-flex !important;");
+            css.ShouldContain(".workbench-shell__tab-entry {");
+            css.ShouldContain("background: var(--workbench-shell-tab-inactive-background);");
+            css.ShouldContain(".workbench-shell__tab-entry:has(.workbench-shell__tab-button--active) {");
+            css.ShouldContain("background: var(--workbench-shell-tab-active-background);");
+            css.ShouldContain(".workbench-shell__tab-button--active {");
+            css.ShouldContain("font-weight: 600;");
+            css.ShouldNotContain("border-left: 1px solid var(--rz-base-300);");
+        }
+
+        /// <summary>
+        /// Confirms the host-owned Home action renders through the explorer toolbar rather than the shell-wide active-tool toolbar row.
+        /// </summary>
+        [Fact]
+        public async Task RenderHomeInTheExplorerToolbar()
+        {
+            // Home is now a left-pane action, so the explorer toolbar should host the only command-routed overview shortcut while the top toolbar stays free for active-tool actions.
+            await using var serviceProvider = CreateServiceProvider();
+            var shellManager = serviceProvider.GetRequiredService<WorkbenchShellManager>();
+            SeedHostShell(shellManager);
+
+            var renderer = new HtmlRenderer(serviceProvider, serviceProvider.GetRequiredService<ILoggerFactory>());
+            var html = await RenderLayoutAsync(renderer);
+            var explorerToolbarIndex = html.IndexOf("data-region=\"explorer-toolbar\"", StringComparison.Ordinal);
+            var explorerSectionIndex = html.IndexOf("explorer.section.host.tools", StringComparison.Ordinal);
+
+            explorerToolbarIndex.ShouldBeGreaterThanOrEqualTo(0);
+            explorerSectionIndex.ShouldBeGreaterThan(explorerToolbarIndex);
+            CountOccurrences(html, $"data-command-id=\"{OverviewCommandId}\"").ShouldBe(1);
+            html.ShouldContain($"data-command-id=\"{OverviewCommandId}\"");
+            html.ShouldNotContain("workbench-shell__toolbar-home");
+        }
+
+        /// <summary>
+        /// Confirms the menu bar stays visible with the host-provided baseline menus even when no active-tool menu contributions exist.
+        /// </summary>
+        [Fact]
+        public async Task KeepTheMenuBarVisibleWhenNoActiveToolMenuContributionsExist()
+        {
+            // Static host menus must keep the menu bar useful even before any tool opens or contributes runtime menu content.
+            await using var serviceProvider = CreateServiceProvider();
+            var shellManager = serviceProvider.GetRequiredService<WorkbenchShellManager>();
+            SeedHostShell(shellManager);
+
+            var renderer = new HtmlRenderer(serviceProvider, serviceProvider.GetRequiredService<ILoggerFactory>());
+            var html = await RenderLayoutAsync(renderer);
+
+            shellManager.State.ActiveTool.ShouldBeNull();
+            html.ShouldContain("data-region=\"menu-bar\"");
+            html.ShouldContain($"data-command-id=\"{HelpCommandId}\"");
+            html.ShouldContain($"data-command-id=\"{EditCommandId}\"");
+            html.ShouldContain($"data-command-id=\"{ViewCommandId}\"");
+            html.ShouldContain("data-role=\"menu-bar-actions\"");
+            html.ShouldContain("data-role=\"appearance-toggle\"");
+            html.ShouldNotContain("data-region=\"active-tool-toolbar\"");
+        }
+
+        /// <summary>
+        /// Confirms active-tool toolbar contributions render inside the active tab view and switch with the active tab.
+        /// </summary>
+        [Fact]
+        public async Task RenderTheActiveToolToolbarInsideTheActiveTabViewAndUpdateItWhenTabsSwitch()
+        {
+            // The final shell arrangement should host active-tool actions inside the tab view so the toolbar always appears for the active tab, even before that tab contributes actions.
+            await using var serviceProvider = CreateServiceProvider();
+            var shellManager = serviceProvider.GetRequiredService<WorkbenchShellManager>();
+            SeedHostShell(shellManager);
+            SeedSearchShell(shellManager);
+
+            var overviewTool = shellManager.ActivateTool(ActivationTarget.CreateToolSurfaceTarget(OverviewToolId));
+            var renderer = new HtmlRenderer(serviceProvider, serviceProvider.GetRequiredService<ILoggerFactory>());
+            var blankOverviewHtml = await RenderLayoutAsync(renderer);
+
+            blankOverviewHtml.ShouldContain("data-region=\"active-tool-toolbar\"");
+
+            overviewTool.Context.SetRuntimeToolbarContributions([
+                new ToolbarContribution("toolbar.host.overview.refresh", "Refresh overview", OverviewRefreshCommandId, icon: "refresh", order: 100)
+            ]);
+
+            var searchTool = shellManager.ActivateTool(ActivationTarget.CreateToolSurfaceTarget("tool.module.search.query"));
+            searchTool.Context.SetRuntimeToolbarContributions([
+                new ToolbarContribution("toolbar.module.search.run", "Run query", SearchRunCommandId, icon: "play_arrow", order: 100)
+            ]);
+
+            var searchHtml = await RenderLayoutAsync(renderer);
+            var tabStripIndex = searchHtml.IndexOf("data-region=\"tab-strip\"", StringComparison.Ordinal);
+            var activeToolToolbarIndex = searchHtml.IndexOf("data-region=\"active-tool-toolbar\"", StringComparison.Ordinal);
+            var bodyIndex = searchHtml.IndexOf("BodyMarker", StringComparison.Ordinal);
+
+            searchHtml.ShouldNotContain("data-region=\"toolbar\"");
+            searchHtml.ShouldContain("data-region=\"active-tool-toolbar\"");
+            searchHtml.ShouldContain("data-toolbar-host=\"active-tab\"");
+            searchHtml.ShouldContain($"data-command-id=\"{SearchRunCommandId}\"");
+            searchHtml.ShouldNotContain($"data-command-id=\"{OverviewRefreshCommandId}\"");
+            activeToolToolbarIndex.ShouldBeGreaterThan(tabStripIndex);
+            bodyIndex.ShouldBeGreaterThan(activeToolToolbarIndex);
+
+            shellManager.ActivateTab(overviewTool.InstanceId);
+
+            var overviewHtml = await RenderLayoutAsync(renderer);
+
+            overviewHtml.ShouldContain("data-region=\"active-tool-toolbar\"");
+            overviewHtml.ShouldContain($"data-command-id=\"{OverviewRefreshCommandId}\"");
+            overviewHtml.ShouldNotContain($"data-command-id=\"{SearchRunCommandId}\"");
+        }
+
+        /// <summary>
+        /// Confirms the rendered shell exposes the borderless and flat-tab hooks required by the shell-owned Workbench chrome contract.
+        /// </summary>
+        [Fact]
+        public async Task RenderTheBorderlessChromeAndFlatTabStateHooks()
+        {
+            // Two open tabs let the rendering test verify both active and inactive flat-tab state hooks while the shell stays responsible for the borderless chrome contract.
+            await using var serviceProvider = CreateServiceProvider();
+            var shellManager = serviceProvider.GetRequiredService<WorkbenchShellManager>();
+            SeedHostShell(shellManager);
+            SeedSearchShell(shellManager);
+            _ = shellManager.ActivateTool(ActivationTarget.CreateToolSurfaceTarget(OverviewToolId));
+            _ = shellManager.ActivateTool(ActivationTarget.CreateToolSurfaceTarget("tool.module.search.query"));
+
+            var renderer = new HtmlRenderer(serviceProvider, serviceProvider.GetRequiredService<ILoggerFactory>());
+            var html = await RenderLayoutAsync(renderer);
+
+            html.ShouldContain("data-shell-chrome=\"borderless\"");
+            html.ShouldContain("data-tab-strip-style=\"flat\"");
+            html.ShouldContain("data-tab-state=\"active\"");
+            html.ShouldContain("data-tab-state=\"inactive\"");
+            html.ShouldContain("data-tab-close-affordance=\"flat\"");
+            html.ShouldContain("data-overflow-affordance=\"ellipsis\"");
+            html.ShouldContain("aria-label=\"Show all open Workbench tabs\"");
+            html.ShouldNotContain(">All tabs<");
+            CountOccurrences(html, "data-role=\"tab-close\"").ShouldBe(1);
+        }
+
+        /// <summary>
+        /// Confirms the output toggle renders at the far-left side of the status bar while the panel itself stays hidden by default.
+        /// </summary>
+        [Fact]
+        public async Task RenderTheOutputToggleOnTheFarLeftAndKeepThePanelHiddenByDefault()
+        {
+            // Startup entries may already exist, but the first slice still requires the panel to stay collapsed until the user opens it.
+            await using var serviceProvider = CreateServiceProvider();
+            var shellManager = serviceProvider.GetRequiredService<WorkbenchShellManager>();
+            var outputService = serviceProvider.GetRequiredService<IWorkbenchOutputService>();
+            SeedHostShell(shellManager);
+            shellManager.ActivateTool(ActivationTarget.CreateToolSurfaceTarget(OverviewToolId));
+            outputService.Write(OutputLevel.Info, "Shell", "Workbench shell bootstrap completed.");
+
+            var renderer = new HtmlRenderer(serviceProvider, serviceProvider.GetRequiredService<ILoggerFactory>());
+            var html = await RenderLayoutAsync(renderer);
+            var outputToggleIndex = html.IndexOf("data-role=\"output-toggle\"", StringComparison.Ordinal);
+
+            html.ShouldContain("data-output-toggle-state=\"collapsed\"");
+            html.ShouldContain("aria-expanded=\"false\"");
+            html.ShouldContain(">Output<");
+            html.ShouldNotContain("data-region=\"output-panel\"");
+            html.ShouldNotContain("Workbench shell ready");
+            html.ShouldNotContain("workbench.activeTool:");
+            outputToggleIndex.ShouldBeGreaterThanOrEqualTo(0);
+        }
+
+        /// <summary>
+        /// Confirms opening the output panel applies the expected layout ordering above the status bar and below the centre working area.
+        /// </summary>
+        [Fact]
+        public async Task PlaceTheOpenedOutputPanelAboveTheStatusBarAndBelowTheWorkingArea()
+        {
+            // The first-open layout must keep the output pane between the centre surface and the status bar while using the planned 1:4 split.
+            using var serviceProvider = CreateServiceProvider();
+            var shellManager = serviceProvider.GetRequiredService<WorkbenchShellManager>();
+            SeedHostShell(shellManager);
+            var layout = CreateLayoutInstance(serviceProvider, shellManager);
+
+            await InvokePrivateMethodAsync(layout, "ToggleOutputPanelAsync");
+
+            var outputPanelState = GetPrivatePropertyValue<OutputPanelState>(layout, "OutputPanelState");
+            var workingAreaRow = GetPrivatePropertyValue<int>(layout, "WorkingAreaRow");
+            var outputPanelRow = GetPrivatePropertyValue<int>(layout, "OutputPanelRow");
+            var statusBarRow = GetPrivatePropertyValue<int>(layout, "StatusBarRow");
+            var workingAreaHeight = GetPrivatePropertyValue<string>(layout, "WorkingAreaHeight");
+            var outputPaneHeight = GetPrivatePropertyValue<string>(layout, "OutputPaneHeight");
+
+            outputPanelState.IsVisible.ShouldBeTrue();
+            workingAreaHeight.ShouldBe("4*");
+            outputPaneHeight.ShouldBe("1*");
+            outputPanelRow.ShouldBeGreaterThan(workingAreaRow);
+            statusBarRow.ShouldBeGreaterThan(outputPanelRow);
+        }
+
+        /// <summary>
+        /// Confirms the working-area markup is rendered after the opened output panel so tab overflow popups can layer above the pane.
+        /// </summary>
+        [Fact]
+        public async Task RenderTheWorkingAreaAfterTheOpenedOutputPanelToPreserveTabOverflowLayering()
+        {
+            // The overflow dropdown must stay usable while the bottom pane is open, so the working area should own the higher stacking order in the shared outer grid.
+            await using var serviceProvider = CreateServiceProvider();
+            var shellManager = serviceProvider.GetRequiredService<WorkbenchShellManager>();
+            var outputService = serviceProvider.GetRequiredService<IWorkbenchOutputService>();
+            SeedHostShell(shellManager);
+            outputService.SetPanelVisibility(true);
+            _ = shellManager.ActivateTool(ActivationTarget.CreateToolSurfaceTarget(OverviewToolId));
+
+            var renderer = new HtmlRenderer(serviceProvider, serviceProvider.GetRequiredService<ILoggerFactory>());
+            var html = await RenderLayoutAsync(renderer);
+            var outputPanelIndex = html.IndexOf("data-region=\"output-panel\"", StringComparison.Ordinal);
+            var toolSurfaceIndex = html.IndexOf("data-region=\"tool-surface\"", StringComparison.Ordinal);
+
+            outputPanelIndex.ShouldBeGreaterThanOrEqualTo(0);
+            toolSurfaceIndex.ShouldBeGreaterThan(outputPanelIndex);
+        }
+
+        /// <summary>
+        /// Confirms a terminal captured by an in-flight update is treated as stale once the output panel closes.
+        /// </summary>
+        [Fact]
+        public void TreatTheCapturedTerminalAsInactiveAfterTheOutputPanelCloses()
+        {
+            // Closing the panel resets the live terminal state, so any async rebuild that captured the previous terminal must stop using it immediately.
+            using var serviceProvider = CreateServiceProvider();
+            var shellManager = serviceProvider.GetRequiredService<WorkbenchShellManager>();
+            var outputService = serviceProvider.GetRequiredService<IWorkbenchOutputService>();
+            var layout = CreateLayoutInstance(serviceProvider, shellManager);
+            var outputTerminal = new Xterm();
+
+            outputService.SetPanelVisibility(true);
+            SetPrivateFieldValue(layout, "_outputTerminal", outputTerminal);
+            SetPrivateFieldValue(layout, "_isOutputTerminalReady", true);
+
+            ((bool)InvokePrivateMethod(layout, "IsCurrentOutputTerminal", [outputTerminal])!).ShouldBeTrue();
+
+            outputService.SetPanelVisibility(false);
+            InvokePrivateMethod(layout, "ResetOutputTerminalProjectionState", []);
+
+            ((bool)InvokePrivateMethod(layout, "IsCurrentOutputTerminal", [outputTerminal])!).ShouldBeFalse();
+        }
+
+        /// <summary>
+        /// Confirms the opened panel renders a single panel-local toolbar directly above a single terminal host.
+        /// </summary>
+        [Fact]
+        public async Task RenderOnePanelLocalToolbarAndOneTerminalHostWhenThePanelIsVisible()
+        {
+            // The XtermBlazor migration should replace the row surface with one shell-owned toolbar and one deterministic terminal host wrapper.
+            await using var serviceProvider = CreateServiceProvider();
+            var shellManager = serviceProvider.GetRequiredService<WorkbenchShellManager>();
+            var outputService = serviceProvider.GetRequiredService<IWorkbenchOutputService>();
+            SeedHostShell(shellManager);
+            shellManager.ActivateTool(ActivationTarget.CreateToolSurfaceTarget(OverviewToolId));
+            outputService.Write(OutputLevel.Info, "Shell", "Workbench shell bootstrap completed.");
+            outputService.SetPanelVisibility(true);
+
+            var renderer = new HtmlRenderer(serviceProvider, serviceProvider.GetRequiredService<ILoggerFactory>());
+            var html = await RenderLayoutAsync(renderer);
+            var toolbarIndex = html.IndexOf("aria-label=\"Output panel actions\"", StringComparison.Ordinal);
+            var terminalHostIndex = html.IndexOf("data-role=\"output-terminal-host\"", StringComparison.Ordinal);
+
+            html.ShouldContain("data-region=\"output-panel\"");
+            html.ShouldContain("data-output-surface=\"terminal\"");
+            html.ShouldContain("data-output-history-mode=\"retained\"");
+            html.ShouldContain("data-output-order=\"chronological\"");
+            html.ShouldContain("data-role=\"output-copy-selected\"");
+            html.ShouldContain("data-role=\"output-find\"");
+            html.ShouldContain("data-role=\"output-clear\"");
+            html.ShouldContain("data-role=\"output-auto-scroll\"");
+            html.ShouldContain("data-role=\"output-scroll-to-end\"");
+            html.ShouldContain("data-output-selection-active=\"false\"");
+            html.ShouldContain("disabled");
+            html.ShouldNotContain("data-role=\"output-wrap\"");
+            CountOccurrences(html, "aria-label=\"Output panel actions\"").ShouldBe(1);
+            CountOccurrences(html, "data-role=\"output-terminal-host\"").ShouldBe(1);
+            toolbarIndex.ShouldBeGreaterThanOrEqualTo(0);
+            terminalHostIndex.ShouldBeGreaterThan(toolbarIndex);
+        }
+
+        /// <summary>
+        /// Confirms the opened output panel renders the session-scoped minimum visible level selector with the default Info threshold selected.
+        /// </summary>
+        [Fact]
+        public async Task RenderTheOutputLevelFilterWithInfoAndAboveSelectedByDefault()
+        {
+            // The trimmed output experience defaults to Info and above, so the toolbar should surface that choice as the initial visible filter.
+            await using var serviceProvider = CreateServiceProvider();
+            var shellManager = serviceProvider.GetRequiredService<WorkbenchShellManager>();
+            var outputService = serviceProvider.GetRequiredService<IWorkbenchOutputService>();
+            SeedHostShell(shellManager);
+            shellManager.ActivateTool(ActivationTarget.CreateToolSurfaceTarget(OverviewToolId));
+            outputService.SetPanelVisibility(true);
+
+            var renderer = new HtmlRenderer(serviceProvider, serviceProvider.GetRequiredService<ILoggerFactory>());
+            var html = await RenderLayoutAsync(renderer);
+
+            html.ShouldContain("data-role=\"output-level-filter\"");
+            html.ShouldContain("Minimum visible output level");
+            html.ShouldContain("Info and above");
+            html.ShouldContain("title=\"Minimum visible output level: Info and above\"");
+            html.ShouldNotContain("data-role=\"output-visibility-summary\"");
+            html.ShouldNotContain("workbench-shell__output-level-filter-label");
+        }
+
+        /// <summary>
+        /// Confirms the toolbar summary updates to match the active visible-output filter before the panel renders.
+        /// </summary>
+        [Fact]
+        public async Task RenderTheCurrentOutputLevelTooltipForTheSelectedFilter()
+        {
+            // The icon-only toolbar still needs to explain the active filter, so the dropdown tooltip should mirror the selected threshold without reintroducing a standalone text summary.
+            await using var serviceProvider = CreateServiceProvider();
+            var shellManager = serviceProvider.GetRequiredService<WorkbenchShellManager>();
+            var outputService = serviceProvider.GetRequiredService<IWorkbenchOutputService>();
+            SeedHostShell(shellManager);
+            shellManager.ActivateTool(ActivationTarget.CreateToolSurfaceTarget(OverviewToolId));
+            outputService.SetMinimumVisibleLevel(OutputLevel.Warning);
+            outputService.SetPanelVisibility(true);
+
+            var renderer = new HtmlRenderer(serviceProvider, serviceProvider.GetRequiredService<ILoggerFactory>());
+            var html = await RenderLayoutAsync(renderer);
+
+            html.ShouldContain("title=\"Minimum visible output level: Warning and above\"");
+            html.ShouldNotContain("data-role=\"output-visibility-summary\"");
+        }
+
+        /// <summary>
+        /// Confirms the shell toolbars expose icon-only command chrome while the overflow affordance uses a split button and the status-bar output toggle keeps its visible text label.
+        /// </summary>
+        [Fact]
+        public async Task RenderIconOnlyToolbarButtonsWithAccessibleLabelsAndTheEllipsisOverflowAffordance()
+        {
+            // The Workbench shell should keep icon-only chrome for toolbars, but the overflow control should move to a split button and the status-bar output toggle should remain a labelled special case.
+            await using var serviceProvider = CreateServiceProvider();
+            var shellManager = serviceProvider.GetRequiredService<WorkbenchShellManager>();
+            var outputService = serviceProvider.GetRequiredService<IWorkbenchOutputService>();
+            SeedHostShell(shellManager);
+            SeedSearchShell(shellManager);
+            var overviewTool = shellManager.ActivateTool(ActivationTarget.CreateToolSurfaceTarget(OverviewToolId));
+            overviewTool.Context.SetRuntimeToolbarContributions([
+                new ToolbarContribution("toolbar.host.overview.refresh", "Refresh overview", OverviewRefreshCommandId, icon: "refresh", order: 100)
+            ]);
+            var searchTool = shellManager.ActivateTool(ActivationTarget.CreateToolSurfaceTarget("tool.module.search.query"));
+            searchTool.Context.SetRuntimeToolbarContributions([
+                new ToolbarContribution("toolbar.module.search.run", "Run query", SearchRunCommandId, icon: "play_arrow", order: 100)
+            ]);
+            outputService.SetPanelVisibility(true);
+
+            var renderer = new HtmlRenderer(serviceProvider, serviceProvider.GetRequiredService<ILoggerFactory>());
+            var html = await RenderLayoutAsync(renderer);
+
+            html.ShouldContain("data-command-presentation=\"icon-only\"");
+            html.ShouldContain("aria-label=\"Home\"");
+            html.ShouldContain("aria-label=\"Run query\"");
+            html.ShouldContain("aria-label=\"Copy selected output\"");
+            html.ShouldContain("aria-label=\"Hide output panel\"");
+            html.ShouldContain("data-overflow-affordance=\"ellipsis\"");
+            html.ShouldContain("workbench-shell__tab-overflow-splitbutton");
+            html.ShouldContain("rz-splitbutton");
+            html.ShouldContain("class=\"workbench-shell__tab-overflow-trigger\"");
+            html.ShouldContain(">Output<");
+        }
+
+        /// <summary>
+        /// Confirms overflow popup item text is converted to non-breaking text so Radzen menu entries cannot wrap across multiple lines.
+        /// </summary>
+        [Fact]
+        public void BuildOverflowPopupLabelsUsingNonBreakingSpaces()
+        {
+            // The shell uses non-breaking text as a defensive fallback because popup-layer theme styles can still defeat local no-wrap CSS overrides.
+            using var serviceProvider = CreateServiceProvider();
+            var shellManager = serviceProvider.GetRequiredService<WorkbenchShellManager>();
+            SeedHostShell(shellManager);
+            SeedSearchShell(shellManager);
+            var overviewTool = shellManager.ActivateTool(ActivationTarget.CreateToolSurfaceTarget(OverviewToolId));
+            var searchTool = shellManager.ActivateTool(ActivationTarget.CreateToolSurfaceTarget("tool.module.search.query"));
+            var layout = CreateLayoutInstance(serviceProvider, shellManager);
+            var activeTab = shellManager.OpenTabs.Single(openTab => openTab.Id == searchTool.InstanceId);
+            var inactiveTab = shellManager.OpenTabs.Single(openTab => openTab.Id == overviewTool.InstanceId);
+            var activeOverflowText = (string)InvokePrivateMethod(layout, "GetOverflowItemText", [activeTab])!;
+            var inactiveOverflowText = (string)InvokePrivateMethod(layout, "GetOverflowItemText", [inactiveTab])!;
+
+            activeOverflowText.ShouldContain("✓\u00A0Search\u00A0query\u00A0(Active)");
+            activeOverflowText.ShouldNotContain("✓ Search query (Active)");
+            inactiveOverflowText.ShouldContain("Workbench\u00A0overview");
+        }
+
+        /// <summary>
+        /// Confirms the output-level selector exposes the expected options in the required toolbar order.
+        /// </summary>
+        [Fact]
+        public void ExposeTheExpectedOutputLevelFilterOptionsInToolbarOrder()
+        {
+            // The selector should list the quietest views first so users can add context progressively until they reach the amount of detail they need.
+            var filterOptions = InvokeStaticPrivateMethod(
+                typeof(MainLayout),
+                "GetOutputLevelFilterOptions",
+                []) as IReadOnlyList<OutputLevel>;
+
+            filterOptions.ShouldNotBeNull();
+            filterOptions.ShouldBe([
+                OutputLevel.Error,
+                OutputLevel.Warning,
+                OutputLevel.Info,
+                OutputLevel.Debug
+            ]);
+        }
+
+        /// <summary>
+        /// Confirms the visible output projection excludes debug entries until the session filter is explicitly lowered to Debug.
+        /// </summary>
+        [Fact]
+        public async Task FilterTheVisibleOutputProjectionByTheCurrentMinimumVisibleLevel()
+        {
+            // The retained stream should stay intact while the visible output view becomes quieter by hiding lower-level entries below the active threshold.
+            using var serviceProvider = CreateServiceProvider();
+            var shellManager = serviceProvider.GetRequiredService<WorkbenchShellManager>();
+            var outputService = serviceProvider.GetRequiredService<IWorkbenchOutputService>();
+            SeedHostShell(shellManager);
+            var layout = CreateLayoutInstance(serviceProvider, shellManager);
+
+            outputService.Write(OutputLevel.Debug, "Shell", "Debug output");
+            outputService.Write(OutputLevel.Info, "Shell", "Informational output");
+
+            GetPrivatePropertyValue<IReadOnlyList<OutputEntry>>(layout, "VisibleOutputEntries")
+                .Select(outputEntry => outputEntry.Summary)
+                .ShouldBe(["Informational output"]);
+
+            await InvokePrivateMethodAsync(layout, "HandleOutputLevelFilterChangedAsync", OutputLevel.Debug);
+
+            GetPrivatePropertyValue<IReadOnlyList<OutputEntry>>(layout, "VisibleOutputEntries")
+                .Select(outputEntry => outputEntry.Summary)
+                .ShouldBe([
+                    "Debug output",
+                    "Informational output"
+                ]);
+        }
+
+        /// <summary>
+        /// Confirms terminal selection notifications drive the enabled state for the copy-selected toolbar action.
+        /// </summary>
+        [Fact]
+        public async Task EnableCopySelectedOnlyWhenTheTerminalReportsAnActiveSelection()
+        {
+            // Copy state should stay terminal-driven so the toolbar remains disabled until the hosted read-only surface exposes a real text selection.
+            using var serviceProvider = CreateServiceProvider();
+            var shellManager = serviceProvider.GetRequiredService<WorkbenchShellManager>();
+            SeedHostShell(shellManager);
+            var layout = CreateLayoutInstance(serviceProvider, shellManager);
+
+            GetPrivatePropertyValue<bool>(layout, "IsOutputSelectionAvailable").ShouldBeFalse();
+
+            await InvokePrivateMethodAsync(layout, "NotifyOutputSelectionStateAsync", true);
+
+            GetPrivatePropertyValue<bool>(layout, "IsOutputSelectionAvailable").ShouldBeTrue();
+
+            await InvokePrivateMethodAsync(layout, "NotifyOutputSelectionStateAsync", false);
+
+            GetPrivatePropertyValue<bool>(layout, "IsOutputSelectionAvailable").ShouldBeFalse();
+        }
+
+        /// <summary>
+        /// Confirms the find surface opens when the terminal shortcut is raised and can be closed again by the layout.
+        /// </summary>
+        [Fact]
+        public async Task OpenAndCloseTheTerminalFindSurfaceThroughTheLayoutShortcutHandlers()
+        {
+            // Ctrl+F should route through the layout so the shell can reveal the terminal-native find workflow without introducing a second browser-owned UI.
+            using var serviceProvider = CreateServiceProvider();
+            var shellManager = serviceProvider.GetRequiredService<WorkbenchShellManager>();
+            SeedHostShell(shellManager);
+            var layout = CreateLayoutInstance(serviceProvider, shellManager);
+
+            GetPrivatePropertyValue<bool>(layout, "IsOutputFindVisible").ShouldBeFalse();
+
+            await InvokePrivateMethodAsync(layout, "NotifyOutputFindShortcutAsync");
+
+            GetPrivatePropertyValue<bool>(layout, "IsOutputFindVisible").ShouldBeTrue();
+
+            await InvokePrivateMethodAsync(layout, "CloseOutputFindAsync");
+
+            GetPrivatePropertyValue<bool>(layout, "IsOutputFindVisible").ShouldBeFalse();
+        }
+
+        /// <summary>
+        /// Confirms closing the panel dismisses the find workflow while the selected output filter survives the session visibility transition.
+        /// </summary>
+        [Fact]
+        public async Task PreserveTheSelectedOutputFilterAndDismissFindWhenThePanelVisibilityChanges()
+        {
+            // Panel visibility changes should not reset the session filter, but they should close the panel-local find chrome so reopening starts from a predictable shell-owned state.
+            using var serviceProvider = CreateServiceProvider();
+            var shellManager = serviceProvider.GetRequiredService<WorkbenchShellManager>();
+            SeedHostShell(shellManager);
+            var layout = CreateLayoutInstance(serviceProvider, shellManager);
+
+            await InvokePrivateMethodAsync(layout, "ToggleOutputPanelAsync");
+            await InvokePrivateMethodAsync(layout, "HandleOutputLevelFilterChangedAsync", OutputLevel.Warning);
+            await InvokePrivateMethodAsync(layout, "OpenOutputFindAsync");
+
+            GetPrivatePropertyValue<bool>(layout, "IsOutputFindVisible").ShouldBeTrue();
+            GetPrivatePropertyValue<OutputPanelState>(layout, "OutputPanelState").MinimumVisibleLevel.ShouldBe(OutputLevel.Warning);
+
+            await InvokePrivateMethodAsync(layout, "ToggleOutputPanelAsync");
+
+            GetPrivatePropertyValue<OutputPanelState>(layout, "OutputPanelState").IsVisible.ShouldBeFalse();
+            GetPrivatePropertyValue<bool>(layout, "IsOutputFindVisible").ShouldBeFalse();
+
+            await InvokePrivateMethodAsync(layout, "ToggleOutputPanelAsync");
+
+            GetPrivatePropertyValue<OutputPanelState>(layout, "OutputPanelState").IsVisible.ShouldBeTrue();
+            GetPrivatePropertyValue<OutputPanelState>(layout, "OutputPanelState").MinimumVisibleLevel.ShouldBe(OutputLevel.Warning);
+            GetPrivatePropertyValue<bool>(layout, "IsOutputFindVisible").ShouldBeFalse();
+        }
+
+        /// <summary>
+        /// Confirms clear and scroll-to-end interactions continue to work when the panel is rendering only the filtered visible subset of retained output.
+        /// </summary>
+        [Fact]
+        public async Task ClearFilteredOutputAndRestoreAutoScrollThroughTheIntegratedToolbarHandlers()
+        {
+            // The filtered panel should still clear the retained stream, empty the visible subset, and let scroll-to-end restore auto-scroll after the user scrolls away.
+            using var serviceProvider = CreateServiceProvider();
+            var shellManager = serviceProvider.GetRequiredService<WorkbenchShellManager>();
+            var outputService = serviceProvider.GetRequiredService<IWorkbenchOutputService>();
+            SeedHostShell(shellManager);
+            var layout = CreateLayoutInstance(serviceProvider, shellManager);
+
+            outputService.SetPanelVisibility(true);
+            outputService.Write(OutputLevel.Debug, "Shell", "Hidden debug output");
+            outputService.Write(OutputLevel.Info, "Shell", "Visible informational output");
+
+            GetPrivatePropertyValue<IReadOnlyList<OutputEntry>>(layout, "VisibleOutputEntries")
+                .Select(outputEntry => outputEntry.Summary)
+                .ShouldBe(["Visible informational output"]);
+
+            await InvokePrivateMethodAsync(layout, "NotifyOutputViewportStateAsync", false);
+
+            outputService.PanelState.IsAutoScrollEnabled.ShouldBeFalse();
+
+            await InvokePrivateMethodAsync(layout, "ClearOutputAsync");
+
+            outputService.Entries.ShouldBeEmpty();
+            outputService.PanelState.HiddenUnseenLevel.ShouldBeNull();
+            GetPrivatePropertyValue<IReadOnlyList<OutputEntry>>(layout, "VisibleOutputEntries").ShouldBeEmpty();
+
+            await InvokePrivateMethodAsync(layout, "ScrollOutputToEndAsync");
+
+            outputService.PanelState.IsAutoScrollEnabled.ShouldBeTrue();
+        }
+
+        /// <summary>
+        /// Confirms overlapping output-terminal synchronization requests are coalesced into one immediate follow-up pass instead of running concurrently.
+        /// </summary>
+        [Fact]
+        public void CoalesceOverlappingOutputTerminalSynchronizationRequestsIntoOneQueuedFollowUpPass()
+        {
+            // The output panel can request synchronization from both first-render and post-render callbacks, so the layout must queue a single follow-up pass rather than allowing duplicate terminal rebuilds.
+            using var serviceProvider = CreateServiceProvider();
+            var shellManager = serviceProvider.GetRequiredService<WorkbenchShellManager>();
+            SeedHostShell(shellManager);
+            var layout = CreateLayoutInstance(serviceProvider, shellManager);
+
+            ((bool)InvokePrivateMethod(layout, "TryBeginOutputTerminalSynchronization", [])!).ShouldBeTrue();
+            ((bool)InvokePrivateMethod(layout, "TryBeginOutputTerminalSynchronization", [])!).ShouldBeFalse();
+            ((bool)InvokePrivateMethod(layout, "CompleteOutputTerminalSynchronizationPass", [])!).ShouldBeTrue();
+            ((bool)InvokePrivateMethod(layout, "CompleteOutputTerminalSynchronizationPass", [])!).ShouldBeFalse();
+            ((bool)InvokePrivateMethod(layout, "TryBeginOutputTerminalSynchronization", [])!).ShouldBeTrue();
+        }
+
+        /// <summary>
+        /// Confirms resetting the output-terminal projection state also clears any in-flight synchronization gate.
+        /// </summary>
+        [Fact]
+        public void ClearTheOutputTerminalSynchronizationGateWhenProjectionStateIsReset()
+        {
+            // Panel teardown should clear queued synchronization state so reopening the panel can rebuild cleanly without inheriting stale in-flight flags.
+            using var serviceProvider = CreateServiceProvider();
+            var shellManager = serviceProvider.GetRequiredService<WorkbenchShellManager>();
+            SeedHostShell(shellManager);
+            var layout = CreateLayoutInstance(serviceProvider, shellManager);
+
+            ((bool)InvokePrivateMethod(layout, "TryBeginOutputTerminalSynchronization", [])!).ShouldBeTrue();
+            ((bool)InvokePrivateMethod(layout, "TryBeginOutputTerminalSynchronization", [])!).ShouldBeFalse();
+
+            InvokePrivateMethod(layout, "ResetOutputTerminalProjectionState", []);
+
+            ((bool)InvokePrivateMethod(layout, "TryBeginOutputTerminalSynchronization", [])!).ShouldBeTrue();
+        }
+
+        /// <summary>
+        /// Confirms hidden unseen severity appears on the collapsed toggle without auto-opening the panel.
+        /// </summary>
+        [Fact]
+        public async Task ShowTheMostSevereHiddenIndicatorWithoutAutoOpeningThePanel()
+        {
+            // Unseen warnings and errors should surface on the collapsed toggle so the panel stays hidden until the user chooses to inspect it.
+            await using var serviceProvider = CreateServiceProvider();
+            var shellManager = serviceProvider.GetRequiredService<WorkbenchShellManager>();
+            var outputService = serviceProvider.GetRequiredService<IWorkbenchOutputService>();
+            SeedHostShell(shellManager);
+            shellManager.ActivateTool(ActivationTarget.CreateToolSurfaceTarget(OverviewToolId));
+            outputService.Write(OutputLevel.Warning, "Shell", "A warning was written while the panel was collapsed.");
+
+            var renderer = new HtmlRenderer(serviceProvider, serviceProvider.GetRequiredService<ILoggerFactory>());
+            var html = await RenderLayoutAsync(renderer);
+
+            html.ShouldContain("data-output-toggle-state=\"collapsed\"");
+            html.ShouldContain("data-output-unseen-level=\"warning\"");
+            html.ShouldNotContain("data-region=\"output-panel\"");
+        }
+
+        /// <summary>
+        /// Confirms additional hidden output promotes the collapsed indicator to the most severe unseen level while the panel remains closed.
+        /// </summary>
+        [Fact]
+        public async Task PromoteTheHiddenIndicatorWhenMoreSevereOutputArrivesWhileThePanelIsClosed()
+        {
+            // Hidden output should keep accumulating severity through the shared panel state so reopening the panel later starts from an accurate unseen indicator.
+            await using var serviceProvider = CreateServiceProvider();
+            var shellManager = serviceProvider.GetRequiredService<WorkbenchShellManager>();
+            var outputService = serviceProvider.GetRequiredService<IWorkbenchOutputService>();
+            SeedHostShell(shellManager);
+            shellManager.ActivateTool(ActivationTarget.CreateToolSurfaceTarget(OverviewToolId));
+            outputService.Write(OutputLevel.Info, "Shell", "An informational message was written while the panel was collapsed.");
+            outputService.Write(OutputLevel.Error, "Shell", "An error was written while the panel was collapsed.");
+
+            var renderer = new HtmlRenderer(serviceProvider, serviceProvider.GetRequiredService<ILoggerFactory>());
+            var html = await RenderLayoutAsync(renderer);
+
+            html.ShouldContain("data-output-toggle-state=\"collapsed\"");
+            html.ShouldContain("data-output-unseen-level=\"error\"");
+            html.ShouldNotContain("data-region=\"output-panel\"");
+        }
+
+        /// <summary>
+        /// Confirms the retained output projection keeps the current summary-line ordering contract.
+        /// </summary>
+        [Fact]
+        public void ProjectRetainedOutputHistoryIntoTerminalTextInChronologicalOrder()
+        {
+            // The baseline terminal projection should preserve the existing timestamp, source, and summary order while appending newer entries last.
+            var firstEntry = CreateOutputEntry(
+                "entry-terminal-1",
+                OutputLevel.Info,
+                "Shell",
+                "Workbench overview restored.");
+            var secondEntry = CreateOutputEntry(
+                "entry-terminal-2",
+                OutputLevel.Warning,
+                "Module loader",
+                "Search module loaded with warnings.");
+
+            var projection = InvokeStaticPrivateMethod(
+                typeof(MainLayout),
+                "BuildOutputTerminalProjection",
+                [new[] { firstEntry, secondEntry }]) as string;
+
+            projection.ShouldNotBeNull();
+
+            var firstSummaryLine = $"{firstEntry.TimestampUtc.ToLocalTime():HH:mm:ss} {firstEntry.Source} {firstEntry.Summary}";
+            var secondSummaryLine = $"{secondEntry.TimestampUtc.ToLocalTime():HH:mm:ss} {secondEntry.Source} {secondEntry.Summary}";
+            var firstSummaryIndex = projection.IndexOf(firstSummaryLine, StringComparison.Ordinal);
+            var secondSummaryIndex = projection.IndexOf(secondSummaryLine, StringComparison.Ordinal);
+
+            firstSummaryIndex.ShouldBeGreaterThanOrEqualTo(0);
+            secondSummaryIndex.ShouldBeGreaterThan(firstSummaryIndex);
+        }
+
+        /// <summary>
+        /// Confirms details and event-code text render inline beneath the related summary line in the terminal projection.
+        /// </summary>
+        [Fact]
+        public void ProjectDetailsAndEventCodesInlineBeneathTheirSummaryLine()
+        {
+            // The retained terminal stream should flatten structured entry data into a readable multi-line block without changing output ownership.
+            var outputEntry = CreateOutputEntry(
+                "entry-terminal-details",
+                OutputLevel.Error,
+                "Module loader",
+                "Administration module failed to initialise.",
+                "The module assembly could not load a dependent service.\nA fallback service was not available.",
+                "WB-202");
+
+            var projection = InvokeStaticPrivateMethod(
+                typeof(MainLayout),
+                "BuildOutputTerminalProjection",
+                [new[] { outputEntry }]) as string;
+
+            projection.ShouldNotBeNull();
+
+            var summaryLine = $"{outputEntry.TimestampUtc.ToLocalTime():HH:mm:ss} {outputEntry.Source} {outputEntry.Summary}";
+            var detailsLine = "  The module assembly could not load a dependent service.";
+            var secondDetailsLine = "  A fallback service was not available.";
+            var eventCodeLine = $"  Event code: {outputEntry.EventCode}";
+            var summaryIndex = projection.IndexOf(summaryLine, StringComparison.Ordinal);
+            var detailsIndex = projection.IndexOf(detailsLine, StringComparison.Ordinal);
+            var secondDetailsIndex = projection.IndexOf(secondDetailsLine, StringComparison.Ordinal);
+            var eventCodeIndex = projection.IndexOf(eventCodeLine, StringComparison.Ordinal);
+
+            summaryIndex.ShouldBeGreaterThanOrEqualTo(0);
+            detailsIndex.ShouldBeGreaterThan(summaryIndex);
+            secondDetailsIndex.ShouldBeGreaterThan(detailsIndex);
+            eventCodeIndex.ShouldBeGreaterThan(secondDetailsIndex);
+        }
+
+
+        /// <summary>
+        /// Confirms session resize memory and auto-scroll state transitions are coordinated through the layout handlers.
+        /// </summary>
+        [Fact]
+        public async Task RestoreTheResizedPanelHeightAndToggleAutoScrollThroughTheLayoutHandlers()
+        {
+            // The shell should preserve the user's in-session splitter ratio and should disable or re-enable auto-scroll through the expected interaction paths.
+            using var serviceProvider = CreateServiceProvider();
+            var shellManager = serviceProvider.GetRequiredService<WorkbenchShellManager>();
+            var outputService = serviceProvider.GetRequiredService<IWorkbenchOutputService>();
+            SeedHostShell(shellManager);
+            var layout = CreateLayoutInstance(serviceProvider, shellManager);
+
+            await InvokePrivateMethodAsync(layout, "ToggleOutputPanelAsync");
+            await InvokePrivateMethodAsync(
+                layout,
+                "HandleOutputPanelResizeAsync",
+                new GridResizeNotification(
+                    GridResizeDirection.Row,
+                    3,
+                    2,
+                    4,
+                    640,
+                    160,
+                    "48px 640px 4px 160px 30px"));
+            await InvokePrivateMethodAsync(layout, "NotifyOutputViewportStateAsync", false);
+
+            outputService.PanelState.CenterPaneHeight.ShouldBe("4*");
+            outputService.PanelState.OutputPaneHeight.ShouldBe("1*");
+            outputService.PanelState.IsAutoScrollEnabled.ShouldBeFalse();
+
+            await InvokePrivateMethodAsync(layout, "ToggleOutputPanelAsync");
+            await InvokePrivateMethodAsync(layout, "ToggleOutputPanelAsync");
+
+            outputService.PanelState.OutputPaneHeight.ShouldBe("1*");
+
+            await InvokePrivateMethodAsync(layout, "ScrollOutputToEndAsync");
+
+            outputService.PanelState.IsAutoScrollEnabled.ShouldBeTrue();
+        }
+
+        /// <summary>
+        /// Confirms the activity rail uses the Radzen tooltip service so icon-only rail items still expose their labels.
+        /// </summary>
+        [Fact]
+        public void UseTheRadzenTooltipServiceForActivityRailHoverInteractions()
+        {
+            // The compact icon rail still needs discoverable names, so hover should open the same Radzen tooltip service used elsewhere in the shell.
+            using var serviceProvider = CreateServiceProvider();
+            var shellManager = serviceProvider.GetRequiredService<WorkbenchShellManager>();
+            var tooltipService = serviceProvider.GetRequiredService<TooltipService>();
+            var layout = CreateLayoutInstance(serviceProvider, shellManager);
+            var openedTitles = new List<string>();
+            var closeCount = 0;
+
+            tooltipService.OnOpen += (_, _, options) =>
+            {
+                if (!string.IsNullOrWhiteSpace(options.Text))
+                {
+                    openedTitles.Add(options.Text);
+                }
+            };
+            tooltipService.OnClose += () => closeCount++;
+
+            InvokePrivateMethod(layout, "ShowActivityRailTooltip", [default(ElementReference), "Workbench"]);
+            InvokePrivateMethod(layout, "HideTitleTooltip", [default(ElementReference)]);
+
+            openedTitles.ShouldBe(["Workbench"]);
+            closeCount.ShouldBe(1);
+        }
+
+        /// <summary>
+        /// Confirms runtime status-bar messages are projected into the output stream instead of rendering as persistent status-bar text.
+        /// </summary>
+        [Fact]
+        public async Task ProjectHistoricalStatusMessagesIntoTheOutputStreamAndKeepTheStatusBarSimplified()
+        {
+            // Historical status messages should remain visible in the output stream across navigation, while the status bar itself stays focused on shell affordances.
+            await using var serviceProvider = CreateServiceProvider();
+            var shellManager = serviceProvider.GetRequiredService<WorkbenchShellManager>();
+            var outputService = serviceProvider.GetRequiredService<IWorkbenchOutputService>();
+            SeedHostShell(shellManager);
+            SeedSearchShell(shellManager);
+            outputService.SetPanelVisibility(true);
+
+            var searchTool = shellManager.ActivateTool(ActivationTarget.CreateToolSurfaceTarget("tool.module.search.query"));
+            searchTool.Context.SetRuntimeMenuContributions([new MenuContribution("menu.runtime.search", "Run sample query", "command.search.run", ownerToolId: "tool.module.search.query", order: 200)]);
+            searchTool.Context.SetRuntimeStatusBarContributions([new StatusBarContribution("status.runtime.search", "Sample query executed", ownerToolId: "tool.module.search.query", order: 200)]);
+
+            var renderer = new HtmlRenderer(serviceProvider, serviceProvider.GetRequiredService<ILoggerFactory>());
+            var activeSearchHtml = await RenderLayoutAsync(renderer);
+
+            activeSearchHtml.ShouldContain("Run sample query");
+            activeSearchHtml.ShouldContain("data-role=\"output-terminal-host\"");
+            activeSearchHtml.ShouldNotContain("workbench-shell__status-bar-items");
+            outputService.Entries.ShouldContain(entry => entry.Source == "tool.module.search.query"
+                && entry.Summary == "Sample query executed"
+                && entry.Level == OutputLevel.Debug);
+
+            shellManager.ActivateTool(ActivationTarget.CreateToolSurfaceTarget(OverviewToolId));
+            var activeOverviewHtml = await RenderLayoutAsync(renderer);
+
+            activeOverviewHtml.ShouldNotContain("Run sample query");
+            activeOverviewHtml.ShouldContain("data-role=\"output-terminal-host\"");
+            activeOverviewHtml.ShouldNotContain("Workbench shell ready");
+            activeOverviewHtml.ShouldNotContain("workbench.activeTool:");
+        }
+
+        /// <summary>
+        /// Confirms the projected shell context details omit high-churn shell-state values that are not useful in the historical output stream.
+        /// </summary>
+        [Fact]
+        public void OmitHighChurnShellStateValuesFromProjectedContextDetails()
+        {
+            // Historical context output should preserve user-meaningful shell context without surfacing repeated active-region and tool-surface readiness noise.
+            var projectedContextValues = InvokeStaticPrivateMethod(
+                typeof(MainLayout),
+                "BuildProjectedContextValues",
+                [new Dictionary<string, string>(StringComparer.Ordinal)
+                {
+                    [WorkbenchContextKeys.ActiveExplorer] = "explorer.host.overview",
+                    [WorkbenchContextKeys.ActiveTool] = "tool.bootstrap.overview",
+                    [WorkbenchContextKeys.ActiveRegion] = "ToolSurface",
+                    [WorkbenchContextKeys.SelectionType] = "Document",
+                    [WorkbenchContextKeys.SelectionCount] = "1",
+                    [WorkbenchContextKeys.ToolSurfaceReady] = bool.TrueString
+                }]) as IReadOnlyDictionary<string, string>;
+
+            projectedContextValues.ShouldNotBeNull();
+
+            var contextDetails = InvokeStaticPrivateMethod(
+                typeof(MainLayout),
+                "BuildContextDetails",
+                [projectedContextValues]) as string;
+
+            contextDetails.ShouldNotBeNull();
+            contextDetails.ShouldContain("Active explorer: explorer.host.overview");
+            contextDetails.ShouldContain("Active tool: tool.bootstrap.overview");
+            contextDetails.ShouldContain("Selection type: Document");
+            contextDetails.ShouldContain("Selection count: 1");
+            contextDetails.ShouldNotContain("Active region:");
+            contextDetails.ShouldNotContain("Tool surface ready:");
+        }
+
+        /// <summary>
+        /// Confirms shell context changes that affect only omitted high-churn values do not produce a new projected context snapshot.
+        /// </summary>
+        [Fact]
+        public void TreatChangesInOmittedShellStateValuesAsEquivalentProjectedContext()
+        {
+            // Active-region and tool-surface readiness churn should not create additional historical context entries once those values are removed from the projected snapshot.
+            var firstProjectedContextValues = InvokeStaticPrivateMethod(
+                typeof(MainLayout),
+                "BuildProjectedContextValues",
+                [new Dictionary<string, string>(StringComparer.Ordinal)
+                {
+                    [WorkbenchContextKeys.ActiveExplorer] = "explorer.host.overview",
+                    [WorkbenchContextKeys.ActiveTool] = "tool.bootstrap.overview",
+                    [WorkbenchContextKeys.ActiveRegion] = "ToolSurface",
+                    [WorkbenchContextKeys.SelectionType] = string.Empty,
+                    [WorkbenchContextKeys.SelectionCount] = "0",
+                    [WorkbenchContextKeys.ToolSurfaceReady] = bool.TrueString
+                }]) as IReadOnlyDictionary<string, string>;
+            var secondProjectedContextValues = InvokeStaticPrivateMethod(
+                typeof(MainLayout),
+                "BuildProjectedContextValues",
+                [new Dictionary<string, string>(StringComparer.Ordinal)
+                {
+                    [WorkbenchContextKeys.ActiveExplorer] = "explorer.host.overview",
+                    [WorkbenchContextKeys.ActiveTool] = "tool.bootstrap.overview",
+                    [WorkbenchContextKeys.ActiveRegion] = string.Empty,
+                    [WorkbenchContextKeys.SelectionType] = string.Empty,
+                    [WorkbenchContextKeys.SelectionCount] = "0",
+                    [WorkbenchContextKeys.ToolSurfaceReady] = bool.FalseString
+                }]) as IReadOnlyDictionary<string, string>;
+
+            firstProjectedContextValues.ShouldNotBeNull();
+            secondProjectedContextValues.ShouldNotBeNull();
+
+            ((bool)InvokeStaticPrivateMethod(
+                typeof(MainLayout),
+                "HaveEquivalentContextValues",
+                [firstProjectedContextValues, secondProjectedContextValues])!).ShouldBeTrue();
+        }
+
+        /// <summary>
+        /// Confirms startup notifications are mirrored into the output stream when the interactive shell replays them.
+        /// </summary>
+        [Fact]
+        public async Task MirrorStartupNotificationsIntoTheOutputStreamWhenTheShellBecomesInteractive()
+        {
+            // Startup notifications are still shown as toasts, but the output-first shell should also capture them in the shared output stream.
+            await using var serviceProvider = CreateServiceProvider();
+            var shellManager = serviceProvider.GetRequiredService<WorkbenchShellManager>();
+            var outputService = serviceProvider.GetRequiredService<IWorkbenchOutputService>();
+            var startupNotificationStore = serviceProvider.GetRequiredService<WorkbenchStartupNotificationStore>();
+            SeedHostShell(shellManager);
+            startupNotificationStore.Add(NotificationSeverity.Warning, "Startup warning", "The Workbench replayed a startup warning.");
+            var layout = CreateLayoutInstance(serviceProvider, shellManager);
+
+            await InvokePrivateMethodAsync(layout, "OnAfterRenderAsync", true);
+
+            outputService.Entries.ShouldContain(entry => entry.Source == "Notifications"
+                && entry.Summary == "Startup warning"
+                && entry.Level == OutputLevel.Warning);
+        }
+
+        /// <summary>
+        /// Confirms buffered startup diagnostics from module discovery are replayed into the shared output stream during shell bootstrap.
+        /// </summary>
+        [Fact]
+        public void ReplayBufferedStartupDiagnosticsIntoTheOutputStreamDuringBootstrap()
+        {
+            // Module discovery runs before DI finalization, so the host must buffer output and replay it once the singleton output service exists.
+            var outputService = new UKHO.Workbench.Services.Output.WorkbenchOutputService();
+            var startupNotificationStore = new WorkbenchStartupNotificationStore();
+            startupNotificationStore.AddOutput(
+                OutputLevel.Debug,
+                "Module loader",
+                "Loaded Workbench module 'UKHO.Workbench.Modules.Search'.",
+                "Assembly path: c:/modules/Search.dll");
+
+            InvokeStaticPrivateMethod(
+                typeof(WorkbenchHost.Program),
+                "ReplayBufferedStartupOutput",
+                [outputService, startupNotificationStore]);
+
+            outputService.Entries.ShouldContain(entry => entry.Source == "Module loader"
+                && entry.Summary == "Loaded Workbench module 'UKHO.Workbench.Modules.Search'."
+                && entry.Level == OutputLevel.Debug);
+            startupNotificationStore.DequeueOutputEntries().ShouldBeEmpty();
+        }
+
+        /// <summary>
+        /// Confirms single-click explorer interaction records selection without opening a tab.
+        /// </summary>
+        [Fact]
+        public async Task SelectTheExplorerItemOnSingleClickWithoutOpeningATab()
+        {
+            // Explorer single-click should update explorer selection only so the center surface remains unchanged until a double-click activation occurs.
+            await using var serviceProvider = CreateServiceProvider();
+            var shellManager = serviceProvider.GetRequiredService<WorkbenchShellManager>();
+            SeedHostShell(shellManager);
+            var explorerItem = shellManager.GetExplorerItems(FallbackExplorerId, HostToolsSectionId).Single();
+
+            shellManager.SelectExplorerItem(explorerItem.Id);
+
+            shellManager.State.SelectedExplorerItemId.ShouldBe(explorerItem.Id);
+            shellManager.OpenTabs.Count.ShouldBe(0);
+            shellManager.State.ActiveTab.ShouldBeNull();
+        }
+
+        /// <summary>
+        /// Confirms double-click explorer interaction opens the requested tab and renders it in the tab strip.
+        /// </summary>
+        [Fact]
+        public async Task OpenTheExplorerItemOnDoubleClickAndRenderItInTheTabStrip()
+        {
+            // Explorer double-click should route through the shared command path and immediately activate the resulting tab.
+            await using var serviceProvider = CreateServiceProvider();
+            var shellManager = serviceProvider.GetRequiredService<WorkbenchShellManager>();
+            SeedHostShell(shellManager);
+            var explorerItem = shellManager.GetExplorerItems(FallbackExplorerId, HostToolsSectionId).Single();
+
+            shellManager.SelectExplorerItem(explorerItem.Id);
+            await shellManager.ExecuteCommandAsync(explorerItem.CommandId);
+
+            shellManager.OpenTabs.Count.ShouldBe(1);
+            shellManager.State.ActiveTool.ShouldNotBeNull();
+
+            var renderer = new HtmlRenderer(serviceProvider, serviceProvider.GetRequiredService<ILoggerFactory>());
+            var html = await RenderLayoutAsync(renderer);
+            html.ShouldContain("data-region=\"tab-strip\"");
+            html.ShouldContain($"data-tab-id=\"{shellManager.State.ActiveTab!.Id}\"");
+            html.ShouldContain("Workbench overview");
+        }
+
+        /// <summary>
+        /// Confirms reopening the same explorer item focuses the existing tab instead of opening a duplicate tab.
+        /// </summary>
+        [Fact]
+        public async Task FocusTheExistingTabWhenTheSameExplorerItemIsOpenedAgain()
+        {
+            // Duplicate explorer activation should reuse the logical target so the same tab instance remains active.
+            await using var serviceProvider = CreateServiceProvider();
+            var shellManager = serviceProvider.GetRequiredService<WorkbenchShellManager>();
+            SeedHostShell(shellManager);
+            var explorerItem = shellManager.GetExplorerItems(FallbackExplorerId, HostToolsSectionId).Single();
+
+            shellManager.SelectExplorerItem(explorerItem.Id);
+            await shellManager.ExecuteCommandAsync(explorerItem.CommandId);
+            var firstTabId = shellManager.State.ActiveTab!.Id;
+            shellManager.SelectExplorerItem(explorerItem.Id);
+            await shellManager.ExecuteCommandAsync(explorerItem.CommandId);
+
+            shellManager.OpenTabs.Count.ShouldBe(1);
+            shellManager.State.ActiveTab.ShouldNotBeNull();
+            shellManager.State.ActiveTab.Id.ShouldBe(firstTabId);
+        }
+
+        /// <summary>
+        /// Confirms selecting another open tab switches the active tab without reopening any content.
+        /// </summary>
+        [Fact]
+        public async Task SwitchTheActiveTabWhenAnotherOpenTabIsSelected()
+        {
+            // Tab-strip selection should change the active tab while preserving the existing open-tab collection.
+            await using var serviceProvider = CreateServiceProvider();
+            var shellManager = serviceProvider.GetRequiredService<WorkbenchShellManager>();
+            SeedHostShell(shellManager);
+            SeedSearchShell(shellManager);
+            var overviewTool = shellManager.ActivateTool(ActivationTarget.CreateToolSurfaceTarget(OverviewToolId));
+            _ = shellManager.ActivateTool(ActivationTarget.CreateToolSurfaceTarget("tool.module.search.query"));
+
+            shellManager.ActivateTab(overviewTool.InstanceId);
+
+            shellManager.State.ActiveTab.ShouldNotBeNull();
+            shellManager.State.ActiveTab.Id.ShouldBe(overviewTool.InstanceId);
+            shellManager.OpenTabs.Count.ShouldBe(2);
+        }
+
+        /// <summary>
+        /// Confirms inactive tabs render updated title and icon metadata immediately after the hosted view publishes a runtime update.
+        /// </summary>
+        [Fact]
+        public async Task RenderInactiveTabMetadataUpdatesImmediately()
+        {
+            // Inactive-tab metadata updates should still be visible in the strip so background state changes do not require the user to re-activate the tab first.
+            await using var serviceProvider = CreateServiceProvider();
+            var shellManager = serviceProvider.GetRequiredService<WorkbenchShellManager>();
+            SeedHostShell(shellManager);
+            SeedSearchShell(shellManager);
+
+            var overviewTool = shellManager.ActivateTool(
+                ActivationTarget.CreateToolSurfaceTarget(
+                    OverviewToolId,
+                    parameterIdentity: "item=overview",
+                    initialTitle: "Explorer overview",
+                    initialIcon: "explore"));
+            _ = shellManager.ActivateTool(ActivationTarget.CreateToolSurfaceTarget("tool.module.search.query"));
+
+            overviewTool.Context.SetTitle("Updated inactive overview");
+            overviewTool.Context.SetIcon("travel_explore");
+
+            var renderer = new HtmlRenderer(serviceProvider, serviceProvider.GetRequiredService<ILoggerFactory>());
+            var html = await RenderLayoutAsync(renderer);
+
+            html.ShouldContain("Updated inactive overview");
+            html.ShouldContain("travel_explore");
+            html.ShouldNotContain("Explorer overview");
+        }
+
+        /// <summary>
+        /// Confirms the tab strip always renders the overflow split button and keeps the overflow list free of filter or close chrome.
+        /// </summary>
+        [Fact]
+        public async Task RenderAnAlwaysVisibleOverflowDropdownWithoutFilterOrCloseActions()
+        {
+            // The overflow affordance should stay permanently available while deliberately omitting filtering, searching, and overflow close affordances.
+            await using var serviceProvider = CreateServiceProvider();
+            var shellManager = serviceProvider.GetRequiredService<WorkbenchShellManager>();
+            SeedHostShell(shellManager);
+            SeedSearchShell(shellManager);
+            shellManager.RegisterTool(new ToolDefinition("tool.module.admin.long", "Administration workbench tool with a deliberately long title", typeof(WorkbenchOverviewTool), "explorer.bootstrap", "admin_panel_settings"));
+
+            _ = shellManager.ActivateTool(ActivationTarget.CreateToolSurfaceTarget(OverviewToolId));
+            _ = shellManager.ActivateTool(ActivationTarget.CreateToolSurfaceTarget("tool.module.search.query"));
+            var longTitleTool = shellManager.ActivateTool(ActivationTarget.CreateToolSurfaceTarget("tool.module.admin.long"));
+            longTitleTool.Context.SetTitle("Administration workbench tool with a deliberately long runtime title for tooltip coverage");
+
+            var renderer = new HtmlRenderer(serviceProvider, serviceProvider.GetRequiredService<ILoggerFactory>());
+            var html = await RenderLayoutAsync(renderer);
+
+            html.ShouldContain("data-region=\"tab-strip-overflow\"");
+            html.ShouldContain("data-overflow-tab-id");
+            html.ShouldContain("data-overflow-active=\"true\"");
+            html.ShouldContain("rz-splitbutton");
+            html.ShouldContain("workbench-shell__tab-title");
+            html.ShouldNotContain("rz-dropdown-filter-container");
+            html.ShouldNotContain("data-overflow-close");
+        }
+
+        /// <summary>
+        /// Confirms the center tab host renders flush on the top, bottom, and left edges without the removed intermediate wrapper.
+        /// </summary>
+        [Fact]
+        public async Task RenderAFlushCenterTabHostWithoutTheRemovedPaddingWrapper()
+        {
+            // The spacing refinement should be owned by the shell itself, so the tab host now renders with explicit flush metadata and without the extra tool-area wrapper.
+            await using var serviceProvider = CreateServiceProvider();
+            var shellManager = serviceProvider.GetRequiredService<WorkbenchShellManager>();
+            SeedHostShell(shellManager);
+
+            _ = shellManager.ActivateTool(ActivationTarget.CreateToolSurfaceTarget(OverviewToolId));
+
+            var renderer = new HtmlRenderer(serviceProvider, serviceProvider.GetRequiredService<ILoggerFactory>());
+            var html = await RenderLayoutAsync(renderer);
+
+            html.ShouldContain("data-tab-strip-spacing=\"flush-top-bottom-left\"");
+            html.ShouldNotContain("workbench-shell__tool-area");
+        }
+
+        /// <summary>
+        /// Confirms the overflow affordance remains rendered after the flush spacing change and stays anchored at the right side of the tab strip.
+        /// </summary>
+        [Fact]
+        public async Task KeepTheOverflowAffordanceAnchoredToTheRightSideOfTheTabStrip()
+        {
+            // The flush spacing change must not disturb overflow placement, so the rendered strip keeps the overflow host after the main tab-list content.
+            await using var serviceProvider = CreateServiceProvider();
+            var shellManager = serviceProvider.GetRequiredService<WorkbenchShellManager>();
+            SeedHostShell(shellManager);
+            SeedSearchShell(shellManager);
+            shellManager.RegisterTool(new ToolDefinition("tool.module.admin.long", "Administration workbench tool with a deliberately long title", typeof(WorkbenchOverviewTool), "explorer.bootstrap", "admin_panel_settings"));
+
+            _ = shellManager.ActivateTool(ActivationTarget.CreateToolSurfaceTarget(OverviewToolId));
+            _ = shellManager.ActivateTool(ActivationTarget.CreateToolSurfaceTarget("tool.module.search.query"));
+            _ = shellManager.ActivateTool(ActivationTarget.CreateToolSurfaceTarget("tool.module.admin.long"));
+
+            var renderer = new HtmlRenderer(serviceProvider, serviceProvider.GetRequiredService<ILoggerFactory>());
+            var html = await RenderLayoutAsync(renderer);
+            var contentIndex = html.IndexOf("workbench-shell__tab-strip-content", StringComparison.Ordinal);
+            var overflowIndex = html.IndexOf("data-tab-strip-overflow-anchor=\"right\"", StringComparison.Ordinal);
+
+            html.ShouldContain("data-region=\"tab-strip-overflow\"");
+            html.ShouldContain("data-tab-strip-overflow-anchor=\"right\"");
+            contentIndex.ShouldBeGreaterThanOrEqualTo(0);
+            overflowIndex.ShouldBeGreaterThan(contentIndex);
+        }
+
+        /// <summary>
+        /// Confirms selecting an overflow entry through the layout activates the chosen tab and moves the visible strip just enough to reveal it.
+        /// </summary>
+        [Fact]
+        public async Task ActivateAnOverflowEntryThroughTheLayoutAndRevealItWithMinimalMovement()
+        {
+            // Layout-driven overflow activation should call the dedicated shell path so the visible strip state remains aligned with the selected hidden tab.
+            using var serviceProvider = CreateServiceProvider();
+            var shellManager = serviceProvider.GetRequiredService<WorkbenchShellManager>();
+
+            foreach (var index in Enumerable.Range(1, 6))
+            {
+                shellManager.RegisterTool(new ToolDefinition($"tool.host.{index}", $"Host tool {index}", typeof(WorkbenchOverviewTool), FallbackExplorerId, $"looks_{index}"));
+                shellManager.ActivateTool(ActivationTarget.CreateToolSurfaceTarget($"tool.host.{index}"));
+            }
+
+            var layout = CreateLayoutInstance(serviceProvider, shellManager);
+            var selectedOverflowTabId = shellManager.OpenTabs[1].Id;
+
+            await InvokePrivateMethodAsync(layout, "SelectOverflowTabAsync", selectedOverflowTabId);
+
+            shellManager.State.ActiveTab.ShouldNotBeNull();
+            shellManager.State.ActiveTab.Id.ShouldBe(selectedOverflowTabId);
+            shellManager.VisibleTabs.Select(openTab => openTab.ToolInstance.Definition.Id).ShouldBe([
+                "tool.host.2",
+                "tool.host.3",
+                "tool.host.4",
+                "tool.host.5"
+            ]);
+        }
+
+        /// <summary>
+        /// Confirms the layout uses the Radzen tooltip service for repeated hover interactions on tab and overflow titles.
+        /// </summary>
+        [Fact]
+        public void UseTheRadzenTooltipServiceForRepeatedTitleHoverInteractions()
+        {
+            // The tooltip slice should open a fresh tooltip on every hover and close it again when hover ends so truncated titles remain discoverable.
+            using var serviceProvider = CreateServiceProvider();
+            var shellManager = serviceProvider.GetRequiredService<WorkbenchShellManager>();
+            var tooltipService = serviceProvider.GetRequiredService<TooltipService>();
+            var layout = CreateLayoutInstance(serviceProvider, shellManager);
+            var openedTitles = new List<string>();
+            var closeCount = 0;
+
+            tooltipService.OnOpen += (_, _, options) =>
+            {
+                if (!string.IsNullOrWhiteSpace(options.Text))
+                {
+                    openedTitles.Add(options.Text);
+                }
+            };
+            tooltipService.OnClose += () => closeCount++;
+
+            InvokePrivateMethod(layout, "ShowTitleTooltip", [default(ElementReference), "Long tab title for tooltip coverage"]);
+            InvokePrivateMethod(layout, "HideTitleTooltip", [default(ElementReference)]);
+            InvokePrivateMethod(layout, "ShowTitleTooltip", [default(ElementReference), "Long overflow title for tooltip coverage"]);
+
+            openedTitles.ShouldBe([
+                "Long tab title for tooltip coverage",
+                "Long overflow title for tooltip coverage"
+            ]);
+            closeCount.ShouldBe(1);
+        }
+
+        /// <summary>
+        /// Confirms the tab context menu offers only the first-implementation close action.
+        /// </summary>
+        [Fact]
+        public void BuildATabContextMenuWithCloseAsTheOnlyAction()
+        {
+            // The first implementation intentionally keeps the tab context menu minimal so all close behavior continues to flow through the shared shell close path.
+            using var serviceProvider = CreateServiceProvider();
+            var shellManager = serviceProvider.GetRequiredService<WorkbenchShellManager>();
+            SeedHostShell(shellManager);
+
+            _ = shellManager.ActivateTool(ActivationTarget.CreateToolSurfaceTarget(OverviewToolId));
+            var openTab = shellManager.OpenTabs.Single();
+
+            var contextMenuItems = InvokeStaticPrivateMethod(
+                typeof(MainLayout),
+                "CreateTabContextMenuItems",
+                [openTab]) as IReadOnlyList<ContextMenuItem>;
+
+            contextMenuItems.ShouldNotBeNull();
+
+            contextMenuItems.Count.ShouldBe(1);
+            contextMenuItems[0].Text.ShouldBe("Close");
+            contextMenuItems[0].Icon.ShouldBe("close");
+            contextMenuItems[0].Value.ShouldBe(openTab.Id);
+        }
+
+        /// <summary>
+        /// Confirms the tab context-menu close handler routes through the same shell close behavior used by the visible strip close button.
+        /// </summary>
+        [Fact]
+        public void CloseTabsThroughTheContextMenuHandlerWithTheSameSharedShellBehavior()
+        {
+            // Context-menu close should not introduce a second close implementation because the specification requires the same lifecycle and active-tab outcomes.
+            using var serviceProvider = CreateServiceProvider();
+            var shellManager = serviceProvider.GetRequiredService<WorkbenchShellManager>();
+            SeedHostShell(shellManager);
+            SeedSearchShell(shellManager);
+            shellManager.RegisterTool(new ToolDefinition("tool.admin", "Admin", typeof(WorkbenchOverviewTool), "explorer.bootstrap", "build"));
+
+            var overviewTool = shellManager.ActivateTool(ActivationTarget.CreateToolSurfaceTarget(OverviewToolId));
+            var searchTool = shellManager.ActivateTool(ActivationTarget.CreateToolSurfaceTarget("tool.module.search.query"));
+            var adminTool = shellManager.ActivateTool(ActivationTarget.CreateToolSurfaceTarget("tool.admin"));
+            shellManager.ActivateTab(overviewTool.InstanceId);
+            var layout = CreateLayoutInstance(serviceProvider, shellManager);
+
+            InvokePrivateMethod(layout, "HandleTabContextMenuSelection", [overviewTool.InstanceId]);
+
+            shellManager.State.ActiveTool.ShouldBe(adminTool);
+            shellManager.OpenTabs.Select(openTab => openTab.Id).ShouldBe([
+                searchTool.InstanceId,
+                adminTool.InstanceId
+            ]);
+        }
+
+        /// <summary>
+        /// Confirms explorer middle-click remains a no-op for both selection and opening interactions.
+        /// </summary>
+        [Fact]
+        public async Task IgnoreMiddleClickForExplorerInteractions()
+        {
+            // The first implementation explicitly defers middle-click behavior, so explorer interaction handlers should return without mutating shell state.
+            using var serviceProvider = CreateServiceProvider();
+            var shellManager = serviceProvider.GetRequiredService<WorkbenchShellManager>();
+            SeedHostShell(shellManager);
+            var explorerItem = shellManager.GetExplorerItems(FallbackExplorerId, HostToolsSectionId).Single();
+            var layout = CreateLayoutInstance(serviceProvider, shellManager);
+            var middleClick = new MouseEventArgs { Button = 1 };
+
+            await InvokePrivateMethodAsync(layout, "SelectExplorerItemAsync", explorerItem, middleClick);
+            await InvokePrivateMethodAsync(layout, "OpenExplorerItemAsync", explorerItem, middleClick);
+
+            shellManager.State.SelectedExplorerItemId.ShouldBeNull();
+            shellManager.OpenTabs.Count.ShouldBe(0);
+        }
+
+        /// <summary>
+        /// Confirms tab middle-click remains a no-op in the first implementation.
+        /// </summary>
+        [Fact]
+        public async Task IgnoreMiddleClickForOpenTabs()
+        {
+            // Tab middle-click is intentionally out of scope, so the no-op auxiliary-click handler should leave the shell state unchanged.
+            using var serviceProvider = CreateServiceProvider();
+            var shellManager = serviceProvider.GetRequiredService<WorkbenchShellManager>();
+            SeedHostShell(shellManager);
+
+            var overviewTool = shellManager.ActivateTool(ActivationTarget.CreateToolSurfaceTarget(OverviewToolId));
+            var originalActiveTabId = shellManager.State.ActiveTab?.Id;
+
+            await InvokeStaticPrivateMethodAsync(typeof(MainLayout), "IgnoreAuxiliaryClickAsync", new MouseEventArgs { Button = 1 });
+
+            shellManager.OpenTabs.Count.ShouldBe(1);
+            shellManager.State.ActiveTab.ShouldNotBeNull();
+            shellManager.State.ActiveTab.Id.ShouldBe(originalActiveTabId);
+            shellManager.State.ActiveTool.ShouldBe(overviewTool);
+        }
+
+        /// <summary>
+        /// Creates the service provider used by the Workbench host rendering and interaction tests.
+        /// </summary>
+        /// <returns>A fully configured service provider for the Workbench host shell.</returns>
+        private static ServiceProvider CreateServiceProvider()
+        {
+            // The test provider mirrors the host registrations so rendering and interaction behavior matches the real Workbench shell composition.
+            var services = new ServiceCollection();
+            services.AddLogging();
+            services.AddRadzenComponents();
+            services.AddWorkbenchServices();
+            services.AddSingleton<WorkbenchStartupNotificationStore>();
+            services.AddSingleton<IJSRuntime, TestJsRuntime>();
+            services.AddSingleton<NavigationManager, TestNavigationManager>();
+            return services.BuildServiceProvider();
+        }
+
+        /// <summary>
+        /// Reads the isolated <c>MainLayout.razor.css</c> file from the repository so stylesheet contracts can be asserted directly.
+        /// </summary>
+        /// <returns>The raw stylesheet content for the Workbench main layout.</returns>
+        private static string ReadMainLayoutStylesheet()
+        {
+            // The targeted shell-theme tests validate the host-owned tokens in source because CSS isolation keeps those declarations out of the rendered HTML markup.
+            var stylesheetPath = Path.GetFullPath(Path.Combine(
+                AppContext.BaseDirectory,
+                "..",
+                "..",
+                "..",
+                "..",
+                "..",
+                "..",
+                "..",
+                "src",
+                "workbench",
+                "server",
+                "WorkbenchHost",
+                "Components",
+                "Layout",
+                "MainLayout.razor.css"));
+
+            return File.ReadAllText(stylesheetPath);
+        }
+
+        /// <summary>
+        /// Registers the host-owned shell contributions used by the runtime shell bootstrap.
+        /// </summary>
+        /// <param name="shellManager">The shell manager that should receive the host-owned contributions.</param>
+        private static void SeedHostShell(WorkbenchShellManager shellManager)
+        {
+            // The helper mirrors the host bootstrap path so rendering tests stay aligned with production shell composition.
+            shellManager.RegisterTool(
+                new ToolDefinition(
+                    OverviewToolId,
+                    "Workbench overview",
+                    typeof(WorkbenchOverviewTool),
+                    FallbackExplorerId,
+                    "dashboard",
+                    "Shows the first host-owned tool."));
+            shellManager.RegisterExplorer(new ExplorerContribution(FallbackExplorerId, FallbackExplorerDisplayName, "dashboard_customize", 0));
+            shellManager.RegisterExplorerSection(new ExplorerSectionContribution(HostToolsSectionId, FallbackExplorerId, "Host tools", 100));
+            var overviewActivationTarget = ActivationTarget.CreateToolSurfaceTarget(
+                OverviewToolId,
+                initialTitle: "Workbench overview",
+                initialIcon: "dashboard");
+            shellManager.RegisterCommand(
+                new CommandContribution(
+                    OverviewCommandId,
+                    "Open Workbench overview",
+                    CommandScope.Host,
+                    activationTarget: overviewActivationTarget));
+            shellManager.RegisterExplorerItem(
+                new ExplorerItem(
+                    "explorer.item.host.overview",
+                    FallbackExplorerId,
+                    HostToolsSectionId,
+                    "Workbench overview",
+                    OverviewCommandId,
+                    overviewActivationTarget,
+                    "dashboard",
+                    "Shows the first host-owned tool.",
+                    100));
+            shellManager.RegisterCommand(
+                new CommandContribution(
+                    HelpCommandId,
+                    "Help",
+                    CommandScope.Host,
+                    executionHandler: static (_, _) => Task.CompletedTask));
+            shellManager.RegisterCommand(
+                new CommandContribution(
+                    EditCommandId,
+                    "Edit",
+                    CommandScope.Host,
+                    executionHandler: static (_, _) => Task.CompletedTask));
+            shellManager.RegisterCommand(
+                new CommandContribution(
+                    ViewCommandId,
+                    "View",
+                    CommandScope.Host,
+                    executionHandler: static (_, _) => Task.CompletedTask));
+            shellManager.RegisterMenu(new MenuContribution(EditMenuId, "Edit", EditCommandId, order: 200));
+            shellManager.RegisterMenu(new MenuContribution(ViewMenuId, "View", ViewCommandId, order: 300));
+            shellManager.RegisterMenu(new MenuContribution(HelpMenuId, "Help", HelpCommandId, order: 400));
+            shellManager.RegisterExplorerToolbar(new ExplorerToolbarContribution(OverviewExplorerToolbarId, "Home", OverviewCommandId, icon: "dashboard", order: 100));
+            shellManager.SetActiveExplorer(FallbackExplorerId);
+        }
+
+        /// <summary>
+        /// Registers the minimal Search module shell contributions required by the layout tests.
+        /// </summary>
+        /// <param name="shellManager">The shell manager that should receive the Search tool contributions.</param>
+        private static void SeedSearchShell(WorkbenchShellManager shellManager)
+        {
+            // The helper provides the same Search explorer and command shape that the module contributes at runtime.
+            shellManager.RegisterTool(new ToolDefinition("tool.module.search.query", "Search query", typeof(WorkbenchOverviewTool), "explorer.module.search.query", "manage_search", "Search module dummy tool."));
+            shellManager.RegisterExplorer(new ExplorerContribution("explorer.module.search.query", "Query", "manage_search", 100));
+            shellManager.RegisterExplorerSection(new ExplorerSectionContribution("explorer.section.search.query", "explorer.module.search.query", "Search module", 100));
+            var searchActivationTarget = ActivationTarget.CreateToolSurfaceTarget(
+                "tool.module.search.query",
+                initialTitle: "Search query",
+                initialIcon: "manage_search");
+            shellManager.RegisterCommand(new CommandContribution("command.module.search.open-query", "Open Search query", CommandScope.Host, activationTarget: searchActivationTarget));
+            shellManager.RegisterExplorerItem(new ExplorerItem("explorer.item.search.query", "explorer.module.search.query", "explorer.section.search.query", "Search query", "command.module.search.open-query", searchActivationTarget, "manage_search", "Search module dummy tool.", 100));
+        }
+
+        /// <summary>
+        /// Creates a layout instance with the injected services required by the interaction tests.
+        /// </summary>
+        /// <param name="serviceProvider">The service provider that owns the Workbench shell test services.</param>
+        /// <param name="shellManager">The seeded shell manager that should back the layout instance.</param>
+        /// <returns>A layout instance with its injected dependencies populated.</returns>
+        private static MainLayout CreateLayoutInstance(IServiceProvider serviceProvider, WorkbenchShellManager shellManager)
+        {
+            // The interaction tests call private handlers directly, so the layout instance needs the same injected services the runtime component would receive.
+            var layout = new MainLayout();
+            SetInjectedProperty(layout, "ShellManager", shellManager);
+            SetInjectedProperty(layout, "WorkbenchOutputService", serviceProvider.GetRequiredService<IWorkbenchOutputService>());
+            SetInjectedProperty(layout, "JsRuntime", serviceProvider.GetRequiredService<IJSRuntime>());
+            SetInjectedProperty(layout, "Logger", serviceProvider.GetRequiredService<ILogger<MainLayout>>());
+            SetInjectedProperty(layout, "NotificationService", serviceProvider.GetRequiredService<NotificationService>());
+            SetInjectedProperty(layout, "StartupNotificationStore", serviceProvider.GetRequiredService<WorkbenchStartupNotificationStore>());
+            SetInjectedProperty(layout, "ContextMenuService", serviceProvider.GetRequiredService<ContextMenuService>());
+            SetInjectedProperty(layout, "TooltipService", serviceProvider.GetRequiredService<TooltipService>());
+            return layout;
+        }
+
+        /// <summary>
+        /// Sets one of the layout's injected properties through reflection for test setup.
+        /// </summary>
+        /// <param name="layout">The layout instance whose property should be populated.</param>
+        /// <param name="propertyName">The injected property name to populate.</param>
+        /// <param name="value">The value that should be assigned to the property.</param>
+        private static void SetInjectedProperty(MainLayout layout, string propertyName, object value)
+        {
+            // The interaction tests bypass the Blazor renderer, so they populate private injected properties directly.
+            var propertyInfo = typeof(MainLayout).GetProperty(propertyName, BindingFlags.Instance | BindingFlags.NonPublic);
+
+            if (propertyInfo is null)
+            {
+                throw new InvalidOperationException($"The property '{propertyName}' was not found on {nameof(MainLayout)}.");
+            }
+
+            propertyInfo.SetValue(layout, value);
+        }
+
+        /// <summary>
+        /// Sets one private field value on the supplied layout instance through reflection for focused state-based tests.
+        /// </summary>
+        /// <param name="layout">The layout instance whose field should be populated.</param>
+        /// <param name="fieldName">The private field name to populate.</param>
+        /// <param name="value">The value that should be assigned to the field.</param>
+        private static void SetPrivateFieldValue(MainLayout layout, string fieldName, object? value)
+        {
+            // Focused layout-state tests sometimes need to simulate renderer-owned fields directly without promoting those fields into the component surface.
+            var fieldInfo = typeof(MainLayout).GetField(fieldName, BindingFlags.Instance | BindingFlags.NonPublic);
+
+            if (fieldInfo is null)
+            {
+                throw new InvalidOperationException($"The field '{fieldName}' was not found on {nameof(MainLayout)}.");
+            }
+
+            fieldInfo.SetValue(layout, value);
+        }
+
+        /// <summary>
+        /// Creates a deterministic output entry for rendering tests that need stable timestamps, identifiers, and optional diagnostics.
+        /// </summary>
+        /// <param name="id">The stable output-entry identifier.</param>
+        /// <param name="level">The severity level to assign to the test entry.</param>
+        /// <param name="source">The source value that should be rendered for the test entry.</param>
+        /// <param name="summary">The compact summary that should be rendered for the test entry.</param>
+        /// <param name="details">Optional expanded diagnostic details for the test entry.</param>
+        /// <param name="eventCode">Optional event code rendered only in expanded details.</param>
+        /// <returns>A deterministic immutable output entry suitable for rendering verification.</returns>
+        private static OutputEntry CreateOutputEntry(
+            string id,
+            OutputLevel level,
+            string source,
+            string summary,
+            string? details = null,
+            string? eventCode = null)
+        {
+            // Fixed timestamps keep rendering assertions stable regardless of the machine or time zone that runs the tests.
+            return new OutputEntry(
+                id,
+                new DateTimeOffset(2026, 2, 3, 14, 5, 6, TimeSpan.Zero),
+                level,
+                source,
+                summary,
+                details,
+                eventCode);
+        }
+
+        /// <summary>
+        /// Counts the number of times a rendered HTML fragment contains a specific token.
+        /// </summary>
+        /// <param name="content">The rendered HTML content to inspect.</param>
+        /// <param name="token">The token whose occurrences should be counted.</param>
+        /// <returns>The number of occurrences of the supplied token in the rendered content.</returns>
+        private static int CountOccurrences(string content, string token)
+        {
+            // Stable token counting keeps the assertions lightweight without introducing an HTML parser into the focused rendering tests.
+            ArgumentNullException.ThrowIfNull(content);
+            ArgumentException.ThrowIfNullOrWhiteSpace(token);
+
+            var occurrenceCount = 0;
+            var searchIndex = 0;
+
+            while ((searchIndex = content.IndexOf(token, searchIndex, StringComparison.Ordinal)) >= 0)
+            {
+                occurrenceCount++;
+                searchIndex += token.Length;
+            }
+
+            return occurrenceCount;
+        }
+
+        /// <summary>
+        /// Reads a private property value from the supplied instance.
+        /// </summary>
+        /// <typeparam name="TValue">The expected property value type.</typeparam>
+        /// <param name="instance">The instance that owns the private property.</param>
+        /// <param name="propertyName">The private property name to read.</param>
+        /// <returns>The private property value cast to <typeparamref name="TValue"/>.</returns>
+        private static TValue GetPrivatePropertyValue<TValue>(object instance, string propertyName)
+        {
+            // Reflection keeps layout-only state private while still letting the tests verify shell layout decisions directly.
+            var propertyInfo = instance.GetType().GetProperty(propertyName, BindingFlags.Instance | BindingFlags.NonPublic);
+
+            if (propertyInfo is null)
+            {
+                throw new InvalidOperationException($"The property '{propertyName}' was not found on {instance.GetType().Name}.");
+            }
+
+            return (TValue)(propertyInfo.GetValue(instance)
+                ?? throw new InvalidOperationException($"The property '{propertyName}' did not return a value."));
+        }
+
+        /// <summary>
+        /// Invokes a private instance method and returns its result.
+        /// </summary>
+        /// <param name="instance">The instance that owns the private method.</param>
+        /// <param name="methodName">The private method name to invoke.</param>
+        /// <param name="arguments">The arguments that should be supplied to the private method.</param>
+        /// <returns>The result returned by the invoked private method.</returns>
+        private static object? InvokePrivateMethod(object instance, string methodName, object?[] arguments)
+        {
+            // Reflection keeps the tests focused on Workbench behavior without promoting layout-only helpers into the public surface.
+            var methodInfo = instance.GetType().GetMethod(methodName, BindingFlags.Instance | BindingFlags.NonPublic | BindingFlags.Public);
+
+            if (methodInfo is null)
+            {
+                throw new InvalidOperationException($"The method '{methodName}' was not found on {instance.GetType().Name}.");
+            }
+
+            return methodInfo.Invoke(instance, arguments);
+        }
+
+        /// <summary>
+        /// Invokes a private static method and returns its result.
+        /// </summary>
+        /// <param name="declaringType">The type that owns the private static method.</param>
+        /// <param name="methodName">The private static method name to invoke.</param>
+        /// <param name="arguments">The arguments that should be supplied to the private static method.</param>
+        /// <returns>The result returned by the invoked private static method.</returns>
+        private static object? InvokeStaticPrivateMethod(Type declaringType, string methodName, object?[] arguments)
+        {
+            // Reflection keeps layout-only helpers private while still letting the tests verify the first-implementation context-menu contract.
+            var methodInfo = declaringType.GetMethod(methodName, BindingFlags.Static | BindingFlags.NonPublic);
+
+            if (methodInfo is null)
+            {
+                throw new InvalidOperationException($"The static method '{methodName}' was not found on {declaringType.Name}.");
+            }
+
+            return methodInfo.Invoke(null, arguments);
+        }
+
+        /// <summary>
+        /// Invokes a private instance method that returns a task and awaits its completion.
+        /// </summary>
+        /// <param name="instance">The instance that owns the private method.</param>
+        /// <param name="methodName">The private method name to invoke.</param>
+        /// <param name="arguments">The arguments that should be supplied to the private method.</param>
+        /// <returns>A task that completes when the private method task has completed.</returns>
+        private static async Task InvokePrivateMethodAsync(object instance, string methodName, params object?[] arguments)
+        {
+            // Awaiting the reflected task keeps the interaction tests aligned with the asynchronous event-handler contract used by the component.
+            var result = InvokePrivateMethod(instance, methodName, arguments);
+            var task = result as Task;
+
+            if (task is null)
+            {
+                throw new InvalidOperationException($"The method '{methodName}' did not return a {nameof(Task)} instance.");
+            }
+
+            await task.ConfigureAwait(false);
+        }
+
+        /// <summary>
+        /// Invokes a private static method that returns a task and awaits its completion.
+        /// </summary>
+        /// <param name="declaringType">The type that owns the private static method.</param>
+        /// <param name="methodName">The private static method name to invoke.</param>
+        /// <param name="argument">The argument that should be supplied to the private static method.</param>
+        /// <returns>A task that completes when the private static method task has completed.</returns>
+        private static async Task InvokeStaticPrivateMethodAsync(Type declaringType, string methodName, object? argument)
+        {
+            // The tab middle-click test exercises the dedicated no-op helper directly because the tab markup routes auxiliary-click interactions there.
+            var methodInfo = declaringType.GetMethod(methodName, BindingFlags.Static | BindingFlags.NonPublic);
+
+            if (methodInfo is null)
+            {
+                throw new InvalidOperationException($"The static method '{methodName}' was not found on {declaringType.Name}.");
+            }
+
+            var result = methodInfo.Invoke(null, [argument]);
+            var task = result as Task;
+
+            if (task is null)
+            {
+                throw new InvalidOperationException($"The static method '{methodName}' did not return a {nameof(Task)} instance.");
+            }
+
+            await task.ConfigureAwait(false);
+        }
+
+        /// <summary>
+        /// <summary>
+        /// Renders the layout with a sentinel body fragment so shell chrome assertions stay focused on layout composition.
+        /// </summary>
+        /// <param name="renderer">The renderer that should be used to produce static HTML.</param>
+        /// <returns>The rendered HTML for the layout.</returns>
+        private static Task<string> RenderLayoutAsync(HtmlRenderer renderer)
+        {
+            // Reusing one helper keeps the rendering tests aligned and avoids duplicating the sentinel body setup.
+            return renderer.Dispatcher.InvokeAsync(async () =>
+            {
+                var parameters = ParameterView.FromDictionary(new Dictionary<string, object?>
+                {
+                    [nameof(LayoutComponentBase.Body)] = (RenderFragment)(builder => builder.AddContent(0, "BodyMarker"))
+                });
+
+                var output = await renderer.RenderComponentAsync<MainLayout>(parameters);
+                return output.ToHtmlString();
+            });
+        }
+
+        /// <summary>
+        /// <summary>
+        /// Supplies a minimal JS runtime stub for static component rendering tests.
+        /// </summary>
+        private sealed class TestJsRuntime : IJSRuntime
+        {
+            private readonly TestJsModule _module = new();
+
+            /// <summary>
+            /// Returns a default value because the shell rendering test does not execute JavaScript.
+            /// </summary>
+            /// <typeparam name="TValue">The expected return type.</typeparam>
+            /// <param name="identifier">The JavaScript identifier requested by the component.</param>
+            /// <param name="args">The arguments that would be passed to JavaScript.</param>
+            /// <returns>A completed task containing the default value for <typeparamref name="TValue"/>.</returns>
+            public ValueTask<TValue> InvokeAsync<TValue>(string identifier, object?[]? args)
+            {
+                // Static HTML rendering can request JS modules, so the test runtime returns a stable fake module for imports and a default value for everything else.
+                if (typeof(TValue) == typeof(IJSObjectReference) && string.Equals(identifier, "import", StringComparison.Ordinal))
+                {
+                    return ValueTask.FromResult((TValue)(object)_module);
+                }
+
+                return ValueTask.FromResult(default(TValue)!);
+            }
+
+            /// <summary>
+            /// Returns a default value because the shell rendering test does not execute JavaScript.
+            /// </summary>
+            /// <typeparam name="TValue">The expected return type.</typeparam>
+            /// <param name="identifier">The JavaScript identifier requested by the component.</param>
+            /// <param name="cancellationToken">The cancellation token that would flow to the JavaScript invocation.</param>
+            /// <param name="args">The arguments that would be passed to JavaScript.</param>
+            /// <returns>A completed task containing the default value for <typeparamref name="TValue"/>.</returns>
+            public ValueTask<TValue> InvokeAsync<TValue>(string identifier, CancellationToken cancellationToken, object?[]? args)
+            {
+                // Static HTML rendering can request JS modules, so the test runtime returns a stable fake module for imports and a default value for everything else.
+                if (typeof(TValue) == typeof(IJSObjectReference) && string.Equals(identifier, "import", StringComparison.Ordinal))
+                {
+                    return ValueTask.FromResult((TValue)(object)_module);
+                }
+
+                return ValueTask.FromResult(default(TValue)!);
+            }
+        }
+
+        /// <summary>
+        /// Supplies a minimal JS module stub for layout tests that now import an output-panel helper.
+        /// </summary>
+        private sealed class TestJsModule : IJSObjectReference
+        {
+            /// <summary>
+            /// Returns a default value because the layout tests only need imported module calls to succeed.
+            /// </summary>
+            /// <typeparam name="TValue">The expected return type.</typeparam>
+            /// <param name="identifier">The exported JavaScript function identifier.</param>
+            /// <param name="args">The arguments that would be passed to the JavaScript function.</param>
+            /// <returns>A completed task containing the default value for <typeparamref name="TValue"/>.</returns>
+            public ValueTask<TValue> InvokeAsync<TValue>(string identifier, object?[]? args)
+            {
+                // The layout tests do not execute browser behavior; they only need module calls to remain non-throwing.
+                return ValueTask.FromResult(default(TValue)!);
+            }
+
+            /// <summary>
+            /// Returns a default value because the layout tests only need imported module calls to succeed.
+            /// </summary>
+            /// <typeparam name="TValue">The expected return type.</typeparam>
+            /// <param name="identifier">The exported JavaScript function identifier.</param>
+            /// <param name="cancellationToken">The cancellation token associated with the invocation.</param>
+            /// <param name="args">The arguments that would be passed to the JavaScript function.</param>
+            /// <returns>A completed task containing the default value for <typeparamref name="TValue"/>.</returns>
+            public ValueTask<TValue> InvokeAsync<TValue>(string identifier, CancellationToken cancellationToken, object?[]? args)
+            {
+                // The layout tests do not execute browser behavior; they only need module calls to remain non-throwing.
+                return ValueTask.FromResult(default(TValue)!);
+            }
+
+            /// <summary>
+            /// Releases the fake module without additional work.
+            /// </summary>
+            /// <returns>A completed value task.</returns>
+            public ValueTask DisposeAsync()
+            {
+                // The fake module owns no unmanaged resources.
+                return ValueTask.CompletedTask;
+            }
+        }
+
+        /// <summary>
+        /// Supplies a minimal navigation manager for Radzen services during static rendering tests.
+        /// </summary>
+        private sealed class TestNavigationManager : NavigationManager
+        {
+            /// <summary>
+            /// Initializes a new instance of the <see cref="TestNavigationManager"/> class.
+            /// </summary>
+            public TestNavigationManager()
+            {
+                // Static rendering only needs a stable base URI so component services can be constructed successfully.
+                Initialize("http://localhost/", "http://localhost/");
+            }
+
+            /// <summary>
+            /// Ignores navigation requests because the shell rendering tests do not exercise navigation behavior.
+            /// </summary>
+            /// <param name="uri">The destination URI.</param>
+            /// <param name="options">The navigation options associated with the request.</param>
+            protected override void NavigateToCore(string uri, NavigationOptions options)
+            {
+                // The static renderer never navigates, so the test stub simply tracks the last URI value.
+                Uri = ToAbsoluteUri(uri).ToString();
+            }
+        }
+    }
+}

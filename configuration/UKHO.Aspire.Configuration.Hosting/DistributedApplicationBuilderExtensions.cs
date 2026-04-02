@@ -45,6 +45,7 @@ namespace UKHO.Aspire.Configuration.Hosting
 
             var emulator = builder.AddProject<UKHO_Aspire_Configuration_Emulator>(WellKnownConfigurationName.ConfigurationServiceName)
                                   .WithExternalHttpEndpoints()
+                                  .WithHttpHealthCheck("/health")
                                   .WithEnvironment(WellKnownConfigurationName.AddsEnvironmentName, AddsEnvironment.Local.Value);
 
             // Only add the seeder service in local development environment
@@ -73,7 +74,7 @@ namespace UKHO.Aspire.Configuration.Hosting
                 project.WithReference(emulator);
                 project.WaitFor(emulator);
 
-                project.WaitFor(seederService);
+                project.WaitForCompletion(seederService);
                 project.WithEnvironment(WellKnownConfigurationName.AddsEnvironmentName, AddsEnvironment.Local.Value);
             }
 

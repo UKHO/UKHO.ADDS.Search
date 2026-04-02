@@ -1,8 +1,10 @@
 # Ingestion service provider mechanism
 
-The ingestion service is built around a provider abstraction so that queue polling, host wiring, and generic pipeline runtime can remain stable while source-specific processing graphs vary by provider.
+This page explains the boundary between the stable ingestion host/infrastructure path and the provider-owned runtime path.
 
-The current concrete provider is File Share, but the architecture is intentionally broader than that single implementation.
+Read it after [Ingestion pipeline](Ingestion-Pipeline) when you need to understand why provider registration, queue ownership, and provider metadata are split the way they are.
+
+The current concrete provider is File Share, but the abstraction is intentionally broader than that single implementation.
 
 ## Core contracts
 
@@ -82,6 +84,36 @@ The File Share factory currently exposes:
 
 - provider name: `file-share`
 - queue name: from configuration (`filesharequeuename`)
+
+## Provider metadata and split registration
+
+Provider identity now needs to support both runtime composition and metadata-only validation without forcing every consumer to pull in ingestion runtime dependencies.
+
+The current implementation centralizes generic provider identity, metadata, catalogs, and registration helpers in `src/UKHO.Search.ProviderModel` so hosts and tools can use the same shared model while remaining decoupled from provider runtime services they do not need.
+
+To support that, providers must follow a split-registration model:
+
+- **metadata registration** contributes shared provider metadata such as the canonical provider descriptor
+- **runtime registration** contributes the ingestion factory and runtime-only dependencies
+
+This allows:
+
+- metadata-only consumers to reason about known providers without activating ingestion runtime services
+- `IngestionServiceHost` to compose both metadata and runtime registrations, then validate enabled providers before queue/bootstrap work begins
+
+In the current implementation, the File Share provider exposes split registration so that:
+
+- `AddFileShareProviderMetadata()` contributes the canonical File Share provider descriptor
+- `AddFileShareProviderRuntime(...)` is used by ingestion runtime composition
+
+The ingestion runtime then applies enabled-provider validation before startup proceeds:
+
+- enabled provider names are read from the `ingestion:providers:*` configuration path
+- names are matched case-insensitively against provider metadata and runtime registrations
+- if no providers are configured, ingestion defaults to all registered runtime providers
+- invalid or incomplete provider enablement fails before bootstrap or queue polling begins
+
+See [Provider metadata and split registration](Provider-Metadata-and-Split-Registration) for the formal design guidance.
 
 ## Provider startup model
 
@@ -177,5 +209,8 @@ sequenceDiagram
 ## Related pages
 
 - [Ingestion pipeline](Ingestion-Pipeline)
+- [Ingestion walkthrough](Ingestion-Walkthrough)
 - [CanonicalDocument and discovery taxonomy](CanonicalDocument-and-Discovery-Taxonomy)
 - [File Share provider](FileShare-Provider)
+- [Provider metadata and split registration](Provider-Metadata-and-Split-Registration)
+- [Ingestion troubleshooting](Ingestion-Troubleshooting)

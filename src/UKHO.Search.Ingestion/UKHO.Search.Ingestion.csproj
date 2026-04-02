@@ -13,6 +13,7 @@
 
 	<ItemGroup>
 	  <Folder Include="Geo\" />
+	  <Folder Include="Providers\Injection\" />
 	</ItemGroup>
 
 </Project>

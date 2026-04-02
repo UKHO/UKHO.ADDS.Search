@@ -16,11 +16,8 @@ namespace UKHO.Aspire.Configuration
             {
                 builder.Configuration.AddAzureAppConfiguration(o =>
                 {
-                    const string serviceEnvironmentKey = $"services__{WellKnownConfigurationName.ConfigurationServiceName}__http__0";
-
-                    var url = Environment.GetEnvironmentVariable(serviceEnvironmentKey)!;
-
-                    var connectionString = $"Endpoint={url};Id=aac-credential;Secret=c2VjcmV0;";
+                    var endpoint = ResolveLocalAppConfigurationEndpoint(builder.Configuration);
+                    var connectionString = $"Endpoint={endpoint};Id=aac-credential;Secret=c2VjcmV0;";
 
                     o.Connect(connectionString)
                      .Select("*", serviceName.ToLowerInvariant())
@@ -52,6 +49,31 @@ namespace UKHO.Aspire.Configuration
             builder.Services.AddSingleton<IExternalServiceRegistry, ExternalServiceRegistry>();
 
             return builder;
+        }
+
+        private static string ResolveLocalAppConfigurationEndpoint(IConfiguration configuration)
+        {
+            var endpointKeys = new[]
+            {
+                $"services__{WellKnownConfigurationName.ConfigurationServiceName}__https__0",
+                $"services__{WellKnownConfigurationName.ConfigurationServiceName}__http__0"
+            };
+
+            foreach (var endpointKey in endpointKeys)
+            {
+                var endpoint = configuration[NormalizeConfigurationKey(endpointKey)] ?? Environment.GetEnvironmentVariable(endpointKey);
+                if (!string.IsNullOrWhiteSpace(endpoint))
+                {
+                    return endpoint.TrimEnd('/');
+                }
+            }
+
+            throw new InvalidOperationException($"Azure App Configuration endpoint was not found in configuration. Checked keys: {string.Join(", ", endpointKeys)}");
+        }
+
+        private static string NormalizeConfigurationKey(string key)
+        {
+            return key.Replace("__", ":", StringComparison.Ordinal);
         }
 
     }

@@ -28,11 +28,13 @@ namespace UKHO.Search.Ingestion.Tests.TestSupport
                 configurationBuilder.AddInMemoryCollection(configurationValues);
             }
 
+            var configuration = configurationBuilder.Build();
+
             services.AddSingleton<IHostEnvironment>(new TestHostEnvironment { ContentRootPath = contentRootPath });
-            services.AddSingleton<IConfiguration>(configurationBuilder.Build());
+            services.AddSingleton<IConfiguration>(configuration);
             services.AddSingleton(new IngestionModeOptions(IngestionMode.Strict));
             services.AddLogging(builder => builder.SetMinimumLevel(LogLevel.Debug));
-            services.AddIngestionServices();
+            services.AddIngestionServices(configuration);
             services.AddSingleton<IRulesSource>(_ => new FileSystemRulesSource(contentRootPath));
 
             configureServices?.Invoke(services);

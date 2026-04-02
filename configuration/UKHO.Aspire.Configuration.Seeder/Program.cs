@@ -115,22 +115,11 @@ namespace UKHO.Aspire.Configuration.Seeder
                 builder.Services.AddSingleton(x =>
                 {
                     var factoryLogger = x.GetRequiredService<ILoggerFactory>().CreateLogger("ConfigurationClientFactory");
-                    var serviceEnvironmentKey = $"services__{WellKnownConfigurationName.ConfigurationServiceName}__http__0";
-                    var url = Environment.GetEnvironmentVariable(serviceEnvironmentKey);
+                    var endpoint = ResolveAppConfigurationEndpoint(factoryLogger);
 
-                    factoryLogger.LogDebug(
-                        "Resolving App Configuration endpoint from env var {ServiceEnvironmentKey}. Found={Found}",
-                        serviceEnvironmentKey,
-                        !string.IsNullOrWhiteSpace(url));
+                    factoryLogger.LogInformation("Using App Configuration endpoint {Endpoint}", endpoint);
 
-                    if (string.IsNullOrWhiteSpace(url))
-                    {
-                        throw new InvalidOperationException($"Environment variable '{serviceEnvironmentKey}' was not set.");
-                    }
-
-                    factoryLogger.LogInformation("Using App Configuration endpoint {Endpoint}", url);
-
-                    var conStr = $"Endpoint={url};Id=aac-credential;Secret=c2VjcmV0;";
+                    var conStr = $"Endpoint={endpoint};Id=aac-credential;Secret=c2VjcmV0;";
                     return new ConfigurationClient(conStr);
                 });
 
@@ -202,6 +191,32 @@ namespace UKHO.Aspire.Configuration.Seeder
             {
                 throw new FileNotFoundException($"File not found: {path} ({name})");
             }
+        }
+
+        private static string ResolveAppConfigurationEndpoint(ILogger logger)
+        {
+            var endpointKeys = new[]
+            {
+                $"services__{WellKnownConfigurationName.ConfigurationServiceName}__https__0",
+                $"services__{WellKnownConfigurationName.ConfigurationServiceName}__http__0"
+            };
+
+            foreach (var endpointKey in endpointKeys)
+            {
+                var endpoint = Environment.GetEnvironmentVariable(endpointKey);
+
+                logger.LogDebug(
+                    "Resolving App Configuration endpoint from env var {ServiceEnvironmentKey}. Found={Found}",
+                    endpointKey,
+                    !string.IsNullOrWhiteSpace(endpoint));
+
+                if (!string.IsNullOrWhiteSpace(endpoint))
+                {
+                    return endpoint.TrimEnd('/');
+                }
+            }
+
+            throw new InvalidOperationException($"Environment variables '{string.Join("', '", endpointKeys)}' were not set.");
         }
 
         public class CommandLineParameters

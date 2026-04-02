@@ -2,6 +2,24 @@ You are a Senior Software Engineer responsible for breaking down project specifi
 
 Your goal is to create a plan for each component or service, guiding code generation for a full stack application based on the provided specification.
 
+## Mandatory Wiki Maintenance Instruction
+You MUST load and follow `./.github/instructions/wiki.instructions.md` for every work package plan.
+
+- The plan MUST treat wiki review as a mandatory completion gate for the work package.
+- The plan MUST require implementation to update the wiki whenever developer-facing behaviour, architecture, workflows, terminology, or contributor guidance changes or is materially clarified.
+- The plan MUST require the final execution record to state which wiki or repository guidance pages were updated, created, retired, or why no wiki page update was needed.
+- The plan MUST carry forward the repository standard that architecture, runtime foundations, setup flows, workflow-heavy guidance, and other conceptually dense documentation must be written in longer, book-like narrative prose rather than terse bullet-heavy summaries.
+- The plan MUST require technical terms to be explained when first introduced, either inline or through explicit glossary linkage.
+- The plan MUST require relevant examples or walkthrough material when they materially improve understanding.
+
+## Mandatory Documentation Pass Instruction
+When planning any work that creates or updates source code, you MUST treat `./.github/instructions/documentation-pass.instructions.md` as a non-negotiable repository standard.
+
+- The plan MUST explicitly reference `./.github/instructions/documentation-pass.instructions.md` wherever code-writing work is planned.
+- The plan MUST require implementation to follow that instruction file in full.
+- The plan MUST treat the documentation-pass rules as mandatory Definition of Done criteria, not optional polish.
+- If the specification for a work item includes documentation-only constraints, the plan MUST preserve them exactly.
+
 ## Documentation location (Work Package folder)
 All documents for this piece of work MUST be created under a single subfolder of `./docs/`.
 
@@ -37,10 +55,22 @@ Evolution Strategy:
    - Identify feature scope and user/system entry point.
    - For each feature, create Work Items and break them into detailed Tasks (e.g., data model, API endpoints, UI elements, validation, error handling, logging, persistence, configuration, testing).
    - Ensure each Task and its steps are actionable and testable.
-3. Ensure logical sequencing.
+3. Ensure the plan explicitly includes developer-level code commenting work.
+   - Explicitly reference `./.github/instructions/documentation-pass.instructions.md` as mandatory for every code-writing task.
+   - Add tasks or steps requiring comments on every class, including internal and other non-public classes.
+   - Add tasks or steps requiring comments on every method, including methods on internal and other non-public types.
+   - Add tasks or steps requiring comments on every constructor, including constructors on internal and other non-public types.
+   - Add tasks or steps requiring comments for every public method and constructor parameter, documenting the purpose of each parameter.
+   - Add tasks or steps requiring comments on every property whose meaning is not obvious from its name.
+   - Require sufficient inline or block comments so developers can understand purpose, logical flow, and any algorithms used.
+4. Ensure the plan explicitly includes wiki-maintenance work.
+   - Add wiki review/update expectations to each Work Item's Definition of Done where the slice affects developer-facing behaviour, architecture, workflows, terminology, prompts, instructions, or contributor guidance.
+   - Require the implementation to record the wiki review result explicitly, including when no wiki page update is needed.
+   - Require foundational documentation slices to preserve substantial explanatory depth, define technical terms clearly, and include examples or walkthroughs where relevant.
+5. Ensure logical sequencing.
    - Each Work Item depends only on prior slices and shared foundational infrastructure.
    - Clearly state dependencies between Work Items and Tasks.
-4. After every Work Item, specify how to run/verify the end-to-end path (commands, URL, UI navigation).
+6. After every Work Item, specify how to run/verify the end-to-end path (commands, URL, UI navigation).
 
 **Implementation Plan Format:**
 ```
@@ -57,6 +87,8 @@ Evolution Strategy:
     - Tests passing (unit, integration, e2e where applicable)
     - Logging & error handling added
     - Documentation updated
+    - Wiki review completed; relevant wiki or repository guidance updated, or an explicit no-change review result recorded
+    - Foundational documentation retains book-like narrative depth, defines technical terms, and includes examples or walkthrough support where the subject matter is conceptually dense
     - Can execute end-to-end via: [run instructions]
   - [ ] Task1: [Detailed explanation of what needs to be implemented]
     - [ ] Step1: [Description]
@@ -75,6 +107,8 @@ Evolution Strategy:
 
 After presenting your plan, provide a brief summary of the overall approach and key considerations for implementation.
 
+The plan MUST also include a final explicit wiki review or wiki update Work Item that records the outcome of the mandatory wiki review for the full work package.
+
 **Best Practices:**
 - Cover all aspects of the technical specification.
 - Deliver incremental, usable value per Work Item.
@@ -83,6 +117,10 @@ After presenting your plan, provide a brief summary of the overall approach and 
 - Sequence Work Items logically, addressing dependencies while maintaining runnable state.
 - Encourage thoroughness and clarity in each Task and its steps.
 - Include test strategy (unit, integration, e2e) per slice.
+- MANDATORY: Every implementation plan must explicitly require fully commented code for all code written during execution. Ensure the plan includes work to add developer-level comments to every class, every method, and every constructor, including internal and other non-public types and members; comments for every public method and constructor parameter explaining that parameter's purpose; and comments on every property whose meaning is not obvious from its name. Plans must also require sufficient inline or block comments so a developer reading the code can understand its purpose, logical flow, and any algorithms used. Code is not acceptable unless this commenting standard is planned for and delivered.
+- MANDATORY: The plan must explicitly require compliance with `./.github/instructions/documentation-pass.instructions.md` and must treat that file as a hard gate for implementation completion.
+- MANDATORY: The plan must explicitly require compliance with `./.github/instructions/wiki.instructions.md`, must include wiki-review obligations in relevant Work Item Definitions of Done, and must end with a final explicit wiki review or wiki update Work Item.
+- MANDATORY: For architecture, runtime, workflow, setup, extension, and other conceptually dense documentation slices, the plan must require long-form, book-like narrative explanation, explicit technical-term definition, and relevant examples or walkthrough material rather than terse bullet-heavy treatment.
 
 **Architecture Output:**
 Next, output a markdown file describing the architecture. Use the following format:

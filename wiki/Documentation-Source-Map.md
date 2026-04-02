@@ -10,6 +10,8 @@ The goal of this page is not to duplicate every work package, but to help develo
 - Use this source map when you want the historical rationale, earlier plans, or superseded design discussions.
 - Many directories contain specs, plans, architecture notes, and archives; read the current/superseding file first where applicable.
 
+Studio and Theia work packages remain in `docs/` as historical design records only. They describe a discontinued workflow and should not be treated as setup, runtime, or verification guidance for the current repository baseline.
+
 ## Foundational architecture and ingestion history
 
 ### `docs/000-ingestion-model`
@@ -184,6 +186,31 @@ Developer wiki creation and consolidation of the historical `docs/` corpus into 
 ### `docs/053-test-coverage-gaps`
 Repository-wide test coverage baseline assessment and identification of important subsystem and behavior coverage gaps.
 
+### `docs/059-test-refactor`
+Implementation planning and delivery tracking for the project-aligned test-estate refactor, including shared sample-data consolidation, matching test-project creation, provider/infrastructure/integration ownership cleanup, and the final solution-wide test audit.
+
+## Historical Studio / Theia design lineage (retained for reference only)
+
+### `docs/057-studio-shell`
+Initial Studio shell planning for the now-discontinued Theia-based developer workflow.
+
+### `docs/058-studio-config`
+Historical design package for propagating a studio API endpoint into the discontinued Theia shell.
+
+### `docs/060-studio-host-rename`
+Historical rename work for the detached studio API host lineage.
+
+### `docs/061-provider-metadata`
+Provider metadata model and split-registration design history, including earlier detached studio/tooling composition.
+
+### `docs/062-studio-provider`
+Historical Studio provider extraction and tandem provider registration work for the discontinued studio workflow.
+
+### `docs/063-provider-metadata-rule-loading`
+Historical provider-aware rules-loading work, including read-only rule discovery for detached studio tooling.
+
+Several later Theia- and PrimeReact-only Studio work packages were intentionally deleted during cleanup because they described a discontinued client direction and no longer belong in the retained documentation baseline.
+
 ### Top-level operational docs
 
 | Path | Topic |
@@ -208,4 +235,5 @@ Use the historical `docs/` work packages for the **why, when, and how the design
 - [Ingestion rules](Ingestion-Rules)
 - [CanonicalDocument and discovery taxonomy](CanonicalDocument-and-Discovery-Taxonomy)
 - [Ingestion service provider mechanism](Ingestion-Service-Provider-Mechanism)
+- [Provider metadata and split registration](Provider-Metadata-and-Split-Registration)
 - [File Share provider](FileShare-Provider)
