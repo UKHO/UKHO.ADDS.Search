@@ -21,7 +21,9 @@ namespace QueryServiceHost.Tests
             programSource.ShouldContain("MapKeycloakBrowserHostAuthenticationEndpoints()");
             programSource.ShouldContain("app.UseAuthentication();");
             programSource.ShouldContain("app.UseAuthorization();");
+            programSource.ShouldContain("AddSingleton<IQueryUiSearchClient, QueryUiSearchClient>()");
             programSource.ShouldNotContain("AddKeycloakOpenIdConnect(");
+            programSource.ShouldNotContain("AddSingleton<IQueryUiSearchClient, StubQueryUiSearchClient>()");
 
             // Keep the authentication pipeline ordering explicit so the authenticated principal exists before the protected Query UI endpoints are mapped.
             programSource.IndexOf("app.MapKeycloakBrowserHostAuthenticationEndpoints();", StringComparison.Ordinal)
@@ -41,6 +43,7 @@ namespace QueryServiceHost.Tests
             // Read the route component source so the test can pin the authenticated routing surface without booting the full Query host runtime.
             var routesSource = File.ReadAllText(GetRepositoryFilePath("src", "Hosts", "QueryServiceHost", "Components", "Routes.razor"));
             var redirectComponentSource = File.ReadAllText(GetRepositoryFilePath("src", "Hosts", "QueryServiceHost", "Components", "Authentication", "RedirectToLogin.razor.cs"));
+            var homePageSource = File.ReadAllText(GetRepositoryFilePath("src", "Hosts", "QueryServiceHost", "Components", "Pages", "Home.razor"));
 
             routesSource.ShouldContain("<AuthorizeRouteView");
             routesSource.ShouldContain("<NotAuthorized>");
@@ -48,6 +51,33 @@ namespace QueryServiceHost.Tests
             routesSource.ShouldNotContain("<RouteView RouteData=\"routeData\" DefaultLayout=\"typeof(MainLayout)\"/>");
             redirectComponentSource.ShouldContain("BrowserHostAuthenticationDefaults.AuthenticationPathPrefix");
             redirectComponentSource.ShouldContain("forceLoad: true");
+            homePageSource.ShouldContain("@rendermode InteractiveServer");
+        }
+
+        /// <summary>
+        /// Verifies that the state-driven query UI components subscribe to shared state changes so completed searches refresh the visible panels.
+        /// </summary>
+        [Fact]
+        public void State_driven_query_ui_components_subscribe_to_shared_state_changes()
+        {
+            // Read the component sources directly because the regression is about component subscription wiring rather than runtime behavior under a test host.
+            var searchBarSource = File.ReadAllText(GetRepositoryFilePath("src", "Hosts", "QueryServiceHost", "Components", "SearchBar.razor"));
+            var resultsPanelSource = File.ReadAllText(GetRepositoryFilePath("src", "Hosts", "QueryServiceHost", "Components", "ResultsPanel.razor"));
+            var facetPanelSource = File.ReadAllText(GetRepositoryFilePath("src", "Hosts", "QueryServiceHost", "Components", "FacetPanel.razor"));
+            var detailsPanelSource = File.ReadAllText(GetRepositoryFilePath("src", "Hosts", "QueryServiceHost", "Components", "DetailsPanel.razor"));
+
+            searchBarSource.ShouldContain("@implements IDisposable");
+            searchBarSource.ShouldContain("State.Changed += OnStateChanged;");
+            searchBarSource.ShouldContain("State.Changed -= OnStateChanged;");
+            resultsPanelSource.ShouldContain("@implements IDisposable");
+            resultsPanelSource.ShouldContain("State.Changed += OnStateChanged;");
+            resultsPanelSource.ShouldContain("State.Changed -= OnStateChanged;");
+            facetPanelSource.ShouldContain("@implements IDisposable");
+            facetPanelSource.ShouldContain("State.Changed += OnStateChanged;");
+            facetPanelSource.ShouldContain("State.Changed -= OnStateChanged;");
+            detailsPanelSource.ShouldContain("@implements IDisposable");
+            detailsPanelSource.ShouldContain("State.Changed += OnStateChanged;");
+            detailsPanelSource.ShouldContain("State.Changed -= OnStateChanged;");
         }
 
         /// <summary>

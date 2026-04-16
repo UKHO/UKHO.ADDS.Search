@@ -47,8 +47,8 @@ namespace QueryServiceHost
             // Reuse the shared browser-host authentication composition so QueryServiceHost follows the same Keycloak flow as the other protected browser hosts.
             builder.Services.AddKeycloakBrowserHostAuthentication("search-workbench", "query");
 
-            builder.Services.AddOptions<StubQueryUiSearchClientOptions>().BindConfiguration("QueryUi:StubSearch");
-            builder.Services.AddSingleton<IQueryUiSearchClient, StubQueryUiSearchClient>();
+            // Register the host adapter that bridges the UI onto the repository-owned query planning and Elasticsearch execution pipeline.
+            builder.Services.AddSingleton<IQueryUiSearchClient, QueryUiSearchClient>();
             builder.Services.AddScoped<QueryUiState>();
 
             // Build the application only after all UI, infrastructure, and authentication services have been registered.

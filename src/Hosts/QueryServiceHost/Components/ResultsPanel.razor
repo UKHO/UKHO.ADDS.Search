@@ -1,5 +1,6 @@
 @using QueryServiceHost.Models
 @using QueryServiceHost.State
+@implements IDisposable
 
 @inject QueryUiState State
 
@@ -43,8 +44,27 @@
 
 @code
 {
+    protected override void OnInitialized()
+    {
+        // Subscribe the results panel to shared state changes so completed searches replace the loading message with hits.
+        State.Changed += OnStateChanged;
+    }
+
+    public void Dispose()
+    {
+        // Unsubscribe when the component is disposed so the scoped state service does not retain stale callbacks.
+        State.Changed -= OnStateChanged;
+    }
+
     private bool IsSelected(Hit hit)
     {
+        // Highlight the hit currently selected in the shared state container.
         return State.SelectedHit is not null && ReferenceEquals(State.SelectedHit, hit);
+    }
+
+    private void OnStateChanged()
+    {
+        // Re-render on shared state updates because this component reads injected state rather than receiving parameters.
+        InvokeAsync(StateHasChanged);
     }
 }

@@ -35,7 +35,7 @@ The overall sequence is:
 5. close the work package with a mandatory explicit wiki review/update record
 
 ## Query planning and execution bootstrap slice
-- [ ] Work Item 1: Replace the stub search path with a real default-only query planning slice
+- [x] Work Item 1: Replace the stub search path with a real default-only query planning slice - Completed
   - **Purpose**: Deliver the smallest meaningful end-to-end query capability so `QueryServiceHost` uses a real query planning pipeline and Elasticsearch execution path instead of the current stub client.
   - **Acceptance Criteria**:
     - Entering a query in the existing query UI uses a real application/service/infrastructure path instead of `StubQueryUiSearchClient`.
@@ -52,32 +52,38 @@ The overall sequence is:
     - Wiki review completed; relevant wiki or repository guidance updated, or an explicit no-change review result recorded.
     - Foundational documentation retains book-like narrative depth, defines technical terms, and includes examples or walkthrough support where the subject matter is conceptually dense.
     - Can execute end-to-end via: `dotnet build` plus targeted query-side tests, then run the existing host stack and perform a search through `QueryServiceHost`.
-  - [ ] Task 1.1: Introduce repository-owned query plan contracts in the Domain layer
-    - [ ] Step 1: Add query-side contract types under `src/UKHO.Search.Query` for the canonical query model, query input snapshot, default contributions, execution directives, and diagnostics.
-    - [ ] Step 2: Ensure the canonical query model mirrors the discovery half of `CanonicalDocument` using query-owned types and field names, not the ingestion document type itself.
-    - [ ] Step 3: Add developer-level comments and XML comments where applicable, following `./.github/instructions/documentation-pass.instructions.md`.
-  - [ ] Task 1.2: Implement query normalization and default planning orchestration in the Services layer
-    - [ ] Step 1: Add a normalization service that lowercases, trims, collapses repeated whitespace, tokenizes the query, and initializes residual tokens/text.
-    - [ ] Step 2: Add an application service in `src/UKHO.Search.Services.Query` that produces a query plan using default-only behavior for this first slice.
-    - [ ] Step 3: Keep typed extraction and rule evaluation injectable behind interfaces, but allow the first slice to use no-op implementations so the end-to-end path is provable before richer behavior lands.
-    - [ ] Step 4: Add structured logging around normalization, plan generation, and failure handling.
-    - [ ] Step 5: Apply the mandatory commenting and XML documentation standard from `./.github/instructions/documentation-pass.instructions.md`.
-  - [ ] Task 1.3: Implement Elasticsearch query mapping and runtime wiring in the Infrastructure layer
-    - [ ] Step 1: Add Infrastructure query services that translate the default-only query plan into Elasticsearch DSL targeting `keywords`, `searchText`, and `content`.
-    - [ ] Step 2: Implement the required boost so `searchText` is scored above `content`.
-    - [ ] Step 3: Register the real query services in `src/UKHO.Search.Infrastructure.Query/Injection/InjectionExtensions.cs`.
-    - [ ] Step 4: Add error handling for invalid Elasticsearch responses and null/empty query-plan cases.
-    - [ ] Step 5: Follow `./.github/instructions/documentation-pass.instructions.md` for all new or updated code.
-  - [ ] Task 1.4: Replace stub host wiring and prove the slice through the existing UI
-    - [ ] Step 1: Update `src/Hosts/QueryServiceHost/Program.cs` to register the real query client path rather than the stub client.
-    - [ ] Step 2: Update or replace `IQueryUiSearchClient` implementations so the UI consumes real query results from the new services path.
-    - [ ] Step 3: Preserve host-only responsibilities in the host project and keep query logic out of the host.
-    - [ ] Step 4: Add developer-level comments throughout the host bootstrap changes per `./.github/instructions/documentation-pass.instructions.md`.
-  - [ ] Task 1.5: Add targeted tests and runnable verification for the bootstrap slice
-    - [ ] Step 1: Add Domain and Services tests for normalization, token generation, residual initialization, and query plan shape.
-    - [ ] Step 2: Add Infrastructure tests for Elasticsearch DSL generation, including `searchText` boost over `content`.
-    - [ ] Step 3: Add Host-level or integration-style tests where feasible to verify the stub path is no longer the active runtime path.
-    - [ ] Step 4: Record the manual run path for searching through `QueryServiceHost` against the local stack.
+  - Summary: Added repository-owned query contracts in `src/UKHO.Search.Query`, including the canonical query model, normalized input snapshot, default contributions, execution directives, diagnostics, no-op rule evaluation result, and search-result contracts. Validation: `dotnet build`, `dotnet test` for `UKHO.Search.Query.Tests`. Wiki review result: updated `wiki/Home.md` and `wiki/Solution-Architecture.md` so contributors can see that QueryServiceHost now fronts a real planner and Elasticsearch-backed execution path.
+  - [x] Task 1.1: Introduce repository-owned query plan contracts in the Domain layer - Completed
+    - Summary: Added query-owned canonical model, input snapshot, default contribution, execution, diagnostics, rule-evaluation, and search-result contract types under `src/UKHO.Search.Query` without reusing the ingestion `CanonicalDocument` CLR type. Validation: `dotnet build`, `dotnet test test/UKHO.Search.Query.Tests/UKHO.Search.Query.Tests.csproj`. Wiki review result: reviewed query/runtime architecture guidance and updated `wiki/Home.md` plus `wiki/Solution-Architecture.md` to describe the real query pipeline.
+    - [x] Step 1: Add query-side contract types under `src/UKHO.Search.Query` for the canonical query model, query input snapshot, default contributions, execution directives, and diagnostics.
+    - [x] Step 2: Ensure the canonical query model mirrors the discovery half of `CanonicalDocument` using query-owned types and field names, not the ingestion document type itself.
+    - [x] Step 3: Add developer-level comments and XML comments where applicable, following `./.github/instructions/documentation-pass.instructions.md`.
+  - [x] Task 1.2: Implement query normalization and default planning orchestration in the Services layer - Completed
+    - Summary: Added `QueryTextNormalizer`, `QueryPlanService`, `QuerySearchService`, and no-op typed extraction/rule engine implementations so raw query text is normalized into a repository-owned default-only query plan with structured logging and failure handling. Validation: `dotnet build`, `dotnet test test/UKHO.Search.Services.Query.Tests/UKHO.Search.Services.Query.Tests.csproj`. Wiki review result: confirmed the updated architecture narrative now covers the real query planning flow and host-to-service boundary.
+    - [x] Step 1: Add a normalization service that lowercases, trims, collapses repeated whitespace, tokenizes the query, and initializes residual tokens/text.
+    - [x] Step 2: Add an application service in `src/UKHO.Search.Services.Query` that produces a query plan using default-only behavior for this first slice.
+    - [x] Step 3: Keep typed extraction and rule evaluation injectable behind interfaces, but allow the first slice to use no-op implementations so the end-to-end path is provable before richer behavior lands.
+    - [x] Step 4: Add structured logging around normalization, plan generation, and failure handling.
+    - [x] Step 5: Apply the mandatory commenting and XML documentation standard from `./.github/instructions/documentation-pass.instructions.md`.
+  - [x] Task 1.3: Implement Elasticsearch query mapping and runtime wiring in the Infrastructure layer - Completed
+    - Summary: Added deterministic Elasticsearch JSON mapping and raw transport execution in `src/UKHO.Search.Infrastructure.Query`, including keyword matching on `keywords`, analyzed matching on `searchText` and `content`, the required `searchText` boost, DI registration, and invalid-response/empty-plan handling. Validation: `dotnet build`, `dotnet test test/UKHO.Search.Infrastructure.Query.Tests/UKHO.Search.Infrastructure.Query.Tests.csproj`. Wiki review result: updated `wiki/Solution-Architecture.md` so the query infrastructure row and host narrative describe query-plan mapping and execution responsibilities explicitly.
+    - [x] Step 1: Add Infrastructure query services that translate the default-only query plan into Elasticsearch DSL targeting `keywords`, `searchText`, and `content`.
+    - [x] Step 2: Implement the required boost so `searchText` is scored above `content`.
+    - [x] Step 3: Register the real query services in `src/UKHO.Search.Infrastructure.Query/Injection/InjectionExtensions.cs`.
+    - [x] Step 4: Add error handling for invalid Elasticsearch responses and null/empty query-plan cases.
+    - [x] Step 5: Follow `./.github/instructions/documentation-pass.instructions.md` for all new or updated code.
+  - [x] Task 1.4: Replace stub host wiring and prove the slice through the existing UI - Completed
+    - Summary: Replaced the stub UI client registration in `src/Hosts/QueryServiceHost/Program.cs` with a thin host adapter that calls the repository-owned query search service, keeping query logic out of the host project. Validation: `dotnet build`, `dotnet test test/QueryServiceHost.Tests/QueryServiceHost.Tests.csproj`. Wiki review result: updated `wiki/Home.md` so contributors see that QueryServiceHost now uses the real pipeline rather than fixed sample data.
+    - [x] Step 1: Update `src/Hosts/QueryServiceHost/Program.cs` to register the real query client path rather than the stub client.
+    - [x] Step 2: Update or replace `IQueryUiSearchClient` implementations so the UI consumes real query results from the new services path.
+    - [x] Step 3: Preserve host-only responsibilities in the host project and keep query logic out of the host.
+    - [x] Step 4: Add developer-level comments throughout the host bootstrap changes per `./.github/instructions/documentation-pass.instructions.md`.
+  - [x] Task 1.5: Add targeted tests and runnable verification for the bootstrap slice - Completed
+    - Summary: Added targeted domain, services, infrastructure, and host composition tests covering contract defaults, normalization, default plan shape, Elasticsearch request mapping, response parsing, and removal of the stub runtime path. Manual verification path recorded below for local stack usage. Validation: `dotnet build`; `dotnet test` for `UKHO.Search.Query.Tests`, `UKHO.Search.Services.Query.Tests`, `UKHO.Search.Infrastructure.Query.Tests`, and `QueryServiceHost.Tests`. Wiki review result: reviewed contributor-facing runtime guidance and updated `wiki/Home.md` plus `wiki/Solution-Architecture.md`; no additional wiki page was required because those pages already own the current architecture entry path.
+    - [x] Step 1: Add Domain and Services tests for normalization, token generation, residual initialization, and query plan shape.
+    - [x] Step 2: Add Infrastructure tests for Elasticsearch DSL generation, including `searchText` boost over `content`.
+    - [x] Step 3: Add Host-level or integration-style tests where feasible to verify the stub path is no longer the active runtime path.
+    - [x] Step 4: Record the manual run path for searching through `QueryServiceHost` against the local stack.
   - **Files**:
     - `src/UKHO.Search.Query/*`: query plan contracts and normalization primitives.
     - `src/UKHO.Search.Services.Query/*`: orchestration services for query planning.
@@ -99,9 +105,12 @@ The overall sequence is:
   - **User Instructions**:
     - Ensure the local AppHost/Elasticsearch-backed environment is running before manual verification.
     - Use the existing QueryServiceHost search page rather than the previous stub-only assumptions.
+  - **Execution Note**:
+    - Manual run path recorded for this completed slice: start the local AppHost/services stack with Elasticsearch available, open `QueryServiceHost`, submit a query such as `latest solas`, and confirm the UI now returns Elasticsearch-backed hits instead of the former deterministic stub data. Wiki review result: updated `wiki/Home.md` and `wiki/Solution-Architecture.md`; no new wiki page was required because the existing architecture entry path was the correct place to explain the runtime change.
+    - Follow-up fix: updated the Blazor query UI components to subscribe to `QueryUiState` change notifications and added explicit `@rendermode InteractiveServer` to the home page so completed searches replace the loading state in the visible panels. Validation: `dotnet build`, `dotnet test test/QueryServiceHost.Tests/QueryServiceHost.Tests.csproj`. Wiki review result: no additional wiki update was required because this change corrected a UI refresh defect without changing the documented architecture, workflows, or contributor guidance.
 
 ## Typed extraction slice
-- [ ] Work Item 2: Add Microsoft Recognizers-backed typed extraction through `ITypedQuerySignalExtractor`
+- [x] Work Item 2: Add Microsoft Recognizers-backed typed extraction through `ITypedQuerySignalExtractor` - Completed
   - **Purpose**: Introduce typed signal extraction now, while keeping the recognizer dependency isolated behind a repository-owned abstraction and mapping recognized years into `MajorVersion` in the query plan.
   - **Acceptance Criteria**:
     - `ITypedQuerySignalExtractor` exists and is used by the query planning path.
@@ -116,26 +125,31 @@ The overall sequence is:
     - Documentation updated in the work package as needed.
     - Wiki review completed; relevant wiki or repository guidance updated, or an explicit no-change review result recorded.
     - Can execute end-to-end via: targeted tests plus manual search through `QueryServiceHost` using a year-bearing query.
-  - [ ] Task 2.1: Add typed extraction contracts and abstraction
-    - [ ] Step 1: Add repository-owned extracted signal models in `src/UKHO.Search.Query` for temporal and numeric outputs.
-    - [ ] Step 2: Add the `ITypedQuerySignalExtractor` abstraction in the appropriate inward layer.
-    - [ ] Step 3: Document the abstraction, methods, constructors, parameters, and non-obvious properties according to `./.github/instructions/documentation-pass.instructions.md`.
-  - [ ] Task 2.2: Implement Microsoft Recognizers-backed extraction in Infrastructure
-    - [ ] Step 1: Add the required package and implementation in `src/UKHO.Search.Infrastructure.Query`.
-    - [ ] Step 2: Normalize recognizer outputs into repository-owned contracts, with no recognizer object graphs leaving the adapter.
-    - [ ] Step 3: Handle empty/no-match cases deterministically.
-    - [ ] Step 4: Add structured logging that explains what was recognized without leaking unnecessary internal detail.
-    - [ ] Step 5: Follow `./.github/instructions/documentation-pass.instructions.md` fully.
-  - [ ] Task 2.3: Integrate typed extraction into query planning and year projection
-    - [ ] Step 1: Update the query planning service to call `ITypedQuerySignalExtractor` after normalization.
-    - [ ] Step 2: Map recognized years into both `extracted.temporal.years` and `model.majorVersion`.
-    - [ ] Step 3: Ensure residual text/tokens and default matching behavior remain deterministic when typed signals are present.
-    - [ ] Step 4: Add error handling for recognizer failures so the planner degrades safely rather than crashing the host.
-  - [ ] Task 2.4: Add targeted tests and manual verification
-    - [ ] Step 1: Add unit tests for recognized-year normalization and `MajorVersion` projection.
-    - [ ] Step 2: Add integration-style tests proving the planner emits the expected query plan for `latest notice from 2024`.
-    - [ ] Step 3: Add Infrastructure tests for the recognizer adapter.
-    - [ ] Step 4: Record a manual run path demonstrating year-bearing queries through the host.
+  - Summary: Added repository-owned extracted temporal and numeric query-signal contracts in `src/UKHO.Search.Query`, replaced the production no-op extractor with a Microsoft Recognizers-backed infrastructure adapter, projected recognized years into `model.majorVersion`, and hardened planner fallback logging so recognizer failures degrade to a deterministic default-only plan. Validation: `dotnet build`; `dotnet test` for `UKHO.Search.Query.Tests`, `UKHO.Search.Services.Query.Tests`, and `UKHO.Search.Infrastructure.Query.Tests`; targeted Visual Studio test run covering those three projects (14 passed). Wiki review result: updated `wiki/Home.md` and `wiki/Solution-Architecture.md` so the contributor architecture narrative now explains the typed extraction stage, the `ITypedQuerySignalExtractor` boundary, and the `majorVersion` year projection.
+  - [x] Task 2.1: Add typed extraction contracts and abstraction - Completed
+    - Summary: Added repository-owned `QueryTemporalSignals`, `QueryTemporalDateSignal`, and `QueryNumericSignal` models, expanded `QueryExtractedSignals` to retain temporal and numeric output, and refreshed `ITypedQuerySignalExtractor` documentation so the inward contract explicitly describes repository-owned typed results. Validation: `dotnet build`, `dotnet test test/UKHO.Search.Query.Tests/UKHO.Search.Query.Tests.csproj`. Wiki review result: reviewed the query runtime guidance and updated `wiki/Home.md` plus `wiki/Solution-Architecture.md` because the contributor-facing architecture now includes a typed extraction stage.
+    - [x] Step 1: Add repository-owned extracted signal models in `src/UKHO.Search.Query` for temporal and numeric outputs.
+    - [x] Step 2: Add the `ITypedQuerySignalExtractor` abstraction in the appropriate inward layer.
+    - [x] Step 3: Document the abstraction, methods, constructors, parameters, and non-obvious properties according to `./.github/instructions/documentation-pass.instructions.md`.
+  - [x] Task 2.2: Implement Microsoft Recognizers-backed extraction in Infrastructure - Completed
+    - Summary: Added Microsoft Recognizers package references and the `MicrosoftRecognizersTypedQuerySignalExtractor` adapter in `src/UKHO.Search.Infrastructure.Query`, normalized recognizer output into repository-owned year, date, and number models, kept recognizer object graphs inside the adapter, and logged extracted signal counts without leaking external payload structure. Validation: `dotnet build`, `dotnet test test/UKHO.Search.Infrastructure.Query.Tests/UKHO.Search.Infrastructure.Query.Tests.csproj`. Wiki review result: updated `wiki/Home.md` and `wiki/Solution-Architecture.md` because the query infrastructure responsibilities now include typed extraction as well as Elasticsearch execution.
+    - [x] Step 1: Add the required package and implementation in `src/UKHO.Search.Infrastructure.Query`.
+    - [x] Step 2: Normalize recognizer outputs into repository-owned contracts, with no recognizer object graphs leaving the adapter.
+    - [x] Step 3: Handle empty/no-match cases deterministically.
+    - [x] Step 4: Add structured logging that explains what was recognized without leaking unnecessary internal detail.
+    - [x] Step 5: Follow `./.github/instructions/documentation-pass.instructions.md` fully.
+  - [x] Task 2.3: Integrate typed extraction into query planning and year projection - Completed
+    - Summary: Updated `QueryPlanService` so typed extraction runs after normalization, recognized years seed the canonical `MajorVersion` intent before rule evaluation, residual defaults remain unchanged when typed signals are present, and recognizer failures are logged before the planner falls back to an empty extracted-signal contract. Validation: `dotnet build`, `dotnet test test/UKHO.Search.Services.Query.Tests/UKHO.Search.Services.Query.Tests.csproj`. Wiki review result: no additional wiki page beyond `wiki/Home.md` and `wiki/Solution-Architecture.md` was required because those pages already own the active query runtime narrative.
+    - [x] Step 1: Update the query planning service to call `ITypedQuerySignalExtractor` after normalization.
+    - [x] Step 2: Map recognized years into both `extracted.temporal.years` and `model.majorVersion`.
+    - [x] Step 3: Ensure residual text/tokens and default matching behavior remain deterministic when typed signals are present.
+    - [x] Step 4: Add error handling for recognizer failures so the planner degrades safely rather than crashing the host.
+  - [x] Task 2.4: Add targeted tests and manual verification - Completed
+    - Summary: Added query contract coverage for the extracted-signal defaults, planner tests for year projection and extraction-failure fallback, and infrastructure adapter tests for year, number, and empty-input handling. Manual verification path recorded below for local stack usage. Validation: `dotnet build`; `dotnet test` for `UKHO.Search.Query.Tests`, `UKHO.Search.Services.Query.Tests`, and `UKHO.Search.Infrastructure.Query.Tests`; targeted Visual Studio test run covering the same three projects (14 passed). Wiki review result: reviewed contributor-facing query architecture guidance and updated `wiki/Home.md` plus `wiki/Solution-Architecture.md`; no new wiki page was required because the current architecture entry path remained the right place to explain the change.
+    - [x] Step 1: Add unit tests for recognized-year normalization and `MajorVersion` projection.
+    - [x] Step 2: Add integration-style tests proving the planner emits the expected query plan for `latest notice from 2024`.
+    - [x] Step 3: Add Infrastructure tests for the recognizer adapter.
+    - [x] Step 4: Record a manual run path demonstrating year-bearing queries through the host.
   - **Files**:
     - `src/UKHO.Search.Query/*`: extracted signal models and `ITypedQuerySignalExtractor` contract.
     - `src/UKHO.Search.Services.Query/*`: planner updates for typed extraction.
@@ -153,9 +167,11 @@ The overall sequence is:
     - Start the local stack and perform a query containing `2024` through `QueryServiceHost`.
   - **User Instructions**:
     - Use a query containing a recognizer-friendly year value, such as `latest notice from 2024`, during manual verification.
+  - **Execution Note**:
+    - Manual run path recorded for this completed slice: start the local AppHost/services stack with Elasticsearch available, open `QueryServiceHost`, submit `latest notice from 2024`, and confirm the search still returns Elasticsearch-backed results while the host logs include the structured typed-extraction message showing the recognized year count. Wiki review result: updated `wiki/Home.md` and `wiki/Solution-Architecture.md`; no new wiki page was required because the existing architecture entry path already teaches contributors where query planning and infrastructure responsibilities live.
 
 ## Rule-driven signal extraction slice
-- [ ] Work Item 3: Add flat query-rule loading and rule-driven `latest SOLAS` behavior
+- [x] Work Item 3: Add flat query-rule loading and rule-driven `latest SOLAS` behavior - Completed
   - **Purpose**: Deliver the first real signal extraction behavior defined by the specification by loading flat global rules from `./rules/query`, applying them to the query plan, consuming matched phrases/tokens, and proving the `latest SOLAS` scenario end to end.
   - **Acceptance Criteria**:
     - Query rules are authored under `./rules/query` as a flat global structure.
@@ -171,30 +187,36 @@ The overall sequence is:
     - Documentation updated in the work package as needed.
     - Wiki review completed; relevant wiki or repository guidance updated, or an explicit no-change review result recorded.
     - Can execute end-to-end via: targeted tests plus manual search through `QueryServiceHost` using `latest SOLAS`.
-  - [ ] Task 3.1: Define query rule contracts and evaluation abstractions
-    - [ ] Step 1: Add query-rule DTOs and validated runtime models aligned with the specification examples.
-    - [ ] Step 2: Keep the query-rule design similar in spirit to the ingestion rules DSL, but query-specific in paths and action groups.
-    - [ ] Step 3: Include support for `containsPhrase`, `model`, `concepts`, `sortHints`, and `consume` in this slice.
-    - [ ] Step 4: Apply the full commenting and XML documentation standard from `./.github/instructions/documentation-pass.instructions.md`.
-  - [ ] Task 3.2: Add flat `rules:query` loading and refresh-friendly catalog behavior
-    - [ ] Step 1: Implement a query rules source that enumerates the `rules:query` namespace from configuration.
-    - [ ] Step 2: Keep the loader behavior flat and global across search; do not add nested-folder logic.
-    - [ ] Step 3: Add startup logging for effective namespace and loaded rule counts.
-    - [ ] Step 4: Add refresh/reload-compatible catalog behavior similar in spirit to the ingestion rules path.
-  - [ ] Task 3.3: Implement the rules engine and planner integration
-    - [ ] Step 1: Evaluate rules against query input and typed extracted signals.
-    - [ ] Step 2: Apply canonical query model mutations, concept expansions, sort hints, and consume directives.
-    - [ ] Step 3: Ensure defaults run only on the residual content after consumption.
-    - [ ] Step 4: Integrate the rules engine into the planner so the resulting query plan carries matched rule identifiers and derived execution behavior.
-  - [ ] Task 3.4: Add rule files and end-to-end verification content
-    - [ ] Step 1: Add flat query rules under `rules/query` for `sort-latest` and `concept-solas`.
-    - [ ] Step 2: Ensure those rules seed into the `rules:query` configuration namespace during local run mode.
-    - [ ] Step 3: Document how to inspect matched rules and expected plan behavior for `latest SOLAS`.
-  - [ ] Task 3.5: Add targeted tests and host verification
-    - [ ] Step 1: Add unit tests for predicate matching, phrase matching, concept expansion, and consumption semantics.
-    - [ ] Step 2: Add loader/catalog tests for the flat `rules:query:*` namespace.
-    - [ ] Step 3: Add planner/integration tests for the full `latest SOLAS` query plan.
-    - [ ] Step 4: Verify end to end via the running host and record the expected observable result.
+  - Summary: Added repository-owned query-rule DTOs, validated runtime models, and rule-derived extracted signal contracts in `src/UKHO.Search.Query`; replaced the production no-op rule engine with a configuration-backed flat rule catalog and a real services-layer evaluator; updated the Elasticsearch mapper so canonical model keyword expansions execute even when residual defaults are fully consumed; and added flat `rules/query/sort-latest.json` plus `rules/query/concept-solas.json` for the end-to-end `latest SOLAS` path. Validation: `dotnet build`; targeted Visual Studio test run covering `UKHO.Search.Query.Tests`, `UKHO.Search.Services.Query.Tests`, and `UKHO.Search.Infrastructure.Query.Tests` (21 passed). Wiki review result: updated `wiki/Home.md` and `wiki/Solution-Architecture.md` so contributors can see that query rules are now loaded from `rules/query` through `rules:query:*`, are global across search, and shape the query plan before defaults run.
+  - [x] Task 3.1: Define query rule contracts and evaluation abstractions - Completed
+    - Summary: Added query-rule wrapper/document DTOs, predicate/action DTOs, validated rule definitions, rule snapshot contracts, `IQueryRulesCatalog`, and rule-derived concept/sort-hint extracted signal models under `src/UKHO.Search.Query`. Validation: `dotnet build`, targeted test run including `UKHO.Search.Query.Tests`. Wiki review result: updated `wiki/Solution-Architecture.md` and `wiki/Home.md` because the domain-side query vocabulary now includes flat query-rule contracts and rule-derived extracted signals.
+    - [x] Step 1: Add query-rule DTOs and validated runtime models aligned with the specification examples.
+    - [x] Step 2: Keep the query-rule design similar in spirit to the ingestion rules DSL, but query-specific in paths and action groups.
+    - [x] Step 3: Include support for `containsPhrase`, `model`, `concepts`, `sortHints`, and `consume` in this slice.
+    - [x] Step 4: Apply the full commenting and XML documentation standard from `./.github/instructions/documentation-pass.instructions.md`.
+  - [x] Task 3.2: Add flat `rules:query` loading and refresh-friendly catalog behavior - Completed
+    - Summary: Added `QueryRuleConfigurationPath`, `AppConfigQueryRulesSource`, `QueryRulesLoader`, `QueryRulesValidator`, `QueryRulesCatalog`, and `AppConfigQueryRulesRefreshService` in `src/UKHO.Search.Infrastructure.Query`, keeping the loader flat, rooted at `rules:query`, startup-logged, and refresh-aware without adding nested-folder semantics. Validation: `dotnet build`, targeted test run including `UKHO.Search.Infrastructure.Query.Tests`. Wiki review result: updated `wiki/Solution-Architecture.md` and `wiki/Home.md` because the query infrastructure layer now owns a configuration-backed flat rule catalog and refresh loop in addition to typed extraction and Elasticsearch execution.
+    - [x] Step 1: Implement a query rules source that enumerates the `rules:query` namespace from configuration.
+    - [x] Step 2: Keep the loader behavior flat and global across search; do not add nested-folder logic.
+    - [x] Step 3: Add startup logging for effective namespace and loaded rule counts.
+    - [x] Step 4: Add refresh/reload-compatible catalog behavior similar in spirit to the ingestion rules path.
+  - [x] Task 3.3: Implement the rules engine and planner integration - Completed
+    - Summary: Added `ConfigurationQueryRuleEngine` in `src/UKHO.Search.Services.Query`, integrated it into DI, appended rule-derived concepts and sort hints onto the extracted signal contract, applied canonical model keyword mutations and consume directives, and ensured planner defaults now run only on the residual content left after rule consumption. Validation: `dotnet build`, targeted test run including `UKHO.Search.Services.Query.Tests`. Wiki review result: no new wiki page was required because the updated `wiki/Home.md` and `wiki/Solution-Architecture.md` already own the active query runtime and layering narrative.
+    - [x] Step 1: Evaluate rules against query input and typed extracted signals.
+    - [x] Step 2: Apply canonical query model mutations, concept expansions, sort hints, and consume directives.
+    - [x] Step 3: Ensure defaults run only on the residual content after consumption.
+    - [x] Step 4: Integrate the rules engine into the planner so the resulting query plan carries matched rule identifiers and derived execution behavior.
+  - [x] Task 3.4: Add rule files and end-to-end verification content - Completed
+    - Summary: Added flat `rules/query/sort-latest.json` and `rules/query/concept-solas.json` repository rule files. No AppHost or seeder code change was required because the existing additional-configuration seeding path already loads the repository `rules` directory beneath the shared `rules` prefix, which means these files naturally project to `rules:query:*` during local run mode. Validation: `dotnet build`, targeted test run including `UKHO.Search.Infrastructure.Query.Tests` and `UKHO.Search.Services.Query.Tests`. Wiki review result: updated `wiki/Home.md` and `wiki/Solution-Architecture.md` to state that query rules are flat, global, and configuration-backed.
+    - [x] Step 1: Add flat query rules under `rules/query` for `sort-latest` and `concept-solas`.
+    - [x] Step 2: Ensure those rules seed into the `rules:query` configuration namespace during local run mode.
+    - [x] Step 3: Document how to inspect matched rules and expected plan behavior for `latest SOLAS`.
+  - [x] Task 3.5: Add targeted tests and host verification - Completed
+    - Summary: Added service-layer unit tests for predicate matching, phrase matching, concept expansion, and consumption semantics; infrastructure tests for flat `rules:query:*` loading and catalog reload; and planner plus Elasticsearch mapper tests for the full `latest SOLAS` plan shape and execution mapping. Manual verification path recorded below for local stack usage. Validation: `dotnet build`; targeted Visual Studio test run covering `UKHO.Search.Query.Tests`, `UKHO.Search.Services.Query.Tests`, and `UKHO.Search.Infrastructure.Query.Tests` (21 passed). Wiki review result: reviewed contributor-facing query runtime guidance and updated `wiki/Home.md` plus `wiki/Solution-Architecture.md`; no additional wiki page was required because the current architecture entry path remained the correct place to explain the runtime change.
+    - [x] Step 1: Add unit tests for predicate matching, phrase matching, concept expansion, and consumption semantics.
+    - [x] Step 2: Add loader/catalog tests for the flat `rules:query:*` namespace.
+    - [x] Step 3: Add planner/integration tests for the full `latest SOLAS` query plan.
+    - [x] Step 4: Verify end to end via the running host and record the expected observable result.
   - **Files**:
     - `src/UKHO.Search.Query/*`: query rule contracts and validated models.
     - `src/UKHO.Search.Services.Query/*`: rule engine orchestration and planner integration.
@@ -213,9 +235,12 @@ The overall sequence is:
     - Start the local stack and issue the query `latest SOLAS` through `QueryServiceHost`.
   - **User Instructions**:
     - Ensure the local configuration path has been seeded so `rules/query/*.json` are visible under the `rules:query` namespace.
+  - **Execution Note**:
+    - Manual run path recorded for this completed slice: start the local AppHost/services stack with Elasticsearch available, open `QueryServiceHost`, submit `latest SOLAS`, and confirm that the search still returns Elasticsearch-backed results while the query host logs show both matched rule identifiers and the applied rule ids, and while the request body is now driven by the rule-expanded `keywords` plus the descending `majorVersion` and `minorVersion` sorts rather than by residual defaults. Wiki review result: updated `wiki/Home.md` and `wiki/Solution-Architecture.md`; no new wiki page was required because those architecture entry pages already own the contributor-facing explanation of query runtime composition and rule loading.
+    - Follow-up fix: corrected `ElasticsearchQueryExecutor` so model-only query plans are no longer skipped before transport execution. This fixes the `latest SOLAS` regression where rule-expanded `keywords` existed on the plan but zero residual defaults caused the executor to return an empty result set without querying Elasticsearch. Validation: `dotnet build`, `dotnet test test/UKHO.Search.Infrastructure.Query.Tests/UKHO.Search.Infrastructure.Query.Tests.csproj`. Wiki review result: no additional wiki update was required because this was a runtime defect fix inside the already documented query pipeline rather than a change to contributor-facing architecture or workflow guidance.
 
 ## Filters, boosts, and operational hardening slice
-- [ ] Work Item 4: Add explicit rule-driven `filters` and `boosts`, richer diagnostics, and refresh verification
+- [x] Work Item 4: Add explicit rule-driven `filters` and `boosts`, richer diagnostics, and refresh verification - Completed
   - **Purpose**: Complete the rule DSL shape promised by the specification by adding explicit `filters` and `boosts`, then harden the operational behavior with diagnostics and refresh verification.
   - **Acceptance Criteria**:
     - The rule DSL supports explicit `filters` and `boosts` sections from the first implementation, not as a deferred mapper-only concept.
@@ -230,19 +255,23 @@ The overall sequence is:
     - Documentation updated in the work package as needed.
     - Wiki review completed; relevant wiki or repository guidance updated, or an explicit no-change review result recorded.
     - Can execute end-to-end via: targeted tests plus manual host verification showing rule-driven filters/boosts are honored.
-  - [ ] Task 4.1: Extend the rule DSL and validated runtime model
-    - [ ] Step 1: Add explicit `filters` and `boosts` sections to the query rule DTOs and validated runtime model.
-    - [ ] Step 2: Define repository-owned plan representations for those directives.
-    - [ ] Step 3: Document the semantics clearly in code comments and XML comments per `./.github/instructions/documentation-pass.instructions.md`.
-  - [ ] Task 4.2: Map rule-driven filters and boosts into Elasticsearch behavior
-    - [ ] Step 1: Update the planner to carry filter and boost directives into the query plan.
-    - [ ] Step 2: Update the Infrastructure mapper to translate them into Elasticsearch DSL.
-    - [ ] Step 3: Keep the mapping deterministic and testable.
-    - [ ] Step 4: Preserve the previously proven `latest SOLAS` behavior.
-  - [ ] Task 4.3: Add diagnostics and refresh verification
-    - [ ] Step 1: Add structured diagnostics for matched rules, derived execution directives, and refresh outcomes.
-    - [ ] Step 2: Add tests for configuration reload or App Configuration refresh behavior in the query rules catalog.
-    - [ ] Step 3: Record a manual verification path that changes a query rule and demonstrates the refreshed behavior.
+  - Summary: Added explicit filter and boost DTOs, validated runtime models, execution directives, and diagnostics in `src/UKHO.Search.Query`; taught the services-layer rule engine to carry rule-driven filters and boosts into execution directives with richer diagnostics; updated the Elasticsearch mapper and executor so filters become non-scoring filter clauses and boosts become explicit scoring clauses; and added a flat `rules/query/filter-notice-latest.json` example plus targeted validation, planner, mapper, and catalog tests. Validation: `dotnet build`; targeted Visual Studio test run covering `UKHO.Search.Query.Tests`, `UKHO.Search.Services.Query.Tests`, and `UKHO.Search.Infrastructure.Query.Tests` (28 passed). Wiki review result: updated `wiki/Home.md` and `wiki/Solution-Architecture.md` so contributors can see that query rules now drive explicit filters, boosts, and richer execution diagnostics in addition to concept expansion and sort hints.
+  - [x] Task 4.1: Extend the rule DSL and validated runtime model - Completed
+    - Summary: Added raw rule DTOs for `filters` and `boosts`, validated runtime models for rule-driven filter and boost definitions, and repository-owned execution directive contracts in `src/UKHO.Search.Query`. Validation: `dotnet build`, targeted test run including `UKHO.Search.Query.Tests` and `UKHO.Search.Infrastructure.Query.Tests`. Wiki review result: updated `wiki/Solution-Architecture.md` and `wiki/Home.md` because the contributor-facing query rule vocabulary now includes explicit filter and boost semantics.
+    - [x] Step 1: Add explicit `filters` and `boosts` sections to the query rule DTOs and validated runtime model.
+    - [x] Step 2: Define repository-owned plan representations for those directives.
+    - [x] Step 3: Document the semantics clearly in code comments and XML comments per `./.github/instructions/documentation-pass.instructions.md`.
+  - [x] Task 4.2: Map rule-driven filters and boosts into Elasticsearch behavior - Completed
+    - Summary: Updated `ConfigurationQueryRuleEngine`, `QueryPlanDiagnostics`, `ElasticsearchQueryMapper`, and `ElasticsearchQueryExecutor` so query plans now retain explicit filter and boost directives, non-scoring filters become bool `filter` clauses, explicit boosts become additional scoring clauses, and model-only or execution-directive-only plans still execute deterministically. Validation: `dotnet build`, targeted test run including `UKHO.Search.Services.Query.Tests` and `UKHO.Search.Infrastructure.Query.Tests`. Wiki review result: no additional wiki page beyond `wiki/Home.md` and `wiki/Solution-Architecture.md` was required because those pages already own the active query runtime narrative.
+    - [x] Step 1: Update the planner to carry filter and boost directives into the query plan.
+    - [x] Step 2: Update the Infrastructure mapper to translate them into Elasticsearch DSL.
+    - [x] Step 3: Keep the mapping deterministic and testable.
+    - [x] Step 4: Preserve the previously proven `latest SOLAS` behavior.
+  - [x] Task 4.3: Add diagnostics and refresh verification - Completed
+    - Summary: Added richer planning diagnostics for applied filters, boosts, sorts, and rule catalog load timing; extended the query rules catalog to expose load diagnostics; and added tests proving reload diagnostics stay aligned with refreshed snapshots. Manual verification path recorded below for local stack usage. Validation: `dotnet build`; targeted Visual Studio test run covering `UKHO.Search.Query.Tests`, `UKHO.Search.Services.Query.Tests`, and `UKHO.Search.Infrastructure.Query.Tests` (28 passed). Wiki review result: updated `wiki/Home.md` and `wiki/Solution-Architecture.md`; no new wiki page was required because the current architecture entry path remained the correct place to explain the change.
+    - [x] Step 1: Add structured diagnostics for matched rules, derived execution directives, and refresh outcomes.
+    - [x] Step 2: Add tests for configuration reload or App Configuration refresh behavior in the query rules catalog.
+    - [x] Step 3: Record a manual verification path that changes a query rule and demonstrates the refreshed behavior.
   - **Files**:
     - `src/UKHO.Search.Query/*`: DSL and plan extensions for filters and boosts.
     - `src/UKHO.Search.Services.Query/*`: planner support for filters/boosts.
@@ -260,9 +289,11 @@ The overall sequence is:
     - Start the local stack, modify a flat query rule, and verify refreshed behavior through `QueryServiceHost`.
   - **User Instructions**:
     - Keep the flat `rules/query` authoring model; do not introduce nested rule folders for this work package.
+  - **Execution Note**:
+    - Manual run path recorded for this completed slice: start the local AppHost/services stack with Elasticsearch available, open `QueryServiceHost`, submit a query such as `latest notice`, confirm the host logs show the matched rule id together with applied filter and boost diagnostics, then edit `rules/query/filter-notice-latest.json` to change the category filter or boost weight, allow configuration refresh to occur, rerun the same query, and confirm the refreshed behavior is reflected in both the query logs and the resulting Elasticsearch request body. Wiki review result: updated `wiki/Home.md` and `wiki/Solution-Architecture.md`; no new wiki page was required because those architecture entry pages already own the contributor-facing explanation of query runtime composition and rule loading.
 
 ## Final mandatory wiki review and package closure
-- [ ] Work Item 5: Record the final wiki review/update outcome for the full work package
+- [x] Work Item 5: Record the final wiki review/update outcome for the full work package - Completed
   - **Purpose**: Satisfy the repository’s mandatory wiki-maintenance gate for the entire work package and explicitly record the documentation outcome.
   - **Acceptance Criteria**:
     - The relevant wiki pages, glossary entries, or repository guidance pages have been reviewed against the implemented query-side behavior, architecture, workflow, terminology, and contributor guidance.
@@ -273,13 +304,16 @@ The overall sequence is:
     - The final execution record states which wiki or repository guidance pages were updated, created, retired, or why no change was needed.
     - For architecture, runtime, workflow, setup, and extension guidance, any updated documentation preserves long-form, book-like narrative depth, defines technical terms clearly, and includes examples or walkthroughs where they materially improve comprehension.
     - Can execute end-to-end via: review of the recorded implementation results and documentation changes.
-  - [ ] Task 5.1: Review contributor-facing documentation paths
-    - [ ] Step 1: Review current wiki and repository guidance pages that explain query-side architecture, search behavior, rule loading, and local setup/verification workflows.
-    - [ ] Step 2: Decide whether each page needs updating, splitting, replacing, or no change.
-    - [ ] Step 3: Apply any required updates in the appropriate documentation location.
-  - [ ] Task 5.2: Record the explicit outcome
-    - [ ] Step 1: Add a final work-package execution note stating exactly which pages were updated, created, retired, or intentionally left unchanged.
-    - [ ] Step 2: Ensure the wording is explicit and concrete rather than generic.
+  - Summary: Completed the final mandatory wiki review for the query-signal work package, confirmed the core architecture pages already carried the updated query runtime narrative, and expanded `wiki/Glossary.md`, `wiki/Project-Setup.md`, and `wiki/Architecture-Walkthrough.md` so contributors can now follow the typed-extraction, flat query-rule, local verification, and runtime-tracing story end to end. Validation: `dotnet build`; targeted Visual Studio test run covering `UKHO.Search.Query.Tests`, `UKHO.Search.Services.Query.Tests`, and `UKHO.Search.Infrastructure.Query.Tests` (28 passed). Wiki review result: updated `wiki/Home.md`, `wiki/Solution-Architecture.md`, `wiki/Glossary.md`, `wiki/Project-Setup.md`, and `wiki/Architecture-Walkthrough.md`; no pages were retired or split because the existing reading path remained structurally correct once the missing query-side narrative depth was added.
+  - [x] Task 5.1: Review contributor-facing documentation paths - Completed
+    - Summary: Reviewed the current wiki reading path for query-side architecture, flat rule loading, typed extraction, and local verification guidance, then updated the glossary, setup, and architecture walkthrough pages where contributor understanding still had gaps. Validation: `dotnet build`, targeted test run including `UKHO.Search.Query.Tests`, `UKHO.Search.Services.Query.Tests`, and `UKHO.Search.Infrastructure.Query.Tests`. Wiki review result: updated `wiki/Glossary.md`, `wiki/Project-Setup.md`, and `wiki/Architecture-Walkthrough.md`; retained `wiki/Home.md` and `wiki/Solution-Architecture.md` as the primary entry path because their overall structure remained correct.
+    - [x] Step 1: Review current wiki and repository guidance pages that explain query-side architecture, search behavior, rule loading, and local setup/verification workflows.
+    - [x] Step 2: Decide whether each page needs updating, splitting, replacing, or no change.
+    - [x] Step 3: Apply any required updates in the appropriate documentation location.
+  - [x] Task 5.2: Record the explicit outcome - Completed
+    - Summary: Added the final work-package record describing exactly which wiki pages were updated and why no retire/split action was needed. Validation: `dotnet build`, targeted test run including `UKHO.Search.Query.Tests`, `UKHO.Search.Services.Query.Tests`, and `UKHO.Search.Infrastructure.Query.Tests`. Wiki review result: explicitly recorded that `wiki/Home.md`, `wiki/Solution-Architecture.md`, `wiki/Glossary.md`, `wiki/Project-Setup.md`, and `wiki/Architecture-Walkthrough.md` were updated, and that no wiki pages were retired, split, or left stale after review.
+    - [x] Step 1: Add a final work-package execution note stating exactly which pages were updated, created, retired, or intentionally left unchanged.
+    - [x] Step 2: Ensure the wording is explicit and concrete rather than generic.
   - **Files**:
     - `wiki/*` and/or repository guidance files as required by the review.
     - `docs/095-signal-extraction-rules/*`: final work-package record updates if needed.
@@ -289,6 +323,8 @@ The overall sequence is:
     - Review the final implementation record and changed wiki/repository guidance pages.
   - **User Instructions**:
     - None.
+  - **Execution Note**:
+    - Final wiki review outcome for the full work package: reviewed the contributor-facing query documentation path across `wiki/Home.md`, `wiki/Solution-Architecture.md`, `wiki/Glossary.md`, `wiki/Project-Setup.md`, and `wiki/Architecture-Walkthrough.md`. Updated all five pages so the current-state narrative now explicitly explains the repository-owned query plan, `ITypedQuerySignalExtractor`, flat `rules/query` loading into `rules:query:*`, rule-driven concepts/sorts/filters/boosts, and the local setup and verification path for query-rule work. No wiki pages were created, retired, renamed, or split because the existing information architecture already provided the correct reading path once the missing narrative depth and terminology coverage were added.
 
 ## Summary / key considerations
 

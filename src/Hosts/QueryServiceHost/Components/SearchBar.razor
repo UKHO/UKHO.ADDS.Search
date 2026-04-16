@@ -1,6 +1,7 @@
 @using Microsoft.AspNetCore.Components.Web
 @using QueryServiceHost.Models
 @using QueryServiceHost.State
+@implements IDisposable
 
 @inject QueryUiState State
 
@@ -39,21 +40,42 @@
 {
     private IReadOnlyList<FilterChip> Chips => State.GetSelectedFacetChips();
 
+    protected override void OnInitialized()
+    {
+        // Subscribe the search bar to shared state changes so the button disabled state and selected-facet chips stay in sync.
+        State.Changed += OnStateChanged;
+    }
+
+    public void Dispose()
+    {
+        // Unsubscribe when the component is disposed so the scoped state service does not retain stale callbacks.
+        State.Changed -= OnStateChanged;
+    }
+
     private async Task OnSubmitAsync()
     {
+        // Delegate the submitted query to the shared state container so the host keeps one search workflow.
         await State.ExecuteSearchAsync(CancellationToken.None);
     }
 
     private async Task OnRemoveChipAsync(FilterChip chip)
     {
+        // Remove the selected facet through the shared state container so residual search state stays consistent.
         await State.ClearFacetValueAsync(chip.GroupName, chip.Value, CancellationToken.None);
     }
 
     private async Task OnQueryInputKeyDown(KeyboardEventArgs e)
     {
+        // Treat Enter as an explicit submit gesture so keyboard users can trigger searches without leaving the text box.
         if (e.Key == "Enter")
         {
             await OnSubmitAsync();
         }
+    }
+
+    private void OnStateChanged()
+    {
+        // Re-render on shared state updates because this component reads injected state rather than receiving parameters.
+        InvokeAsync(StateHasChanged);
     }
 }
